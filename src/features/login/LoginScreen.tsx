@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { isDemoMode } from "@/config/env";
+import { isFirebaseConfigured } from "@/services/firebase";
 import { horusBrand } from "@/config/horus.brand";
 import { DEMO_USERS } from "@/demo/demoUsers";
 import type { Role } from "@/domain/types";
@@ -60,14 +61,28 @@ const ROLE_CARDS: RoleCard[] = [
 
 /** La app siempre abre con la marca Horus. */
 export function LoginScreen() {
-  const { signIn } = useSession();
+  const { signIn, signInWithPassword, authNotice } = useSession();
   const [tab, setTab] = useState<Tab>(isDemoMode ? "demo" : "account");
   const [showPassword, setShowPassword] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const submitAccount = (e: FormEvent) => {
+  const submitAccount = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setNotice("El inicio de sesión con cuenta se habilita cuando se conecta la instancia. Por ahora no está disponible.");
+    if (!isFirebaseConfigured) {
+      setNotice("Esta instancia todavía no está conectada a un servidor. Por ahora solo está disponible la demo.");
+      return;
+    }
+    const form = new FormData(e.currentTarget);
+    setBusy(true);
+    setNotice(null);
+    try {
+      await signInWithPassword(String(form.get("email") ?? ""), String(form.get("password") ?? ""));
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "No se pudo iniciar sesión. Probá de nuevo.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -80,7 +95,6 @@ export function LoginScreen() {
           </div>
         </div>
         <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-white">{horusBrand.name}</h1>
-        <p className="mt-2 max-w-md text-sm font-medium text-navy-300 sm:text-base">Horas, licencias y pre-liquidación para pymes</p>
       </header>
 
       <main className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center px-4 py-2">
@@ -178,10 +192,10 @@ export function LoginScreen() {
                     </button>
                   </div>
                 </div>
-                {notice ? <p role="status" className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">{notice}</p> : null}
+                {notice ?? authNotice ? <p role="alert" className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">{notice ?? authNotice}</p> : null}
                 <div className="pt-2">
-                  <button type="submit" className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-horus-cyan font-bold text-navy-950 shadow-lg shadow-horus-cyan/25 transition hover:bg-horus-cyan-hover">
-                    <span>Ingresar</span>
+                  <button type="submit" disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-horus-cyan font-bold text-navy-950 shadow-lg shadow-horus-cyan/25 transition hover:bg-horus-cyan-hover disabled:opacity-60">
+                    <span>{busy ? "Ingresando…" : "Ingresar"}</span>
                     <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                   </button>
                 </div>

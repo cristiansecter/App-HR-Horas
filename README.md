@@ -9,6 +9,7 @@ npm install
 npm run dev          # http://localhost:3000, con la entrada por rol de la demo si se corre con --mode demo
 npm test             # tests de la lógica (horas extra, feriados, planilla)
 npm run lint         # chequeo de tipos
+npm run test:rules   # reglas de Firestore contra el emulador (no toca datos reales)
 npm run build
 ```
 
@@ -20,9 +21,11 @@ npm run build
 
 `npm run build:demo` genera el build con `VITE_DEMO_MODE=true` (archivo `.env.demo`): muestra la entrada por rol y usa datos de ejemplo que no se conservan. Un build sin esa variable no incluye la entrada de demostración.
 
-Para publicarla en Firebase Hosting (proyecto `demo` de `.firebaserc`):
+Para publicarla (Hosting y reglas de Firestore, proyecto `demo` de `.firebaserc`):
 
 ```bash
 npx firebase-tools login
 npm run deploy:demo
 ```
+
+La entrada con cuenta (email y contraseña) funciona con Firebase de verdad. Alta de usuarios, roles, reglas y puesta en marcha de una instancia: ver [`docs/configurador.md`](docs/configurador.md).

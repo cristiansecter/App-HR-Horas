@@ -2,7 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { DEMO_HOLIDAYS, DEMO_OVERTIME_CONFIG, DEMO_PROJECTS, DEMO_SCHEDULE } from "@/demo/demoData";
 import { dateInBuenosAires } from "@/domain/dates";
 import { classifyEntry, dayTypeOf, InvalidEntryError, type ClassifiedEntry, type DayType } from "@/domain/overtime";
-import { useUser } from "@/session/SessionContext";
+import { useSession, useUser } from "@/session/SessionContext";
+import { createTimeEntry } from "@/services/timeEntries";
 
 interface LoadHoursValue {
   openDrawer: () => void;
@@ -50,6 +51,7 @@ const inputClass =
 
 function LoadHoursDrawer({ onClose }: { onClose: () => void }) {
   const user = useUser();
+  const { isReal } = useSession();
   const today = dateInBuenosAires(new Date());
   const [date, setDate] = useState(today);
   const [project, setProject] = useState(DEMO_PROJECTS[2]!.code);
@@ -59,6 +61,8 @@ function LoadHoursDrawer({ onClose }: { onClose: () => void }) {
   const [onCall, setOnCall] = useState(false);
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -79,8 +83,22 @@ function LoadHoursDrawer({ onClose }: { onClose: () => void }) {
   const holiday = date ? DEMO_HOLIDAYS.get(date) : undefined;
   const crossesMidnight = from && to && toMinutes(to) <= toMinutes(from);
 
-  const save = (label: string) => {
-    if (!result?.ok) return;
+  const save = async (label: string, status: "draft" | "submitted") => {
+    if (!result?.ok || saving) return;
+    setSaveError(null);
+    if (isReal) {
+      // Cuenta real: el registro se guarda en Firestore. La demo solo simula.
+      setSaving(true);
+      try {
+        await createTimeEntry({ userId: user.uid, projectId: project, date, startTime: from, endTime: to, isOnCall: onCall, ticketRef: ticket, notes, status });
+      } catch (e) {
+        console.error("No se pudo guardar el registro", e);
+        setSaveError("No se pudo guardar el registro. Revisá que la fecha esté dentro de los días permitidos y probá de nuevo.");
+        setSaving(false);
+        return;
+      }
+      setSaving(false);
+    }
     setSaved(label);
     window.setTimeout(onClose, 1200);
   };
@@ -243,15 +261,16 @@ function LoadHoursDrawer({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-white/5 bg-surface-container-low p-space-md">
+          {saveError ? <p role="alert" className="mr-auto font-body-sm text-body-sm text-error">{saveError}</p> : null}
           {saved ? (
             <p role="status" className="mr-auto flex items-center gap-2 font-body-sm text-body-sm text-primary">
               <span className="material-symbols-outlined text-[18px]">task_alt</span>
-              {saved}. En la demo los registros no se conservan.
+              {saved}.{isReal ? "" : " En la demo los registros no se conservan."}
             </p>
           ) : null}
           <button type="button" onClick={onClose} className="px-4 py-2 font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface">Cancelar</button>
-          <button type="button" disabled={!result?.ok} onClick={() => save("Borrador guardado")} className="rounded-lg bg-surface-container-high px-4 py-2 font-label-lg text-label-lg text-on-surface disabled:opacity-40">Guardar borrador</button>
-          <button type="button" disabled={!result?.ok} onClick={() => save("Registro enviado")} className="flex items-center gap-2 rounded-lg bg-primary-container px-4 py-2 font-label-lg text-label-lg font-semibold text-on-primary shadow-[0_0_16px_color-mix(in_srgb,var(--hz-primary)_30%,transparent)] disabled:opacity-40">
+          <button type="button" disabled={!result?.ok || saving} onClick={() => void save("Borrador guardado", "draft")} className="rounded-lg bg-surface-container-high px-4 py-2 font-label-lg text-label-lg text-on-surface disabled:opacity-40">Guardar borrador</button>
+          <button type="button" disabled={!result?.ok || saving} onClick={() => void save("Registro enviado", "submitted")} className="flex items-center gap-2 rounded-lg bg-primary-container px-4 py-2 font-label-lg text-label-lg font-semibold text-on-primary shadow-[0_0_16px_color-mix(in_srgb,var(--hz-primary)_30%,transparent)] disabled:opacity-40">
             <span className="material-symbols-outlined text-[18px]">send</span>
             Guardar y enviar
           </button>

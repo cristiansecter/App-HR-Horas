@@ -47,7 +47,14 @@ function Guard({ path, render }: { path: string; render: (role: Role) => ReactEl
 }
 
 function AuthGate() {
-  const { user } = useSession();
+  const { user, loading } = useSession();
+  if (loading) {
+    return (
+      <div className="bg-horus-mesh flex min-h-screen items-center justify-center text-sm text-navy-300" role="status">
+        Cargando…
+      </div>
+    );
+  }
   if (!user) return <LoginScreen />;
   return (
     <ToastProvider>

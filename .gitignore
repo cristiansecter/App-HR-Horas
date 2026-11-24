@@ -7,3 +7,8 @@ dist
 *.log
 .firebase
 .DS_Store
+# Claves de cuenta de servicio: dan control total de la instancia. Nunca se suben.
+*-adminsdk*.json
+*service-account*.json
+serviceAccount*.json
+horus-*-key.json

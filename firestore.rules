@@ -1,0 +1,164 @@
+rules_version = '2';
+
+// Reglas de seguridad de Horus. Los permisos los hacen cumplir estas reglas; la pantalla solo esconde lo que
+// el usuario no puede usar. El rol sale del custom claim `role` del token ('admin' | 'supervisor' | 'employee'),
+// que solo asigna el Configurador con un script de Admin SDK. Todo lo que no está acá está denegado.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------ quién es quién
+    function signedIn() {
+      return request.auth != null;
+    }
+    function role() {
+      return request.auth.token.get('role', '');
+    }
+    function hasRole() {
+      return signedIn() && role() in ['admin', 'supervisor', 'employee'];
+    }
+    function isAdmin() {
+      return hasRole() && role() == 'admin';
+    }
+    function me() {
+      return request.auth.uid;
+    }
+    function profileOf(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+    // El usuario `uid` es del equipo del supervisor que hace el pedido.
+    function supervises(uid) {
+      return hasRole() && role() == 'supervisor' && exists(/databases/$(database)/documents/users/$(uid))
+        && profileOf(uid).get('supervisorId', '') == me();
+    }
+    function isApproverOf(uid) {
+      return isAdmin() || supervises(uid);
+    }
+    function onlyChanges(allowedKeys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeys);
+    }
+
+    // ------------------------------------------------------------ ventana de edición
+    // Un empleado carga y corrige registros propios de los últimos N días (editWindowDays de settings, 7 por defecto).
+    function editWindowDays() {
+      return exists(/databases/$(database)/documents/settings/main)
+        ? get(/databases/$(database)/documents/settings/main).data.get('editWindowDays', 7)
+        : 7;
+    }
+    function inWindow(ms) {
+      return ms is int
+        && ms >= request.time.toMillis() - editWindowDays() * 24 * 60 * 60 * 1000
+        && ms <= request.time.toMillis() + 24 * 60 * 60 * 1000;
+    }
+
+    // ------------------------------------------------------------ registros de horas: quién puede qué
+    function ownerEdits() {
+      return hasRole() && resource.data.userId == me()
+        && resource.data.status in ['draft', 'observed']
+        && request.resource.data.status in ['draft', 'submitted']
+        && inWindow(resource.data.dateMs) && inWindow(request.resource.data.dateMs)
+        && onlyChanges(['projectId', 'date', 'dateMs', 'startTime', 'endTime', 'isOnCall', 'ticketRef', 'notes',
+                        'status', 'updatedAt']);
+    }
+    function approverDecides() {
+      return hasRole() && isApproverOf(resource.data.userId) && (resource.data.userId != me() || isAdmin())
+        && resource.data.status == 'submitted'
+        && request.resource.data.status in ['approved', 'observed']
+        && request.resource.data.reviewedBy == me()
+        && onlyChanges(['status', 'reviewerNote', 'reviewedBy', 'reviewedAt', 'hours', 'breakdown'])
+        && (request.resource.data.status == 'observed'
+              ? (request.resource.data.reviewerNote is string && request.resource.data.reviewerNote.size() > 0)
+              : (request.resource.data.hours is number && request.resource.data.breakdown is map));
+    }
+
+    // ------------------------------------------------------------ perfil del equipo
+    // Lo leen todos los usuarios con rol (hace falta para el directorio y el calendario). Los datos sensibles
+    // están en employee_private. Nadie puede cambiar el rol desde acá: viene del token.
+    match /users/{uid} {
+      allow read: if hasRole();
+      allow update: if isAdmin()
+        && request.resource.data.get('role', '') == resource.data.get('role', '')
+        && onlyChanges(['fullName', 'email', 'employeeNumber', 'department', 'position', 'hireDate',
+                        'supervisorId', 'workSchedule', 'active']);
+      allow create, delete: if false;
+    }
+
+    // Datos sensibles (CUIL, DNI, teléfono, modalidad): solo el administrador.
+    match /employee_private/{uid} {
+      allow read, write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------ configuración de la empresa
+    match /settings/{doc} {
+      allow read: if hasRole();
+      allow write: if isAdmin();
+    }
+    match /holidays/{date} {
+      allow read: if hasRole();
+      allow write: if isAdmin();
+    }
+    match /projects/{id} {
+      allow read: if hasRole();
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------------------------------------ registros de horas
+    // El empleado carga fecha, desde y hasta. Las horas y el desglose finales (hours, breakdown) los escribe
+    // únicamente quien aprueba, y quedan congelados. Un registro aprobado no se edita.
+    match /time_entries/{id} {
+      allow read: if hasRole() && (resource.data.userId == me() || isApproverOf(resource.data.userId));
+
+      allow create: if hasRole()
+        && request.resource.data.userId == me()
+        && request.resource.data.keys().hasOnly(['userId', 'projectId', 'date', 'dateMs', 'startTime', 'endTime',
+                                                 'isOnCall', 'ticketRef', 'notes', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.status in ['draft', 'submitted']
+        && request.resource.data.startTime is string && request.resource.data.endTime is string
+        && inWindow(request.resource.data.dateMs);
+
+      // El dueño corrige mientras el registro está en borrador u observado y dentro de la ventana.
+      // Quien aprueba (supervisor del dueño o administrador) decide sobre registros enviados.
+      allow update: if ownerEdits() || approverDecides();
+
+      allow delete: if hasRole() && resource.data.userId == me() && resource.data.status == 'draft'
+        && inWindow(resource.data.dateMs);
+    }
+
+    // ------------------------------------------------------------ licencias
+    // El empleado solicita (pendiente). El supervisor del dueño o el admin deciden. La ausencia injustificada
+    // no se solicita: la registra quien supervisa, ya aprobada.
+    match /leave_requests/{id} {
+      allow read: if hasRole() && (resource.data.userId == me() || isApproverOf(resource.data.userId));
+
+      allow create: if hasRole() && request.resource.data.createdBy == me()
+        && request.resource.data.keys().hasOnly(['userId', 'type', 'startDate', 'endDate', 'daysCount', 'reason',
+                                                 'attachmentPath', 'status', 'createdBy', 'approvedBy', 'decidedAt',
+                                                 'createdAt'])
+        && (
+          (request.resource.data.userId == me()
+            && request.resource.data.type in ['vacation', 'sick', 'study', 'personal', 'other']
+            && request.resource.data.status == 'pending')
+          ||
+          (isApproverOf(request.resource.data.userId) && request.resource.data.userId != me()
+            && request.resource.data.type == 'unjustified'
+            && request.resource.data.status == 'approved'
+            && request.resource.data.approvedBy == me())
+        );
+
+      allow update: if hasRole() && isApproverOf(resource.data.userId) && (resource.data.userId != me() || isAdmin())
+        && resource.data.status == 'pending'
+        && request.resource.data.status in ['approved', 'rejected']
+        && request.resource.data.approvedBy == me()
+        && onlyChanges(['status', 'approvedBy', 'decidedAt', 'reviewerNote']);
+
+      allow delete: if hasRole() && resource.data.userId == me() && resource.data.status == 'pending';
+    }
+
+    // Calendario del equipo: solo "ausente", sin el tipo de licencia (es un dato de salud).
+    match /team_absences/{id} {
+      allow read: if hasRole();
+      allow create, update: if hasRole() && isApproverOf(request.resource.data.userId)
+        && request.resource.data.keys().hasOnly(['userId', 'startDate', 'endDate', 'leaveId']);
+      allow delete: if hasRole() && isApproverOf(resource.data.userId);
+    }
+  }
+}
