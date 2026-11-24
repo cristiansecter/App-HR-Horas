@@ -3,6 +3,9 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { NAV_ITEMS, canAccess, type NavId } from "@/config/navigation";
 import { LoadHoursProvider } from "@/features/hours/LoadHoursDrawer";
 import { LoginScreen } from "@/features/login/LoginScreen";
+import { CompanyProvider } from "@/company/CompanyContext";
+import ApprovalsLive from "@/features/approvals/ApprovalsLive";
+import HomeLive from "@/features/home/HomeLive";
 import Approvals from "@/features/screens/Approvals";
 import Directory from "@/features/screens/Directory";
 import EmployeeFile from "@/features/screens/EmployeeFile";
@@ -21,11 +24,41 @@ import { SessionProvider, useSession } from "@/session/SessionContext";
 import { AppShell } from "@/ui/AppShell";
 import { ToastProvider } from "@/ui/Toast";
 
-const HOME: Record<Role, () => ReactElement> = {
-  admin: () => <HomeAdmin />,
-  supervisor: () => <HomeSupervisor />,
-  employee: () => <HomeEmployee />,
-};
+/** Con cuenta real, el inicio y las aprobaciones leen Firestore; en la demo se ven las pantallas de ejemplo. */
+function HomeRoute({ role }: { role: Role }) {
+  const { isReal } = useSession();
+  if (isReal) return <HomeLive />;
+  return role === "admin" ? <HomeAdmin /> : role === "supervisor" ? <HomeSupervisor /> : <HomeEmployee />;
+}
+
+function ApprovalsRoute() {
+  const { isReal } = useSession();
+  return isReal ? <ApprovalsLive /> : <Approvals />;
+}
+
+/** Pantallas que ya leen y escriben en Firestore. Las demás todavía muestran datos de ejemplo. */
+const LIVE_IDS: ReadonlySet<string> = new Set(["home", "hours", "approvals", "projects"]);
+
+function SampleDataNotice() {
+  return (
+    <div role="note" className="mx-space-lg mt-space-lg flex items-start gap-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 font-body-sm text-body-sm text-amber-200">
+      <span className="material-symbols-outlined text-[20px]">info</span>
+      <span>Esta pantalla todavía muestra datos de ejemplo: no son los de tu empresa y no se guardan. Se conecta en uno de los próximos pasos.</span>
+    </div>
+  );
+}
+
+/** Aviso de datos de ejemplo cuando una cuenta real entra a una pantalla que todavía no está conectada. */
+function WithNotice({ id, children }: { id: string; children: ReactElement }) {
+  const { isReal } = useSession();
+  if (!isReal || LIVE_IDS.has(id)) return children;
+  return (
+    <>
+      <SampleDataNotice />
+      {children}
+    </>
+  );
+}
 
 const PAGES: Partial<Record<NavId, () => ReactElement>> = {
   week: () => <WeekGrid />,
@@ -33,17 +66,17 @@ const PAGES: Partial<Record<NavId, () => ReactElement>> = {
   team: () => <TeamCalendar />,
   projects: () => <Projects />,
   leave: () => <MyLeave />,
-  approvals: () => <Approvals />,
+  approvals: () => <ApprovalsRoute />,
   directory: () => <Directory />,
   reports: () => <Reports />,
   settings: () => <Settings />,
 };
 
 /** Si el rol no puede ver la ruta, vuelve al inicio. Las reglas de Firestore son la barrera real. */
-function Guard({ path, render }: { path: string; render: (role: Role) => ReactElement }) {
+function Guard({ id, path, render }: { id: string; path: string; render: (role: Role) => ReactElement }) {
   const { user } = useSession();
   if (!user || !canAccess(user.role, path)) return <Navigate to="/" replace />;
-  return render(user.role);
+  return <WithNotice id={id}>{render(user.role)}</WithNotice>;
 }
 
 function AuthGate() {
@@ -58,6 +91,7 @@ function AuthGate() {
   if (!user) return <LoginScreen />;
   return (
     <ToastProvider>
+    <CompanyProvider>
     <LoadHoursProvider>
       <Routes>
         <Route element={<AppShell />}>
@@ -65,14 +99,15 @@ function AuthGate() {
             <Route
               key={item.id}
               path={item.path}
-              element={<Guard path={item.path} render={(role) => (item.id === "home" ? HOME[role]() : (PAGES[item.id]?.() ?? <Navigate to="/" replace />))} />}
+              element={<Guard id={item.id} path={item.path} render={(role) => (item.id === "home" ? <HomeRoute role={role} /> : (PAGES[item.id]?.() ?? <Navigate to="/" replace />))} />}
             />
           ))}
-          <Route path="/directorio/ficha" element={<Guard path="/directorio/ficha" render={() => <EmployeeFile />} />} />
+          <Route path="/directorio/ficha" element={<Guard id="file" path="/directorio/ficha" render={() => <EmployeeFile />} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
     </LoadHoursProvider>
+    </CompanyProvider>
     </ToastProvider>
   );
 }

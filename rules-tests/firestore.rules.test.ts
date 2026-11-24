@@ -123,6 +123,23 @@ describe("registros de horas: lectura", () => {
     await assertSucceeds(getDoc(doc(db, "time_entries/e-emi")));
     await assertFails(getDoc(doc(db, "time_entries/e-olga")));
   });
+  it("el supervisor consulta a todo su equipo con un solo 'in' de varias personas", async () => {
+    await seedEntry("e-eze", "eze", "submitted");
+    const db = asRole("sofia", "supervisor");
+    await assertSucceeds(getDocs(query(collection(db, "time_entries"), where("userId", "in", ["emi", "eze"]), where("status", "==", "submitted"))));
+  });
+  it("el supervisor consulta a una persona de su equipo por igualdad", async () => {
+    const db = asRole("sofia", "supervisor");
+    await assertSucceeds(getDocs(query(collection(db, "time_entries"), where("userId", "==", "emi"), where("status", "==", "submitted"))));
+  });
+  it("el supervisor no puede consultar a alguien de otro equipo ni mezclarlo en un 'in'", async () => {
+    const db = asRole("sofia", "supervisor");
+    await assertFails(getDocs(query(collection(db, "time_entries"), where("userId", "==", "olga"), where("status", "==", "submitted"))));
+    await assertFails(getDocs(query(collection(db, "time_entries"), where("userId", "in", ["emi", "olga"]), where("status", "==", "submitted"))));
+  });
+  it("el admin consulta todos los enviados", async () => {
+    await assertSucceeds(getDocs(query(collection(asRole("ana", "admin"), "time_entries"), where("status", "==", "submitted"))));
+  });
   it("el admin lee todos", async () => {
     const db = asRole("ana", "admin");
     await assertSucceeds(getDoc(doc(db, "time_entries/e-emi")));

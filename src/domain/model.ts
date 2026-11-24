@@ -52,3 +52,16 @@ export interface TimeEntryDoc {
 export interface TimeEntry extends TimeEntryDoc {
   id: string;
 }
+
+/** `projects/{código}`. El id del documento es el código del proyecto. */
+export interface Project {
+  code: string;
+  name: string;
+  client: string;
+  budgetHours: number;
+  active: boolean;
+}
+
+export interface UserSummary extends UserProfile {
+  uid: string;
+}

@@ -29,6 +29,7 @@ async function toSessionUser(user: User): Promise<SessionUser> {
     fullName: profile?.fullName ?? user.displayName ?? user.email ?? "Usuario",
     email: user.email ?? "",
     role,
+    ...(profile?.workSchedule ? { workSchedule: profile.workSchedule } : {}),
   };
 }
 

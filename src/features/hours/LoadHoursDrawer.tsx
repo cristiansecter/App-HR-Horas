@@ -1,12 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { DEMO_HOLIDAYS, DEMO_OVERTIME_CONFIG, DEMO_PROJECTS, DEMO_SCHEDULE } from "@/demo/demoData";
-import { dateInBuenosAires } from "@/domain/dates";
-import { classifyEntry, dayTypeOf, InvalidEntryError, type ClassifiedEntry, type DayType } from "@/domain/overtime";
+import { useCompany } from "@/company/CompanyContext";
+import { addDays, dateInBuenosAires } from "@/domain/dates";
+import { classifyEntry, dayTypeOf, InvalidEntryError, type ClassifiedEntry, type DayType, type WorkDay, type WorkSchedule } from "@/domain/overtime";
 import { useSession, useUser } from "@/session/SessionContext";
-import { createTimeEntry } from "@/services/timeEntries";
+import { createTimeEntry, updateTimeEntry } from "@/services/timeEntries";
+import type { TimeEntry } from "@/domain/model";
 
 interface LoadHoursValue {
-  openDrawer: () => void;
+  /** Abre el cajón para cargar horas nuevas. Acepta (e ignora) un evento de clic. */
+  openDrawer: (...ignored: unknown[]) => void;
+  /** Abre el cajón para corregir un registro propio (borrador u observado). */
+  editEntry: (entry: TimeEntry) => void;
   closeDrawer: () => void;
 }
 
@@ -20,13 +24,21 @@ export const useLoadHours = (): LoadHoursValue => {
 
 export function LoadHoursProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const openDrawer = useCallback(() => setOpen(true), []);
+  const [editing, setEditing] = useState<TimeEntry | null>(null);
+  const openDrawer = useCallback(() => {
+    setEditing(null);
+    setOpen(true);
+  }, []);
+  const editEntry = useCallback((entry: TimeEntry) => {
+    setEditing(entry);
+    setOpen(true);
+  }, []);
   const closeDrawer = useCallback(() => setOpen(false), []);
-  const value = useMemo(() => ({ openDrawer, closeDrawer }), [openDrawer, closeDrawer]);
+  const value = useMemo(() => ({ openDrawer, editEntry, closeDrawer }), [openDrawer, editEntry, closeDrawer]);
   return (
     <LoadHoursContext.Provider value={value}>
       {children}
-      {open ? <LoadHoursDrawer onClose={closeDrawer} /> : null}
+      {open ? <LoadHoursDrawer key={editing?.id ?? "new"} entry={editing} onClose={closeDrawer} /> : null}
     </LoadHoursContext.Provider>
   );
 }
@@ -41,25 +53,42 @@ const CATEGORY_STYLE: Record<string, string> = {
 
 const formatHours = (hours: number): string => `${hours.toLocaleString("es-AR", { maximumFractionDigits: 2 })} h`;
 
-const categoryLabel = (id: string): string =>
-  id === "normal" ? "Normales" : (DEMO_OVERTIME_CONFIG.tiers.find((t) => t.id === id)?.label ?? id);
+const WEEKDAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+
+/** Texto de la jornada (por ejemplo "lunes a viernes, 08:30 a 17:30") a partir de la jornada real de la persona. */
+const describeSchedule = (schedule: WorkSchedule): string => {
+  const keys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+  const worked = keys.map((k, i) => ({ day: i, w: schedule[k] })).filter((d): d is { day: number; w: WorkDay } => d.w !== null);
+  if (worked.length === 0) return "Sin jornada definida";
+  const first = worked[0]!;
+  const same = worked.every((d) => d.w.start === first.w.start && d.w.end === first.w.end);
+  const days = worked.length === 1 ? WEEKDAY_NAMES[first.day] : `${WEEKDAY_NAMES[worked[0]!.day]} a ${WEEKDAY_NAMES[worked[worked.length - 1]!.day]}`;
+  return same ? `Jornada: ${days}, ${first.w.start} a ${first.w.end}` : `Jornada: ${days} (horarios variables)`;
+};
 
 const toMinutes = (hhmm: string): number => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 
 const inputClass =
   "w-full rounded-lg border border-white/10 bg-surface-container-lowest px-3 py-2.5 font-body-md text-body-md text-on-surface focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:outline-hidden";
 
-function LoadHoursDrawer({ onClose }: { onClose: () => void }) {
+function LoadHoursDrawer({ entry, onClose }: { entry: TimeEntry | null; onClose: () => void }) {
   const user = useUser();
   const { isReal } = useSession();
+  const company = useCompany();
+  const schedule = user.workSchedule ?? company.defaultSchedule;
+  const projects = useMemo(() => company.projects.filter((p) => p.active), [company.projects]);
+  const categoryLabel = (id: string): string => (id === "normal" ? "Normales" : (company.overtime.tiers.find((t) => t.id === id)?.label ?? id));
   const today = dateInBuenosAires(new Date());
-  const [date, setDate] = useState(today);
-  const [project, setProject] = useState(DEMO_PROJECTS[2]!.code);
-  const [ticket, setTicket] = useState("");
-  const [from, setFrom] = useState("08:30");
-  const [to, setTo] = useState("17:30");
-  const [onCall, setOnCall] = useState(false);
-  const [notes, setNotes] = useState("");
+  const earliest = addDays(today, -company.editWindowDays);
+  const [date, setDate] = useState(entry?.date ?? today);
+  const [projectChoice, setProject] = useState<string | null>(entry?.projectId ?? null);
+  // Por defecto, el tercer proyecto en la demo (queda a la vista) y el primero en una instancia real.
+  const project = projectChoice ?? projects[isReal ? 0 : 2]?.code ?? projects[0]?.code ?? "";
+  const [ticket, setTicket] = useState(entry?.ticketRef ?? "");
+  const [from, setFrom] = useState(entry?.startTime ?? "08:30");
+  const [to, setTo] = useState(entry?.endTime ?? "17:30");
+  const [onCall, setOnCall] = useState(entry?.isOnCall ?? false);
+  const [notes, setNotes] = useState(entry?.notes ?? "");
   const [saved, setSaved] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -73,24 +102,26 @@ function LoadHoursDrawer({ onClose }: { onClose: () => void }) {
   const result = useMemo<{ ok: true; value: ClassifiedEntry } | { ok: false; message: string } | null>(() => {
     if (!date || !from || !to) return null;
     try {
-      return { ok: true, value: classifyEntry({ date, startTime: from, endTime: to, isOnCall: onCall }, { schedule: DEMO_SCHEDULE, holidays: DEMO_HOLIDAYS, config: DEMO_OVERTIME_CONFIG }) };
+      return { ok: true, value: classifyEntry({ date, startTime: from, endTime: to, isOnCall: onCall }, { schedule, holidays: company.holidays, config: company.overtime }) };
     } catch (e) {
       return { ok: false, message: e instanceof InvalidEntryError ? e.message : "No se pudo calcular el registro." };
     }
-  }, [date, from, to, onCall]);
+  }, [date, from, to, onCall, schedule, company.holidays, company.overtime]);
 
-  const dayType = date ? dayTypeOf(date, DEMO_HOLIDAYS) : "weekday";
-  const holiday = date ? DEMO_HOLIDAYS.get(date) : undefined;
+  const dayType = date ? dayTypeOf(date, company.holidays) : "weekday";
+  const holiday = date ? company.holidays.get(date) : undefined;
   const crossesMidnight = from && to && toMinutes(to) <= toMinutes(from);
 
   const save = async (label: string, status: "draft" | "submitted") => {
-    if (!result?.ok || saving) return;
+    if (!result?.ok || saving || !project) return;
     setSaveError(null);
     if (isReal) {
       // Cuenta real: el registro se guarda en Firestore. La demo solo simula.
       setSaving(true);
       try {
-        await createTimeEntry({ userId: user.uid, projectId: project, date, startTime: from, endTime: to, isOnCall: onCall, ticketRef: ticket, notes, status });
+        const fields = { projectId: project, date, startTime: from, endTime: to, isOnCall: onCall, ticketRef: ticket, notes, status };
+        if (entry) await updateTimeEntry(entry.id, fields);
+        else await createTimeEntry({ userId: user.uid, ...fields });
       } catch (e) {
         console.error("No se pudo guardar el registro", e);
         setSaveError("No se pudo guardar el registro. Revisá que la fecha esté dentro de los días permitidos y probá de nuevo.");
@@ -117,7 +148,7 @@ function LoadHoursDrawer({ onClose }: { onClose: () => void }) {
               <span className="size-1.5 rounded-full bg-primary-container" />
               Imputación diaria
             </span>
-            <h2 className="mt-1 font-headline-md text-headline-md text-on-surface">Cargar horas</h2>
+            <h2 className="mt-1 font-headline-md text-headline-md text-on-surface">{entry ? "Corregir registro" : "Cargar horas"}</h2>
             <p className="mt-1 flex items-center gap-1.5 font-body-sm text-body-sm text-on-surface-variant first-letter:uppercase">
               <span className="material-symbols-outlined text-[16px] text-primary">calendar_today</span>
               {dateText}
@@ -129,13 +160,18 @@ function LoadHoursDrawer({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="flex-1 space-y-space-md overflow-y-auto px-space-lg pb-space-lg">
+          {entry?.status === "observed" && entry.reviewerNote ? (
+            <p role="note" className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 font-body-sm text-body-sm text-amber-200">
+              <span className="font-semibold">Observación de tu supervisor: </span>“{entry.reviewerNote}”
+            </p>
+          ) : null}
           <div className="flex items-center gap-3 rounded-xl bg-surface-container p-4">
             <div className="flex size-10 items-center justify-center rounded-lg bg-surface-container-high text-primary">
               <span className="material-symbols-outlined">badge</span>
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate font-label-lg text-label-lg text-on-surface">{user.fullName}</p>
-              <p className="font-body-sm text-body-sm text-on-surface-variant">Jornada: lunes a viernes, 08:30 a 17:30</p>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">{describeSchedule(schedule)}</p>
             </div>
             <span className="rounded bg-secondary-container px-2 py-1 font-label-xs-mono text-label-xs-mono font-bold text-on-secondary-container uppercase">
               {holiday ? holiday.name.split("(")[0]!.trim().slice(0, 18) : DAY_TYPE_LABELS[dayType]}
@@ -146,18 +182,19 @@ function LoadHoursDrawer({ onClose }: { onClose: () => void }) {
             <span className="mb-1.5 flex justify-between font-label-lg text-label-lg text-on-surface">
               Fecha <span className="font-label-xs-mono text-label-xs-mono text-on-surface-variant uppercase">Obligatorio</span>
             </span>
-            <input type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} className={inputClass} />
+            <input type="date" value={date} min={isReal ? earliest : undefined} max={today} onChange={(e) => setDate(e.target.value)} className={inputClass} />
           </label>
 
           <label className="block">
             <span className="mb-1.5 block font-label-lg text-label-lg text-on-surface">Proyecto</span>
             <select value={project} onChange={(e) => setProject(e.target.value)} className={inputClass}>
-              {DEMO_PROJECTS.map((p) => (
+              {projects.map((p) => (
                 <option key={p.code} value={p.code}>
                   {p.code} · {p.name}
                 </option>
               ))}
             </select>
+            {projects.length === 0 ? <p role="alert" className="mt-1.5 font-body-sm text-body-sm text-error">No hay proyectos activos. Pedile al administrador que cree uno.</p> : null}
           </label>
 
           <label className="block">
@@ -269,8 +306,8 @@ function LoadHoursDrawer({ onClose }: { onClose: () => void }) {
             </p>
           ) : null}
           <button type="button" onClick={onClose} className="px-4 py-2 font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface">Cancelar</button>
-          <button type="button" disabled={!result?.ok || saving} onClick={() => void save("Borrador guardado", "draft")} className="rounded-lg bg-surface-container-high px-4 py-2 font-label-lg text-label-lg text-on-surface disabled:opacity-40">Guardar borrador</button>
-          <button type="button" disabled={!result?.ok || saving} onClick={() => void save("Registro enviado", "submitted")} className="flex items-center gap-2 rounded-lg bg-primary-container px-4 py-2 font-label-lg text-label-lg font-semibold text-on-primary shadow-[0_0_16px_color-mix(in_srgb,var(--hz-primary)_30%,transparent)] disabled:opacity-40">
+          <button type="button" disabled={!result?.ok || saving || !project} onClick={() => void save("Borrador guardado", "draft")} className="rounded-lg bg-surface-container-high px-4 py-2 font-label-lg text-label-lg text-on-surface disabled:opacity-40">Guardar borrador</button>
+          <button type="button" disabled={!result?.ok || saving || !project} onClick={() => void save("Registro enviado", "submitted")} className="flex items-center gap-2 rounded-lg bg-primary-container px-4 py-2 font-label-lg text-label-lg font-semibold text-on-primary shadow-[0_0_16px_color-mix(in_srgb,var(--hz-primary)_30%,transparent)] disabled:opacity-40">
             <span className="material-symbols-outlined text-[18px]">send</span>
             Guardar y enviar
           </button>

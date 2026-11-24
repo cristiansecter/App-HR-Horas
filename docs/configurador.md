@@ -64,7 +64,7 @@ npm run set-role -- --email persona@empresa.com --role supervisor --key ruta/cla
 
 ## 6. Cómo se prueba sin tocar datos reales
 
-- `npm run test:rules`: 53 pruebas de las reglas contra el emulador de Firestore.
+- `npm run test:rules`: 57 pruebas de las reglas contra el emulador de Firestore.
 - Los scripts también corren contra los emuladores: con `FIRESTORE_EMULATOR_HOST` y `FIREBASE_AUTH_EMULATOR_HOST` definidos no piden clave y escriben en el emulador.
 - Para probar la app contra los emuladores: build con `VITE_USE_EMULATORS=true`.
 
@@ -73,7 +73,13 @@ npm run set-role -- --email persona@empresa.com --role supervisor --key ruta/cla
 | Pieza | Estado |
 |---|---|
 | Inicio de sesión con email y contraseña, rol por custom claim, cierre de sesión | Real |
-| Cargar horas (guardar borrador / guardar y enviar) | Real: se guarda en `time_entries` bajo las reglas |
-| Reglas de seguridad de Firestore | Reales y probadas |
+| Cargar horas, corregir un registro observado, borrar un borrador | Real: `time_entries` bajo las reglas |
+| Mis horas | Real |
+| Aprobaciones (aprobar, aprobar varios, observar con nota) | Real: al aprobar se calculan y congelan `hours` y `breakdown` con la jornada de la persona, los feriados y las reglas de la empresa |
+| Inicio (resumen del mes, pendientes, totales del equipo) | Real |
+| Proyectos (alta, activar/desactivar, horas aprobadas) | Real |
+| Reglas de seguridad de Firestore | Reales y probadas (57 pruebas) |
 | Alta de usuarios, cambio de rol, configuración inicial y feriados | Real, por script |
-| Resto de las pantallas (inicio, aprobaciones, licencias, directorio, reportes, ajustes, calendario) | Con datos de ejemplo; se conectan a Firestore en los próximos pasos |
+| Mi semana, Mis licencias, Calendario del equipo, Directorio, Reportes, Configuración | Datos de ejemplo (con una cuenta real se muestra un aviso arriba) |
+
+Quién aprueba qué: el supervisor aprueba a quienes lo tienen como `supervisorId`; el administrador aprueba a todos, incluidos los supervisores y sus propias horas.

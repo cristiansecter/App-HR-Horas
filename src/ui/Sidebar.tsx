@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { navigationFor } from "@/config/navigation";
 import { horusBrand } from "@/config/horus.brand";
 import { tenantConfig } from "@/config/tenant.config";
+import { usePending } from "@/features/approvals/usePending";
 import { DEMO_PENDING_APPROVALS, DEMO_SUPERVISOR_OF } from "@/demo/demoUsers";
 import { ROLE_LABELS } from "@/domain/types";
 import { useSession, useUser } from "@/session/SessionContext";
@@ -15,10 +16,22 @@ const initialsOf = (fullName: string): string =>
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
 
+function BadgePill({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return <span className="rounded-full bg-error-container px-2 py-0.5 font-label-xs-mono text-label-xs-mono font-bold text-on-error-container">{count}</span>;
+}
+
+/** Cantidad real de registros esperando aprobación. */
+function PendingBadge() {
+  const user = useUser();
+  const { data } = usePending(user);
+  return <BadgePill count={data?.entries.length ?? 0} />;
+}
+
 /** Contenido del menú lateral. Se usa fijo en escritorio y dentro del panel en celular. */
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const user = useUser();
-  const { signOut } = useSession();
+  const { signOut, isReal } = useSession();
   const [query, setQuery] = useState("");
 
   const items = useMemo(() => {
@@ -28,10 +41,10 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
   const main = items.filter((i) => i.group === "main");
   const management = items.filter((i) => i.group === "management");
-  const supervisorName = DEMO_SUPERVISOR_OF[user.role];
+  const supervisorName = isReal ? undefined : DEMO_SUPERVISOR_OF[user.role];
 
   const renderItem = (item: (typeof items)[number]) => {
-    const badge = item.id === "approvals" ? DEMO_PENDING_APPROVALS : null;
+    const badge = item.id === "approvals" ? isReal ? <PendingBadge /> : <BadgePill count={DEMO_PENDING_APPROVALS} /> : null;
     return (
       <NavLink
         key={item.id}
@@ -48,7 +61,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <span className="material-symbols-outlined text-[20px] transition-transform group-hover:scale-110">{item.icon}</span>
           <span>{item.label}</span>
         </div>
-        {badge ? <span className="rounded-full bg-error-container px-2 py-0.5 font-label-xs-mono text-label-xs-mono font-bold text-on-error-container">{badge}</span> : null}
+        {badge}
       </NavLink>
     );
   };

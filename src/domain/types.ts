@@ -1,3 +1,5 @@
+import type { WorkSchedule } from "./overtime/types";
+
 /** Roles de usuario. Los asigna únicamente el Configurador (custom claim `role`). */
 export type Role = "admin" | "supervisor" | "employee";
 
@@ -15,4 +17,6 @@ export interface SessionUser {
   fullName: string;
   email: string;
   role: Role;
+  /** Jornada propia, si la persona tiene una distinta a la de la empresa. */
+  workSchedule?: WorkSchedule;
 }
