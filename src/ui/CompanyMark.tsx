@@ -4,15 +4,15 @@ import { companyInitials } from "@/config/theme";
 /** Logo de la empresa cliente, o un monograma con sus iniciales si no cargó logo. */
 export function CompanyMark({ className = "size-10" }: { className?: string }) {
   if (tenantConfig.logoUrl) {
-    return <img src={tenantConfig.logoUrl} alt={tenantConfig.companyName} className={`${className} rounded-xl object-contain`} />;
+    return <img src={tenantConfig.logoUrl} alt={tenantConfig.companyName} className={`${className} flex-shrink-0 rounded-xl object-contain`} />;
   }
   return (
-    <span
-      className={`${className} inline-flex items-center justify-center rounded-xl bg-primary text-sm font-bold text-on-primary`}
-      aria-label={tenantConfig.companyName}
+    <div
       role="img"
+      aria-label={tenantConfig.companyName}
+      className={`${className} flex shrink-0 items-center justify-center rounded-xl bg-surface-container-high font-headline-sm text-headline-sm font-bold text-primary`}
     >
       {companyInitials(tenantConfig.companyName)}
-    </span>
+    </div>
   );
 }
