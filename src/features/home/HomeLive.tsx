@@ -90,7 +90,9 @@ export default function HomeLive() {
         }
       />
 
-      {company.error ? <p role="alert" className="rounded-lg bg-error/10 px-3 py-2 font-body-sm text-body-sm text-error">{company.error}</p> : null}
+      {[company.error, mine.error, isApprover ? pending.error : null].filter(Boolean).map((msg) => (
+        <p key={msg} role="alert" className="rounded-lg bg-error/10 px-3 py-2 font-body-sm text-body-sm text-error">{msg}</p>
+      ))}
 
       <div className="grid grid-cols-2 gap-gutter lg:grid-cols-4">
         <Card label="Aprobadas" value={fmt(stats.approved)} tone="text-primary" hint="Horas confirmadas este mes" />

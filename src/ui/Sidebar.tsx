@@ -75,6 +75,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <span className="flex items-center gap-1.5 font-label-md text-label-md text-on-surface-variant">
             <span className="size-1.5 animate-pulse rounded-full bg-primary-container" />
             {ROLE_LABELS[user.role]}
+            {!isReal ? <span title="Sesión de demostración: lo que cargues no se guarda" className="rounded bg-amber-500/20 px-1.5 py-0.5 font-label-xs-mono text-label-xs-mono font-bold text-amber-300">DEMO · NO SE GUARDA</span> : null}
           </span>
         </div>
       </div>

@@ -4,7 +4,6 @@ import {
   deleteDoc,
   doc,
   getDocs,
-  orderBy,
   query,
   serverTimestamp,
   updateDoc,
@@ -93,10 +92,13 @@ export async function deleteDraftEntry(id: string): Promise<void> {
   announceChange();
 }
 
-/** Registros propios, del más reciente al más viejo. */
+/**
+ * Registros propios, del más reciente al más viejo. Se ordenan acá y no en la consulta para no depender de un
+ * índice compuesto: con un solo filtro por igualdad, Firestore responde sin índices extra.
+ */
 export async function listMyTimeEntries(userId: string): Promise<TimeEntry[]> {
   const { db } = getFirebase();
-  const snap = await getDocs(query(collection(db, "time_entries"), where("userId", "==", userId), orderBy("date", "desc")));
+  const snap = await getDocs(query(collection(db, "time_entries"), where("userId", "==", userId)));
   return withIds(snap.docs).sort(byDateDesc);
 }
 
