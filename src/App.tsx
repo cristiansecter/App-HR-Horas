@@ -16,6 +16,7 @@ import MyHours from "@/features/screens/MyHours";
 import MyLeave from "@/features/screens/MyLeave";
 import Projects from "@/features/screens/Projects";
 import TeamCalendar from "@/features/screens/TeamCalendar";
+import ReportsLive from "@/features/reports/ReportsLive";
 import Reports from "@/features/screens/Reports";
 import Settings from "@/features/screens/Settings";
 import WeekGrid from "@/features/screens/WeekGrid";
@@ -37,7 +38,12 @@ function ApprovalsRoute() {
 }
 
 /** Pantallas que ya leen y escriben en Firestore. Las demás todavía muestran datos de ejemplo. */
-const LIVE_IDS: ReadonlySet<string> = new Set(["home", "hours", "approvals", "projects"]);
+const LIVE_IDS: ReadonlySet<string> = new Set(["home", "hours", "approvals", "projects", "reports"]);
+
+function ReportsRoute() {
+  const { isReal } = useSession();
+  return isReal ? <ReportsLive /> : <Reports />;
+}
 
 function SampleDataNotice() {
   return (
@@ -68,7 +74,7 @@ const PAGES: Partial<Record<NavId, () => ReactElement>> = {
   leave: () => <MyLeave />,
   approvals: () => <ApprovalsRoute />,
   directory: () => <Directory />,
-  reports: () => <Reports />,
+  reports: () => <ReportsRoute />,
   settings: () => <Settings />,
 };
 

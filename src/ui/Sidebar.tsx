@@ -133,6 +133,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <img alt="" src={horusBrand.iconUrl} className="size-4 rounded" />
           <span className="font-headline-sm text-[12px] font-bold tracking-tight text-primary">HORUS</span>
         </div>
+        <p className="pt-1 text-center font-label-xs-mono text-[10px] text-on-surface-variant/60" title="Versión publicada">v {__BUILD_ID__}</p>
       </div>
     </div>
   );

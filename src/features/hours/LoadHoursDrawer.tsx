@@ -3,6 +3,7 @@ import { useCompany } from "@/company/CompanyContext";
 import { addDays, dateInBuenosAires } from "@/domain/dates";
 import { classifyEntry, dayTypeOf, InvalidEntryError, type ClassifiedEntry, type DayType, type WorkDay, type WorkSchedule } from "@/domain/overtime";
 import { useSession, useUser } from "@/session/SessionContext";
+import { withCode } from "@/services/errors";
 import { createTimeEntry, updateTimeEntry } from "@/services/timeEntries";
 import type { TimeEntry } from "@/domain/model";
 
@@ -124,7 +125,7 @@ function LoadHoursDrawer({ entry, onClose }: { entry: TimeEntry | null; onClose:
         else await createTimeEntry({ userId: user.uid, ...fields });
       } catch (e) {
         console.error("No se pudo guardar el registro", e);
-        setSaveError("No se pudo guardar el registro. Revisá que la fecha esté dentro de los días permitidos y probá de nuevo.");
+        setSaveError(withCode("No se pudo guardar el registro. Revisá que la fecha esté dentro de los días permitidos y probá de nuevo.", e));
         setSaving(false);
         return;
       }

@@ -14,3 +14,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/** Commit y fecha del build (lo define vite.config.ts). */
+declare const __BUILD_ID__: string;

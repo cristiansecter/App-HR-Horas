@@ -1,3 +1,4 @@
+import { withCode } from "@/services/errors";
 import { useCallback, useEffect, useState, type DependencyList } from "react";
 
 export interface AsyncState<T> {
@@ -34,7 +35,10 @@ export function useAsync<T>(load: () => Promise<T>, deps: DependencyList, events
         setData(d);
         setError(null);
       })
-      .catch(() => !cancelled && setError("No se pudieron cargar los datos. Probá de nuevo en unos minutos."))
+      .catch((e: unknown) => {
+        console.error("Error al cargar datos", e);
+        if (!cancelled) setError(withCode("No se pudieron cargar los datos. Probá de nuevo en unos minutos.", e));
+      })
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;

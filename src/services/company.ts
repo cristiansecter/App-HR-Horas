@@ -10,9 +10,11 @@ export interface CompanyData {
   overtime: OvertimeConfig;
   defaultSchedule: WorkSchedule;
   editWindowDays: number;
+  companyName?: string;
 }
 
 interface SettingsDoc {
+  companyName?: string;
   overtime?: OvertimeConfig;
   defaultSchedule?: WorkSchedule;
   editWindowDays?: number;
@@ -40,6 +42,7 @@ export async function loadCompany(): Promise<CompanyData> {
     overtime: settings.overtime ?? defaultOvertimeConfig(),
     defaultSchedule: settings.defaultSchedule ?? defaultWorkSchedule(),
     editWindowDays: settings.editWindowDays ?? 7,
+    companyName: settings.companyName,
   };
 }
 

@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { tenantConfig } from "@/config/tenant.config";
 import { DEMO_HOLIDAYS, DEMO_OVERTIME_CONFIG, DEMO_PROJECTS, DEMO_SCHEDULE } from "@/demo/demoData";
 import type { Project } from "@/domain/model";
 import type { Holiday, OvertimeConfig, WorkSchedule } from "@/domain/overtime";
+import { withCode } from "@/services/errors";
 import { loadCompany } from "@/services/company";
 import { useSession } from "@/session/SessionContext";
 
@@ -12,6 +14,7 @@ interface CompanyValue {
   /** Jornada de la empresa. Si la persona tiene una propia, se usa esa. */
   defaultSchedule: WorkSchedule;
   editWindowDays: number;
+  companyName: string;
   loading: boolean;
   error: string | null;
   reload: () => void;
@@ -23,6 +26,7 @@ const DEMO_VALUE: CompanyValue = {
   overtime: DEMO_OVERTIME_CONFIG,
   defaultSchedule: DEMO_SCHEDULE,
   editWindowDays: 7,
+  companyName: tenantConfig.companyName,
   loading: false,
   error: null,
   reload: () => undefined,
@@ -49,7 +53,10 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         setData(d);
         setError(null);
       })
-      .catch(() => !cancelled && setError("No se pudo cargar la configuración de la empresa."))
+      .catch((e: unknown) => {
+        console.error("Error al cargar la configuración", e);
+        if (!cancelled) setError(withCode("No se pudo cargar la configuración de la empresa.", e));
+      })
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
@@ -64,6 +71,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       overtime: data?.overtime ?? DEMO_OVERTIME_CONFIG,
       defaultSchedule: data?.defaultSchedule ?? DEMO_SCHEDULE,
       editWindowDays: data?.editWindowDays ?? 7,
+      companyName: data?.companyName ?? tenantConfig.companyName,
       loading,
       error,
       reload,

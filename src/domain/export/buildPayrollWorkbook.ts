@@ -12,7 +12,7 @@ export const LEAVE_LABELS: Record<LeaveKind, string> = {
 };
 
 export interface SummaryRow {
-  employeeNumber: number;
+  employeeNumber: number | string;
   /** "Apellido, Nombre" */
   fullName: string;
   cuil: string;

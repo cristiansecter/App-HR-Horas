@@ -78,8 +78,15 @@ npm run set-role -- --email persona@empresa.com --role supervisor --key ruta/cla
 | Aprobaciones (aprobar, aprobar varios, observar con nota) | Real: al aprobar se calculan y congelan `hours` y `breakdown` con la jornada de la persona, los feriados y las reglas de la empresa |
 | Inicio (resumen del mes, pendientes, totales del equipo) | Real |
 | Proyectos (alta, activar/desactivar, horas aprobadas) | Real |
-| Reglas de seguridad de Firestore | Reales y probadas (57 pruebas) |
+| Reportes: planilla del mes con horas aprobadas, avisos de lo que falta y descarga en Excel/CSV | Real: el resumen y el detalle suman lo mismo; lo no aprobado no entra y se avisa. Licencias y ausencias todavía no se incluyen |
+| Reglas de seguridad de Firestore | Reales y probadas (57 pruebas de reglas y 85 de lógica) |
 | Alta de usuarios, cambio de rol, configuración inicial y feriados | Real, por script |
-| Mi semana, Mis licencias, Calendario del equipo, Directorio, Reportes, Configuración | Datos de ejemplo (con una cuenta real se muestra un aviso arriba) |
+| Mi semana, Mis licencias, Calendario del equipo, Directorio, Configuración | Datos de ejemplo (con una cuenta real se muestra un aviso arriba) |
 
 Quién aprueba qué: el supervisor aprueba a quienes lo tienen como `supervisorId`; el administrador aprueba a todos, incluidos los supervisores y sus propias horas.
+
+## Si algo "no aparece"
+
+- Abajo del menú lateral hay una línea `v <commit> · <fecha>`: es la versión que tiene el navegador. Si no coincide con el último commit publicado, hay una pestaña vieja: recargar con Ctrl+Shift+R.
+- Una sesión de demo muestra la etiqueta `DEMO · NO SE GUARDA` junto al rol.
+- Los mensajes de error de carga incluyen el código técnico entre paréntesis, por ejemplo `(permission-denied)` o `(failed-precondition)` (falta un índice). Abrir F12, pestaña Consola, muestra el detalle.
