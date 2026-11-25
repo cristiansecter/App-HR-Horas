@@ -80,10 +80,11 @@ npm run set-role -- --email persona@empresa.com --role supervisor --key ruta/cla
 | Proyectos (alta, activar/desactivar, horas aprobadas) | Real |
 | Licencias: solicitar, retirar, aprobar o rechazar con motivo, registrar ausencias injustificadas | Real: las vacaciones se cuentan en días corridos y el resto en días hábiles de la jornada de la persona, sin feriados. Al aprobar, la ausencia pasa sola al calendario y a la planilla |
 | Calendario del equipo | Real: todos ven quién está ausente; el tipo de licencia lo ven solo supervisor y administrador |
+| Directorio y ficha del empleado: puesto, área, legajo, supervisor, estado, CUIL/DNI/teléfono/modalidad (solo admin) y jornada propia | Real. Las altas siguen por script hasta tener el plan Blaze. El CUIL se valida (11 dígitos; si el dígito verificador no coincide es solo un aviso) |
 | Reportes: planilla del mes con horas aprobadas, avisos de lo que falta y descarga en Excel/CSV | Real: el resumen y el detalle suman lo mismo; lo no aprobado no entra y se avisa.  |
-| Reglas de seguridad de Firestore | Reales y probadas (62 pruebas de reglas y 99 de lógica) |
+| Reglas de seguridad de Firestore | Reales y probadas (69 pruebas de reglas y 108 de lógica) |
 | Alta de usuarios, cambio de rol, configuración inicial y feriados | Real, por script |
-| Mi semana, Directorio, Configuración | Datos de ejemplo (con una cuenta real se muestra un aviso arriba) |
+| Mi semana, Configuración | Datos de ejemplo (con una cuenta real se muestra un aviso arriba) |
 
 Quién aprueba qué: el supervisor aprueba a quienes lo tienen como `supervisorId`; el administrador aprueba a todos, incluidos los supervisores y sus propias horas.
 
@@ -92,3 +93,7 @@ Quién aprueba qué: el supervisor aprueba a quienes lo tienen como `supervisorI
 - Abajo del menú lateral hay una línea `v <commit> · <fecha>`: es la versión que tiene el navegador. Si no coincide con el último commit publicado, hay una pestaña vieja: recargar con Ctrl+Shift+R.
 - Una sesión de demo muestra la etiqueta `DEMO · NO SE GUARDA` junto al rol.
 - Los mensajes de error de carga incluyen el código técnico entre paréntesis, por ejemplo `(permission-denied)` o `(failed-precondition)` (falta un índice). Abrir F12, pestaña Consola, muestra el detalle.
+
+## Bajas de personal
+
+Poner a alguien como **inactivo** en su ficha le corta el acceso de inmediato: las reglas de Firestore consultan `users/{uid}.active` en cada pedido, así que no hace falta esperar a que venza su sesión. La persona ve un aviso al intentar entrar y sus registros se conservan. Para cerrar también la cuenta de acceso (que no pueda ni iniciar sesión), el Configurador puede deshabilitarla desde la consola de Firebase, en Authentication.

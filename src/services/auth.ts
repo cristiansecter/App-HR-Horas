@@ -21,7 +21,16 @@ async function toSessionUser(user: User): Promise<SessionUser> {
     throw new SessionError("Tu cuenta todavía no tiene un rol asignado. Pedile al Configurador de tu empresa que la habilite.");
   }
   const { db } = getFirebase();
-  const snap = await getDoc(doc(db, "users", user.uid));
+  let snap;
+  try {
+    snap = await getDoc(doc(db, "users", user.uid));
+  } catch (e) {
+    // Las reglas niegan la lectura del propio perfil cuando la persona está dada de baja (o no tiene perfil).
+    if (e instanceof FirebaseError && e.code === "permission-denied") {
+      throw new SessionError("Tu cuenta no tiene acceso. Si antes podías entrar, es posible que te hayan dado de baja: consultá con el administrador de tu empresa.");
+    }
+    throw e;
+  }
   const profile = snap.exists() ? (snap.data() as Partial<UserProfile>) : undefined;
   if (profile?.active === false) throw new SessionError("Tu cuenta está dada de baja. Consultá con el administrador de tu empresa.");
   return {

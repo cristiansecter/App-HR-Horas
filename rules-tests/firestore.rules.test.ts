@@ -67,6 +67,47 @@ describe("acceso sin rol", () => {
   });
 });
 
+describe("baja de una persona", () => {
+  it("con el perfil dado de baja pierde el acceso aunque el token siga vigente", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => { await updateDoc(doc(ctx.firestore(), "users/emi"), { active: false }); });
+    const db = asRole("emi", "employee");
+    await assertFails(getDoc(doc(db, "users/emi")));
+    await assertFails(getDoc(doc(db, "projects/p1")));
+    await assertFails(setDoc(doc(db, "time_entries/n1"), newEntry("emi")));
+  });
+  it("un administrador dado de baja tampoco entra", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => { await updateDoc(doc(ctx.firestore(), "users/ana"), { active: false }); });
+    await assertFails(getDoc(doc(asRole("ana", "admin"), "employee_private/emi")));
+  });
+  it("sin perfil en users no hay acceso, aunque tenga el claim", async () => {
+    await assertFails(getDoc(doc(asRole("fantasma", "admin"), "projects/p1")));
+  });
+  it("el admin da de baja y reactiva a una persona", async () => {
+    const db = asRole("ana", "admin");
+    await assertSucceeds(updateDoc(doc(db, "users/emi"), { active: false }));
+    await assertSucceeds(updateDoc(doc(db, "users/emi"), { active: true }));
+    await assertSucceeds(getDoc(doc(asRole("emi", "employee"), "users/emi")));
+  });
+});
+
+describe("ficha del empleado (la edita el admin)", () => {
+  it("el admin edita los datos laborales y la jornada, pero no puede tocar el rol ni los campos de sistema", async () => {
+    const db = asRole("ana", "admin");
+    await assertSucceeds(updateDoc(doc(db, "users/emi"), { fullName: "Emi Demo", employeeNumber: "1005", department: "Técnica", position: "Analista", hireDate: "2021-06-07", supervisorId: "sofia", workSchedule: { mon: { start: "09:00", end: "18:00" } } }));
+    await assertFails(updateDoc(doc(db, "users/emi"), { role: "admin" }));
+    await assertFails(updateDoc(doc(db, "users/emi"), { uid: "otro" }));
+  });
+  it("el admin guarda CUIL, DNI, teléfono y modalidad en employee_private", async () => {
+    await assertSucceeds(setDoc(doc(asRole("ana", "admin"), "employee_private/emi"), { userId: "emi", cuil: "27-00000105-4", dni: "00.000.105", phone: "11 5555-0105", workMode: "hybrid" }));
+  });
+  it("nadie más lee ni escribe los datos personales", async () => {
+    for (const [uid, role] of [["sofia", "supervisor"], ["emi", "employee"], ["eze", "employee"]] as const) {
+      await assertFails(getDoc(doc(asRole(uid, role), "employee_private/emi")));
+      await assertFails(setDoc(doc(asRole(uid, role), "employee_private/emi"), { cuil: "x" }));
+    }
+  });
+});
+
 describe("perfiles y datos sensibles", () => {
   it("cualquier usuario con rol lee los perfiles del equipo", async () => {
     await assertSucceeds(getDoc(doc(asRole("emi", "employee"), "users/eze")));

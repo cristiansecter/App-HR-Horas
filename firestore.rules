@@ -13,8 +13,13 @@ service cloud.firestore {
     function role() {
       return request.auth.token.get('role', '');
     }
+    // La baja de una persona (users/{uid}.active == false) le corta el acceso de inmediato, aunque su token siga
+    // vigente: se comprueba en cada pedido. Si no existe su perfil, se deniega.
+    function isActiveAccount() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('active', true) != false;
+    }
     function hasRole() {
-      return signedIn() && role() in ['admin', 'supervisor', 'employee'];
+      return signedIn() && role() in ['admin', 'supervisor', 'employee'] && isActiveAccount();
     }
     function isAdmin() {
       return hasRole() && role() == 'admin';

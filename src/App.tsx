@@ -7,6 +7,8 @@ import { CompanyProvider } from "@/company/CompanyContext";
 import ApprovalsLive from "@/features/approvals/ApprovalsLive";
 import HomeLive from "@/features/home/HomeLive";
 import Approvals from "@/features/screens/Approvals";
+import DirectoryLive from "@/features/directory/DirectoryLive";
+import EmployeeFileLive from "@/features/directory/EmployeeFileLive";
 import Directory from "@/features/screens/Directory";
 import EmployeeFile from "@/features/screens/EmployeeFile";
 import HomeAdmin from "@/features/screens/HomeAdmin";
@@ -39,7 +41,17 @@ function ApprovalsRoute() {
 }
 
 /** Pantallas que ya leen y escriben en Firestore. Las demás todavía muestran datos de ejemplo. */
-const LIVE_IDS: ReadonlySet<string> = new Set(["home", "hours", "approvals", "projects", "reports", "leave", "team"]);
+const LIVE_IDS: ReadonlySet<string> = new Set(["home", "hours", "approvals", "projects", "reports", "leave", "team", "directory", "file"]);
+
+function DirectoryRoute() {
+  const { isReal } = useSession();
+  return isReal ? <DirectoryLive /> : <Directory />;
+}
+
+function EmployeeFileRoute() {
+  const { isReal } = useSession();
+  return isReal ? <EmployeeFileLive /> : <EmployeeFile />;
+}
 
 function LeaveRoute() {
   const { isReal } = useSession();
@@ -79,7 +91,7 @@ const PAGES: Partial<Record<NavId, () => ReactElement>> = {
   projects: () => <Projects />,
   leave: () => <LeaveRoute />,
   approvals: () => <ApprovalsRoute />,
-  directory: () => <Directory />,
+  directory: () => <DirectoryRoute />,
   reports: () => <ReportsRoute />,
   settings: () => <Settings />,
 };
@@ -114,7 +126,7 @@ function AuthGate() {
               element={<Guard id={item.id} path={item.path} render={(role) => (item.id === "home" ? <HomeRoute role={role} /> : (PAGES[item.id]?.() ?? <Navigate to="/" replace />))} />}
             />
           ))}
-          <Route path="/directorio/ficha" element={<Guard id="file" path="/directorio/ficha" render={() => <EmployeeFile />} />} />
+          <Route path="/directorio/ficha" element={<Guard id="file" path="/directorio/ficha" render={() => <EmployeeFileRoute />} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

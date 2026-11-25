@@ -111,3 +111,20 @@ export interface TeamAbsence {
   endDate: string;
   leaveId: string;
 }
+
+export type WorkMode = "onsite" | "remote" | "hybrid";
+
+export const WORK_MODE_LABELS: Record<WorkMode, string> = {
+  onsite: "Presencial",
+  remote: "Remoto",
+  hybrid: "Híbrido",
+};
+
+/** `employee_private/{uid}`: datos sensibles de la ficha. Solo los lee y escribe el administrador. */
+export interface EmployeePrivate {
+  userId: string;
+  cuil: string;
+  dni: string;
+  phone: string;
+  workMode?: WorkMode;
+}
