@@ -11,6 +11,7 @@ export type NavId =
   | "directory"
   | "projects"
   | "reports"
+  | "performance"
   | "settings";
 
 export interface NavItem {
@@ -40,6 +41,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: "directory", label: "Directorio", path: "/directorio", roles: ["admin"], icon: "groups", group: "management" },
   { id: "projects", label: "Proyectos", path: "/proyectos", roles: ["admin"], icon: "work", group: "management" },
   { id: "reports", label: "Reportes", path: "/reportes", roles: ["admin"], icon: "analytics", group: "management" },
+  { id: "performance", label: "Rendimiento", path: "/rendimiento", roles: ["admin"], icon: "trending_up", group: "management", module: "performance" },
   { id: "settings", label: "Configuración", path: "/configuracion", roles: ["admin"], icon: "settings", group: "management" },
 ];
 

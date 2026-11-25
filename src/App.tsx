@@ -20,6 +20,7 @@ import MyLeaveLive from "@/features/leave/MyLeaveLive";
 import MyLeave from "@/features/screens/MyLeave";
 import Projects from "@/features/screens/Projects";
 import TeamCalendar from "@/features/screens/TeamCalendar";
+import PerformanceView from "@/features/performance/PerformanceView";
 import ReportsLive from "@/features/reports/ReportsLive";
 import Reports from "@/features/screens/Reports";
 import SettingsLive from "@/features/settings/SettingsLive";
@@ -82,6 +83,7 @@ const PAGES: Partial<Record<NavId, () => ReactElement>> = {
   approvals: () => <ApprovalsRoute />,
   directory: () => <DirectoryRoute />,
   reports: () => <ReportsRoute />,
+  performance: () => <PerformanceView />,
   settings: () => <SettingsRoute />,
 };
 

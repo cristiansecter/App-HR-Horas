@@ -157,6 +157,53 @@ describe("sueldos en el legajo (módulo Sueldos)", () => {
   });
 });
 
+describe("rendimiento (módulo): tarifas de proyecto y parámetros de costos", () => {
+  const modules = (m: Record<string, boolean>) => env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), "settings/features"), { modules: { compensation: true, performance: false, payroll: false, ...m }, payModel: "salary" });
+  });
+  const admin = () => asRole("ana", "admin");
+
+  it("con el módulo apagado el admin no lee ni escribe tarifas ni parámetros de costos", async () => {
+    await modules({ performance: false });
+    await assertFails(setDoc(doc(admin(), "project_rates/p1"), { hourlyRate: 10000, billable: true }));
+    await assertFails(setDoc(doc(admin(), "settings/costing"), { employerContributionsPct: 20, monthlyHours: 160 }));
+    await assertFails(getDoc(doc(admin(), "settings/costing")));
+  });
+  it("con el módulo activo el admin las lee y escribe", async () => {
+    await modules({ performance: true });
+    await assertSucceeds(setDoc(doc(admin(), "project_rates/p1"), { hourlyRate: 10000, billable: true }));
+    await assertSucceeds(getDoc(doc(admin(), "project_rates/p1")));
+    await assertSucceeds(setDoc(doc(admin(), "settings/costing"), { employerContributionsPct: 24, monthlyHours: 160 }));
+    await assertSucceeds(getDoc(doc(admin(), "settings/costing")));
+  });
+  it("el resto del equipo no ve las tarifas ni los parámetros, aunque el módulo esté activo", async () => {
+    await modules({ performance: true });
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "project_rates/p1"), { hourlyRate: 10000, billable: true });
+      await setDoc(doc(ctx.firestore(), "settings/costing"), { employerContributionsPct: 24, monthlyHours: 160 });
+    });
+    for (const [uid, role] of [["sofia", "supervisor"], ["emi", "employee"]] as const) {
+      await assertFails(getDoc(doc(asRole(uid, role), "project_rates/p1")));
+      await assertFails(getDoc(doc(asRole(uid, role), "settings/costing")));
+    }
+    await assertFails(getDoc(doc(env.authenticatedContext("prov", { configurator: true }).firestore(), "settings/costing")));
+  });
+  it("valida la forma de la tarifa y de los parámetros", async () => {
+    await modules({ performance: true });
+    await assertFails(setDoc(doc(admin(), "project_rates/p1"), { hourlyRate: -1, billable: true }));
+    await assertFails(setDoc(doc(admin(), "project_rates/p1"), { hourlyRate: 1, billable: "si" }));
+    await assertFails(setDoc(doc(admin(), "project_rates/p1"), { hourlyRate: 1, billable: true, extra: 1 }));
+    await assertFails(setDoc(doc(admin(), "settings/costing"), { employerContributionsPct: 500, monthlyHours: 160 }));
+    await assertFails(setDoc(doc(admin(), "settings/costing"), { employerContributionsPct: 10, monthlyHours: 0 }));
+  });
+  it("el admin sigue pudiendo editar otros documentos de settings, pero no se escapa a los protegidos por el comodín", async () => {
+    await modules({ performance: false });
+    await assertSucceeds(setDoc(doc(admin(), "settings/main"), { editWindowDays: 7 }));
+    await assertFails(setDoc(doc(admin(), "settings/costing"), { employerContributionsPct: 1, monthlyHours: 160 }));
+    await assertFails(setDoc(doc(admin(), "settings/payroll"), { cualquier: "cosa" }));
+  });
+});
+
 describe("baja de una persona", () => {
   it("con el perfil dado de baja pierde el acceso aunque el token siga vigente", async () => {
     await env.withSecurityRulesDisabled(async (ctx) => { await updateDoc(doc(ctx.firestore(), "users/emi"), { active: false }); });

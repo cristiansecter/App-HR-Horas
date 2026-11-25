@@ -122,6 +122,16 @@ service cloud.firestore {
         && request.resource.data.get('hijos', 0) is int && request.resource.data.get('hijos', 0) >= 0 && request.resource.data.get('hijos', 0) <= 30;
     }
 
+    // Tarifa de cobro por hora de cada proyecto (módulo "Rendimiento"): solo el administrador. Va aparte de `projects`
+    // porque ese documento lo lee todo el equipo y la tarifa no.
+    match /project_rates/{code} {
+      allow read, delete: if isAdmin() && moduleOn('performance');
+      allow create, update: if isAdmin() && moduleOn('performance')
+        && request.resource.data.keys().hasOnly(['hourlyRate', 'billable', 'updatedAt', 'updatedBy'])
+        && request.resource.data.hourlyRate is number && request.resource.data.hourlyRate >= 0 && request.resource.data.hourlyRate <= 1000000000
+        && request.resource.data.billable is bool;
+    }
+
     // Datos sensibles (CUIL, DNI, teléfono, modalidad): solo el administrador.
     match /employee_private/{uid} {
       allow read, write: if isAdmin();
@@ -134,9 +144,18 @@ service cloud.firestore {
       allow read: if hasRole() || isConfigurator();
       allow write: if isConfigurator() && validFeatures(request.resource.data);
     }
+    // Parámetros de costos y de liquidación: solo el administrador y solo con su módulo activo.
+    match /settings/costing {
+      allow read, delete: if isAdmin() && moduleOn('performance');
+      allow create, update: if isAdmin() && moduleOn('performance')
+        && request.resource.data.keys().hasOnly(['employerContributionsPct', 'monthlyHours', 'updatedAt', 'updatedBy'])
+        && request.resource.data.employerContributionsPct is number && request.resource.data.employerContributionsPct >= 0 && request.resource.data.employerContributionsPct <= 200
+        && request.resource.data.monthlyHours is number && request.resource.data.monthlyHours >= 1 && request.resource.data.monthlyHours <= 400;
+    }
+    // El resto de `settings` (menos los documentos con regla propia) lo lee todo el equipo y lo escribe el administrador.
     match /settings/{doc} {
-      allow read: if hasRole() || isConfigurator();
-      allow write: if isAdmin() && doc != 'features';
+      allow read: if (hasRole() || isConfigurator()) && !(doc in ['features', 'costing', 'payroll']);
+      allow write: if isAdmin() && !(doc in ['features', 'costing', 'payroll']);
     }
     match /holidays/{date} {
       allow read: if hasRole();
