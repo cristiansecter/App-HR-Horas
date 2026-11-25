@@ -6,6 +6,7 @@ import { LoginScreen } from "@/features/login/LoginScreen";
 import { CompanyProvider, useCompany } from "@/company/CompanyContext";
 import ConfiguratorConsole from "@/features/configurator/ConfiguratorConsole";
 import AssignmentsView from "@/features/assignments/AssignmentsView";
+import ProjectionView from "@/features/projection/ProjectionView";
 import ApprovalsLive from "@/features/approvals/ApprovalsLive";
 import HomeLive from "@/features/home/HomeLive";
 import Approvals from "@/features/screens/Approvals";
@@ -85,6 +86,7 @@ const PAGES: Partial<Record<NavId, () => ReactElement>> = {
   leave: () => <LeaveRoute />,
   approvals: () => <ApprovalsRoute />,
   assignments: () => <AssignmentsView />,
+  projection: () => <ProjectionView />,
   directory: () => <DirectoryRoute />,
   reports: () => <ReportsRoute />,
   performance: () => <PerformanceView />,

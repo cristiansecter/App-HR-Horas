@@ -231,3 +231,21 @@ input[type="date"] {
 .org-tree ul.org-leaves > li { position: relative; z-index: 1; }
 .org-tree ul.org-leaves > li { padding: 0; align-items: stretch; }
 .org-tree ul.org-leaves > li::before, .org-tree ul.org-leaves > li::after { display: none; }
+
+/*
+ * Tablas que en el celular pasan a tarjetas: cada fila es una tarjeta y cada celda muestra su título (data-label).
+ * Sirve para tablas donde la columna importante (por ejemplo, la que se edita) no puede quedar escondida detrás de un scroll lateral.
+ */
+@media (max-width: 899px) {
+  .stack-table thead { display: none; }
+  .stack-table,
+  .stack-table tbody,
+  .stack-table tfoot,
+  .stack-table tr { display: block; width: 100%; }
+  .stack-table tr { padding: 0.5rem 0; border-bottom: 1px solid rgb(255 255 255 / 0.08); }
+  .stack-table td,
+  .stack-table th[scope="row"] { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.35rem 0.75rem !important; text-align: right; }
+  .stack-table td::before { content: attr(data-label); flex-shrink: 0; text-align: left; font-size: 0.8125rem; color: var(--color-on-surface-variant); }
+  .stack-table td:not([data-label])::before { content: none; }
+  .stack-table td:not([data-label]) { justify-content: flex-start; text-align: left; }
+}

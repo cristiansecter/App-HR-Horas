@@ -8,6 +8,8 @@ export const ASSIGNMENTS_CHANGED = "horus:assignments-changed";
 export interface Assignment {
   projectId: string;
   userId: string;
+  /** Dedicación de la persona al proyecto, en % (1 a 100). Sin dato = 100 (tiempo completo). Solo con el módulo de dedicación. */
+  allocationPct?: number;
 }
 
 const chunk = <T>(items: T[], size: number): T[][] => Array.from({ length: Math.ceil(items.length / size) }, (_, i) => items.slice(i * size, i * size + size));
@@ -36,6 +38,13 @@ export async function listAssignmentsForReview(reviewer: SessionUser, teamIds: s
 export async function assignProject(code: string, uid: string, byUid: string): Promise<void> {
   const { db } = getFirebase();
   await setDoc(doc(db, "assignments", idOf(code, uid)), { projectId: code, userId: uid, assignedBy: byUid, createdAt: serverTimestamp() });
+  window.dispatchEvent(new Event(ASSIGNMENTS_CHANGED));
+}
+
+/** Fija el porcentaje de dedicación de una persona a un proyecto (entero de 1 a 100). Lo exigen las reglas. */
+export async function setAllocationPct(code: string, uid: string, pct: number): Promise<void> {
+  const { db } = getFirebase();
+  await updateDoc(doc(db, "assignments", idOf(code, uid)), { allocationPct: pct });
   window.dispatchEvent(new Event(ASSIGNMENTS_CHANGED));
 }
 

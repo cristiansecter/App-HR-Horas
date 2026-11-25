@@ -123,6 +123,19 @@ export async function listPendingForReview(reviewer: SessionUser, teamIds: strin
 }
 
 /**
+ * Horas aprobadas de las personas que `reviewer` tiene a cargo dentro de un rango de fechas. El administrador ve toda la
+ * empresa (consulta por rango de fecha); un supervisor, solo a su gente (consulta acotada con `in`, como piden las reglas,
+ * y el rango se filtra acá para no depender de un índice compuesto).
+ */
+export async function listApprovedForReview(reviewer: SessionUser, teamIds: string[], range: { from: string; to: string }): Promise<TimeEntry[]> {
+  if (reviewer.role === "admin") return (await listEntriesBetween(range.from, range.to)).filter((e) => e.status === "approved");
+  const { db } = getFirebase();
+  const col = collection(db, "time_entries");
+  const snaps = await Promise.all(chunk(teamIds, 30).map((ids) => getDocs(query(col, where("userId", "in", ids), where("status", "==", "approved")))));
+  return withIds(snaps.flatMap((s) => s.docs)).filter((e) => e.date >= range.from && e.date <= range.to);
+}
+
+/**
  * Todos los registros de un rango de fechas, sin importar el estado (solo administrador). Se pide solo por rango de fecha
  * y el estado se filtra acá: así no hace falta un índice compuesto en Firestore (que puede tardar en construirse o no
  * estar publicado) y la consulta queda acotada al mes.

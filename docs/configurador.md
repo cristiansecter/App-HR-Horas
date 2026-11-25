@@ -131,6 +131,13 @@ Lo que se guarda va en `settings/features`. **Solo lo escribe el Configurador**:
 - **Interno**: tiene costo y no genera ingreso.
 - Con el módulo apagado, Rendimiento muestra solo costos (sin ingresos, margen ni tarifas). Los documentos viejos con `billable`/`hourlyRate` se leen como "por hora" o "interno".
 
+### Dedicación y proyección
+- **Asignar proyectos**: con el módulo activo, cada asignación lleva un **porcentaje de dedicación** (1 a 100, por defecto 100 = tiempo completo). Si una persona suma más de 100 % entre proyectos, se avisa (no se bloquea).
+- **Proyección** (administrador: toda la empresa; supervisor: su equipo; sin importes): por cada proyecto con personas asignadas y por mes, se reparten horas entre ellas. Para cada persona muestra el % asignado, las **horas disponibles** (su jornada menos feriados y licencias aprobadas), las **horas proyectadas** (editables), las **trabajadas** (solo aprobadas) y el **desvío**.
+- Atajos para cargar: *Horas a repartir* + "Repartir según %" o "Partes iguales" (de a media hora, sin perder horas por redondeo), y "Sugerir por disponibilidad" (% × horas disponibles). Cada proyecto se guarda con su botón.
+- Datos: `assignments/{proyecto}_{persona}.allocationPct` y `projections/{proyecto}_{persona}_{AAAA-MM}` ({hours}). Solo se proyecta a personas con el proyecto asignado; la persona puede leer su propia proyección.
+- No depende de ningún otro módulo. El atajo "Consultoría" lo prende junto con Facturación por proyecto.
+
 ## Módulos: Sueldos, Rendimiento y Seguimiento de liquidaciones
 
 Los activa el Configurador (consola, pestaña **Configurador**). Todo lo que guardan está bloqueado por las reglas de Firestore mientras el módulo esté apagado, y lo lee **solo el administrador**: nunca el supervisor, ni la propia persona, ni el Configurador.
@@ -140,6 +147,7 @@ Los activa el Configurador (consola, pestaña **Configurador**). Todo lo que gua
 | Sueldo o valor hora de cada persona, con historial de vigencias, y convenio / obra social / hijos | `employee_pay/{uid}` | Sueldos en el legajo |
 | Cómo se factura cada proyecto: por hora (tarifa general + tarifas por persona), precio cerrado (valor total + horas estimadas) o interno | `project_rates/{código}` | Facturación por proyecto |
 | Cargas patronales y horas del mes | `settings/costing` | Rendimiento |
+| Porcentaje de dedicación de cada asignación y horas proyectadas por proyecto, persona y mes | `assignments/*.allocationPct`, `projections/{proyecto}_{persona}_{mes}` | Dedicación y proyección |
 | Parámetros y conceptos del seguimiento | `settings/payroll` | Seguimiento de liquidaciones |
 | Un detalle por persona y mes (con datos congelados y estado de publicación) | `payslips/{uid}_{AAAA-MM}` | Seguimiento de liquidaciones |
 | Período cerrado | `payroll_periods/{AAAA-MM}` | Seguimiento de liquidaciones |

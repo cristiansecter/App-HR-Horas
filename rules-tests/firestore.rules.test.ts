@@ -773,3 +773,106 @@ describe("calendario de ausencias del equipo", () => {
     await assertFails(setDoc(doc(sup, "team_absences/t3"), { userId: "emi", startDate: "2026-12-14", endDate: "2026-12-14", leaveId: "l3", type: "sick" }));
   });
 });
+
+describe("dedicación y proyección (módulo): porcentaje de asignación y horas proyectadas", () => {
+  const modules = (allocation: boolean) => env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), "settings/features"), { modules: { compensation: false, performance: false, payroll: false, projectBilling: false, allocation }, payModel: "salary" });
+  });
+  const seedAssignment = (code: string, uid: string) => env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), `assignments/${code}_${uid}`), { projectId: code, userId: uid, assignedBy: "ana" }); });
+  const projection = (uid: string, by: string, over: Record<string, unknown> = {}) => ({ projectId: "p1", userId: uid, month: "2026-11", hours: 80, updatedBy: by, updatedAt: serverTimestamp(), ...over });
+  const pid = (uid: string, month = "2026-11") => `projections/p1_${uid}_${month}`;
+
+  describe("porcentaje de dedicación en la asignación", () => {
+    it("con el módulo activo admin y supervisor lo fijan; es lo único que cambia", async () => {
+      await modules(true);
+      await seedAssignment("p1", "emi");
+      await assertSucceeds(updateDoc(doc(asRole("ana", "admin"), "assignments/p1_emi"), { allocationPct: 50 }));
+      await assertSucceeds(updateDoc(doc(asRole("sofia", "supervisor"), "assignments/p1_emi"), { allocationPct: 100 }));
+      await assertFails(updateDoc(doc(asRole("ana", "admin"), "assignments/p1_emi"), { allocationPct: 50, userId: "eze" }));
+      await assertFails(updateDoc(doc(asRole("ana", "admin"), "assignments/p1_emi"), { assignedBy: "ana2" }));
+    });
+    it("con el módulo apagado no se puede", async () => {
+      await modules(false);
+      await seedAssignment("p1", "emi");
+      await assertFails(updateDoc(doc(asRole("ana", "admin"), "assignments/p1_emi"), { allocationPct: 50 }));
+    });
+    it("solo enteros de 1 a 100", async () => {
+      await modules(true);
+      await seedAssignment("p1", "emi");
+      const admin = asRole("ana", "admin");
+      for (const bad of [0, 101, -5, 12.5, "50", null]) await assertFails(updateDoc(doc(admin, "assignments/p1_emi"), { allocationPct: bad }));
+    });
+    it("un supervisor no cambia el de alguien de otro equipo, ni un empleado el propio", async () => {
+      await modules(true);
+      await seedAssignment("p1", "olga");
+      await seedAssignment("p1", "emi");
+      await assertFails(updateDoc(doc(asRole("sofia", "supervisor"), "assignments/p1_olga"), { allocationPct: 50 }));
+      await assertFails(updateDoc(doc(asRole("emi", "employee"), "assignments/p1_emi"), { allocationPct: 10 }));
+    });
+  });
+
+  describe("proyecciones", () => {
+    it("el admin y el supervisor de la persona la cargan, si el proyecto está asignado", async () => {
+      await modules(true);
+      await seedAssignment("p1", "emi");
+      await seedAssignment("p1", "olga");
+      await assertSucceeds(setDoc(doc(asRole("ana", "admin"), pid("emi")), projection("emi", "ana")));
+      await assertSucceeds(setDoc(doc(asRole("sofia", "supervisor"), pid("emi")), projection("emi", "sofia", { hours: 100.5 })));
+      await assertSucceeds(setDoc(doc(asRole("ana", "admin"), pid("olga")), projection("olga", "ana")));
+      await assertFails(setDoc(doc(asRole("sofia", "supervisor"), pid("olga")), projection("olga", "sofia"))); // no es de su equipo
+    });
+    it("no se proyecta a una persona que no tiene el proyecto asignado", async () => {
+      await modules(true);
+      await assertFails(setDoc(doc(asRole("ana", "admin"), pid("emi")), projection("emi", "ana")));
+    });
+    it("con el módulo apagado no se escribe", async () => {
+      await modules(false);
+      await seedAssignment("p1", "emi");
+      await assertFails(setDoc(doc(asRole("ana", "admin"), pid("emi")), projection("emi", "ana")));
+    });
+    it("un empleado no proyecta (ni a sí mismo) y un supervisor no se proyecta a sí mismo", async () => {
+      await modules(true);
+      await seedAssignment("p1", "emi");
+      await seedAssignment("p1", "sofia");
+      await assertFails(setDoc(doc(asRole("emi", "employee"), pid("emi")), projection("emi", "emi")));
+      await assertFails(setDoc(doc(asRole("sofia", "supervisor"), pid("sofia")), projection("sofia", "sofia")));
+    });
+    it("valida la forma: id, mes, horas de 0 a 744, 'updatedBy' propio y sin campos de más", async () => {
+      await modules(true);
+      await seedAssignment("p1", "emi");
+      const admin = asRole("ana", "admin");
+      await assertFails(setDoc(doc(admin, "projections/cualquiera"), projection("emi", "ana")));
+      await assertFails(setDoc(doc(admin, pid("emi")), projection("emi", "otro")));
+      await assertFails(setDoc(doc(admin, pid("emi")), projection("emi", "ana", { hours: -1 })));
+      await assertFails(setDoc(doc(admin, pid("emi")), projection("emi", "ana", { hours: 745 })));
+      await assertFails(setDoc(doc(admin, pid("emi")), projection("emi", "ana", { hours: "80" })));
+      await assertFails(setDoc(doc(admin, pid("emi", "2026-13")), projection("emi", "ana", { month: "2026-13" })));
+      await assertFails(setDoc(doc(admin, pid("emi")), { ...projection("emi", "ana"), extra: 1 }));
+      await assertSucceeds(setDoc(doc(admin, pid("emi")), projection("emi", "ana", { hours: 0 })));
+      await assertSucceeds(setDoc(doc(admin, pid("emi")), projection("emi", "ana", { hours: 744 })));
+    });
+    it("la lee quien la carga y la propia persona; otro empleado y otro supervisor no", async () => {
+      await modules(true);
+      await seedAssignment("p1", "emi");
+      await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), pid("emi")), { projectId: "p1", userId: "emi", month: "2026-11", hours: 80, updatedBy: "ana" }); });
+      await assertSucceeds(getDoc(doc(asRole("emi", "employee"), pid("emi"))));
+      await assertSucceeds(getDoc(doc(asRole("sofia", "supervisor"), pid("emi"))));
+      await assertSucceeds(getDoc(doc(asRole("ana", "admin"), pid("emi"))));
+      await assertFails(getDoc(doc(asRole("eze", "employee"), pid("emi"))));
+      await assertFails(getDoc(doc(asRole("olga", "employee"), pid("emi"))));
+    });
+    it("las consultas del supervisor tienen que ir acotadas a su equipo", async () => {
+      await modules(true);
+      const sup = asRole("sofia", "supervisor");
+      await assertSucceeds(getDocs(query(collection(sup, "projections"), where("userId", "in", ["emi", "eze"]), where("month", "==", "2026-11"))));
+      await assertFails(getDocs(query(collection(sup, "projections"), where("month", "==", "2026-11"))));
+      await assertSucceeds(getDocs(query(collection(asRole("ana", "admin"), "projections"), where("month", "==", "2026-11"))));
+    });
+    it("borra quien puede cargarla, y solo con el módulo activo", async () => {
+      await modules(true);
+      await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), pid("emi")), { projectId: "p1", userId: "emi", month: "2026-11", hours: 80, updatedBy: "ana" }); });
+      await assertFails(deleteDoc(doc(asRole("emi", "employee"), pid("emi"))));
+      await assertSucceeds(deleteDoc(doc(asRole("sofia", "supervisor"), pid("emi"))));
+    });
+  });
+});

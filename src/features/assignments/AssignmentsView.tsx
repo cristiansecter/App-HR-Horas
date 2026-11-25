@@ -1,14 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCompany } from "@/company/CompanyContext";
+import { DEFAULT_ALLOCATION_PCT, isValidPct, totalPct } from "@/domain/allocation";
 import { ROLE_LABELS } from "@/domain/types";
-import { ASSIGNMENTS_CHANGED, assignProject, listAssignmentsForReview, unassignProject } from "@/services/assignments";
+import { ASSIGNMENTS_CHANGED, assignProject, listAssignmentsForReview, setAllocationPct, unassignProject } from "@/services/assignments";
 import { listUsers } from "@/services/company";
 import { withCode } from "@/services/errors";
 import { useUser } from "@/session/SessionContext";
 import { Chip, Page, PageHeader } from "@/ui/Page";
 import { useToast } from "@/ui/Toast";
 import { useAsync } from "@/ui/useAsync";
+
+/** Porcentaje de dedicación de una persona a un proyecto. Se guarda al salir del campo; si no es válido, vuelve al valor anterior. */
+function PctInput({ label, value, disabled, onCommit }: { label: string; value: number; disabled: boolean; onCommit: (pct: number) => void }) {
+  const [text, setText] = useState(String(value));
+  const commit = () => {
+    const n = Number(text);
+    if (!isValidPct(n)) return setText(String(value));
+    if (n !== value) onCommit(n);
+  };
+  return (
+    <label className="flex items-center justify-center gap-1 font-label-md text-label-md text-on-surface-variant">
+      <input aria-label={label} inputMode="numeric" disabled={disabled} value={text} onChange={(e) => setText(e.target.value.replace(/\D/g, "").slice(0, 3))} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} className="w-14 rounded-lg border border-white/10 bg-surface-container-lowest px-2 py-1 text-right font-body-sm text-body-sm text-on-surface tabular-nums focus:border-primary-container focus:outline-hidden disabled:opacity-40" />%
+    </label>
+  );
+}
 
 /**
  * Asignar proyectos: el administrador (a cualquiera) y el supervisor (a quienes tiene a cargo) deciden en qué proyectos
@@ -20,6 +36,8 @@ export default function AssignmentsView() {
   const { notify } = useToast();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Con el módulo de dedicación cada asignación lleva un porcentaje (por defecto, tiempo completo).
+  const allocationOn = company.features.modules.allocation;
 
   const { data, loading, error: loadError } = useAsync(
     async () => {
@@ -40,6 +58,26 @@ export default function AssignmentsView() {
   useEffect(() => setPending(new Map()), [data]);
   const assigned = useMemo(() => ({ has: (key: string) => pending.get(key) ?? stored.has(key) }), [pending, stored]);
   const team = data?.team ?? [];
+  const storedPct = useMemo(() => new Map((data?.assignments ?? []).map((a) => [`${a.projectId}|${a.userId}`, a.allocationPct ?? DEFAULT_ALLOCATION_PCT])), [data]);
+  const [pctPending, setPctPending] = useState<Map<string, number>>(new Map());
+  useEffect(() => setPctPending(new Map()), [data]);
+  const pctOf = (key: string) => pctPending.get(key) ?? storedPct.get(key) ?? DEFAULT_ALLOCATION_PCT;
+  /** Suma de dedicaciones de una persona en los proyectos activos que tiene asignados. */
+  const pctSum = (uid: string) => totalPct(projects.filter((p) => assigned.has(`${p.code}|${uid}`)).map((p) => pctOf(`${p.code}|${uid}`)));
+
+  const changePct = async (code: string, uid: string, name: string, pct: number) => {
+    const key = `${code}|${uid}`;
+    setError(null);
+    setPctPending((m) => new Map(m).set(key, pct));
+    try {
+      await setAllocationPct(code, uid, pct);
+      notify(`${name} dedica ${pct} % a ${code}.`);
+    } catch (e) {
+      console.error("No se pudo guardar el porcentaje", e);
+      setPctPending((m) => { const next = new Map(m); next.delete(key); return next; });
+      setError(withCode("No se pudo guardar el porcentaje. Probá de nuevo.", e));
+    }
+  };
 
   const toggle = async (code: string, uid: string, name: string, on: boolean) => {
     const key = `${code}|${uid}`;
@@ -124,12 +162,16 @@ export default function AssignmentsView() {
                     <th scope="row" className="sticky left-0 z-10 bg-surface-container-low px-space-md py-2.5 text-left font-normal">
                       <p className="font-semibold">{u.fullName}{u.uid === actor.uid ? <span className="ml-2"><Chip tone="muted">Vos</Chip></span> : null}</p>
                       <p className="font-body-sm text-body-sm text-on-surface-variant">{ROLE_LABELS[u.role]}{u.position ? ` · ${u.position}` : ""}</p>
+                      {allocationOn && pctSum(u.uid) > 100 ? <p className="mt-0.5"><Chip tone="warn">{`Suma ${pctSum(u.uid)} % entre proyectos`}</Chip></p> : null}
                     </th>
                     {projects.map((p) => {
                       const on = assigned.has(`${p.code}|${u.uid}`);
                       return (
                         <td key={p.code} className="px-space-md py-2.5 text-center">
-                          <input type="checkbox" aria-label={`${u.fullName}: ${p.code}`} checked={on} disabled={busy !== null} onChange={(e) => void toggle(p.code, u.uid, u.fullName, e.target.checked)} className="size-5 accent-[var(--hz-primary)]" />
+                          <div className="flex flex-col items-center gap-1.5">
+                            <input type="checkbox" aria-label={`${u.fullName}: ${p.code}`} checked={on} disabled={busy !== null} onChange={(e) => void toggle(p.code, u.uid, u.fullName, e.target.checked)} className="size-5 accent-[var(--hz-primary)]" />
+                            {allocationOn && on ? <PctInput key={`${p.code}-${u.uid}-${pctOf(`${p.code}|${u.uid}`)}`} label={`Dedicación de ${u.fullName} a ${p.code}`} value={pctOf(`${p.code}|${u.uid}`)} disabled={busy !== null} onCommit={(n) => void changePct(p.code, u.uid, u.fullName, n)} /> : null}
+                          </div>
                         </td>
                       );
                     })}
@@ -141,6 +183,7 @@ export default function AssignmentsView() {
         )}
         <p className="mt-space-md font-body-sm text-body-sm text-on-surface-variant">
           {actor.role === "admin" ? "Como administrador asignás a cualquier persona, incluido vos." : "Solo ves y asignás a las personas que tenés a cargo."} Quitar un proyecto no borra las horas ya cargadas; solo impide cargar horas nuevas ahí.
+          {allocationOn ? " El porcentaje es cuánto de su tiempo disponible dedica la persona al proyecto (100 % = tiempo completo); se usa en Proyección para sugerir las horas del mes." : ""}
         </p>
       </div>
     </Page>

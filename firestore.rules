@@ -253,6 +253,29 @@ service cloud.firestore {
         && isApproverOf(request.resource.data.userId)
         && exists(/databases/$(database)/documents/projects/$(request.resource.data.projectId));
       allow delete: if hasRole() && isApproverOf(resource.data.userId);
+      // Porcentaje de dedicación de la persona al proyecto (módulo "Dedicación y proyección"): entero de 1 a 100.
+      // Es lo único que se puede cambiar de una asignación ya creada.
+      allow update: if hasRole() && moduleOn('allocation') && isApproverOf(resource.data.userId)
+        && onlyChanges(['allocationPct'])
+        && request.resource.data.allocationPct is int
+        && request.resource.data.allocationPct >= 1 && request.resource.data.allocationPct <= 100;
+    }
+
+    // Proyección de horas (módulo "Dedicación y proyección"): cuántas horas se prevé que una persona dedique a un
+    // proyecto en un mes. Un documento por proyecto, persona y mes. La cargan el administrador o el supervisor de la
+    // persona (solo si el proyecto está asignado a ella); no tiene importes, así que la persona también puede leer la suya.
+    match /projections/{id} {
+      allow read: if hasRole() && (resource.data.userId == me() || isApproverOf(resource.data.userId));
+      allow create, update: if hasRole() && moduleOn('allocation')
+        && request.resource.data.keys().hasOnly(['projectId', 'userId', 'month', 'hours', 'updatedBy', 'updatedAt'])
+        && request.resource.data.projectId is string && request.resource.data.userId is string
+        && request.resource.data.month is string && request.resource.data.month.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
+        && id == request.resource.data.projectId + '_' + request.resource.data.userId + '_' + request.resource.data.month
+        && request.resource.data.hours is number && request.resource.data.hours >= 0 && request.resource.data.hours <= 744
+        && request.resource.data.updatedBy == me()
+        && isApproverOf(request.resource.data.userId)
+        && isAssigned(request.resource.data.userId, request.resource.data.projectId);
+      allow delete: if hasRole() && moduleOn('allocation') && isApproverOf(resource.data.userId);
     }
 
     match /time_entries/{id} {
