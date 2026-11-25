@@ -86,8 +86,9 @@ Todas las pantallas leen y escriben en Firestore con una cuenta real. Solo la en
 | Configuración: nombre, logo y colores; jornada general; tramos y franjas de horas extra (validadas: cada tipo de día cubierto las 24 h); guardia; ventana de edición; calendario de feriados | Real. Los cambios rigen hacia adelante: lo ya aprobado conserva sus horas |
 | Sueldos en el legajo (módulo activable) | Real: sueldo mensual o valor hora según el modelo de pago, con historial de vigencias (quién y cuándo). Solo lo lee el administrador y solo con el módulo activo; ni el supervisor, ni la propia persona, ni el Configurador lo ven |
 | Rendimiento (módulo activable): costos contra facturación por proyecto, por persona y por mes | Real: tarifa de cobro por hora y marca "facturable" en cada proyecto (los internos tienen costo sin ingreso); costo con el sueldo vigente en la fecha de cada registro, el recargo de las horas extra y un % de cargas configurable. Solo administrador y con el módulo activo |
+| Liquidación de sueldos (módulo activable): liquidación asistida del mes, recibo para imprimir o guardar como PDF, parámetros y conceptos editables, exportación CSV y cierre de período | Real: las novedades (horas normales y extra por tramo, inasistencias injustificadas, vacaciones) salen solas de las horas y licencias aprobadas; el resto se carga a mano. Solo administrador y con el módulo activo |
 | Reportes: planilla del mes con horas aprobadas, avisos de lo que falta y descarga en Excel/CSV | Real: el resumen y el detalle suman lo mismo; lo no aprobado no entra y se avisa.  |
-| Reglas de seguridad de Firestore | Reales y probadas (69 pruebas de reglas y 119 de lógica) |
+| Reglas de seguridad de Firestore | Reales y probadas (94 pruebas de reglas y 179 de lógica) |
 | Alta de usuarios, cambio de rol, configuración inicial y feriados | Real, por script |
 | Mi semana: grilla de lunes a domingo con feriados y licencias, carga por día, corrección y envío de borradores | Real |
 
@@ -127,3 +128,35 @@ npm run create-configurator -- --email vos@tuproveedor.com --key ruta/clave.json
 ```
 
 La cuenta tiene el claim `configurator` y **ningún rol de la pyme**: entra solo por la pestaña Configurador, no ve datos de la empresa (solo el nombre) y no puede entrar como administrador.
+
+## Módulos: Sueldos, Rendimiento y Liquidación
+
+Los activa el Configurador (consola, pestaña **Configurador**). Todo lo que guardan está bloqueado por las reglas de Firestore mientras el módulo esté apagado, y lo lee **solo el administrador**: nunca el supervisor, ni la propia persona, ni el Configurador.
+
+| Dato | Dónde | Módulo |
+|---|---|---|
+| Sueldo o valor hora de cada persona, con historial de vigencias, y convenio / obra social / hijos | `employee_pay/{uid}` | Sueldos en el legajo |
+| Tarifa de cobro por hora y marca "facturable" de cada proyecto | `project_rates/{código}` | Rendimiento |
+| Cargas patronales y horas del mes | `settings/costing` | Rendimiento |
+| Parámetros y conceptos de la liquidación | `settings/payroll` | Liquidación |
+| Un recibo por persona y mes | `payslips/{uid}_{AAAA-MM}` | Liquidación |
+| Período cerrado | `payroll_periods/{AAAA-MM}` | Liquidación |
+
+**Modelo de pago.** *Por jornada*: el legajo guarda un sueldo mensual; el costo por hora es sueldo ÷ horas del mes. *Por hora*: el legajo guarda un valor hora y el sueldo del mes sale de multiplicarlo por las horas normales aprobadas. Las horas extra se valorizan con el recargo de cada tramo en ambos modelos.
+
+**Cierre de período.** Con el mes cerrado, las reglas rechazan crear, cambiar o borrar recibos de ese mes. El administrador puede reabrirlo (queda registrado quién y cuándo).
+
+### Lo que la liquidación NO es
+
+Es una liquidación **asistida**, no una liquidación legal. El motor viene de LiquiSu y se corrigió el SAC (50 % de la mejor remuneración del semestre, proporcional a los meses) y el divisor de las inasistencias (parámetro). Pero:
+
+- **Ganancias es simplificado**: alícuota única sobre el excedente del mínimo no imponible, no la escala progresiva anual.
+- Cada convenio puede pedir reglas propias (base del valor hora, adicionales, topes): los divisores y las opciones son parámetros, pero hay que validarlos con el contador.
+- Las contribuciones patronales son un porcentaje informativo: no van en el recibo.
+- Se usa el sueldo vigente al **final** del mes; un aumento a mitad de mes no se prorratea.
+
+Cada recibo lo dice al pie. Antes de ofrecerlo a un cliente conviene que un contador valide los parámetros por defecto con su convenio.
+
+### Recibo en PDF
+
+El recibo se imprime con el botón "Imprimir / guardar como PDF" del navegador (se oculta todo lo demás y sale en blanco y negro). No hay un generador de PDF propio: es una decisión para no mantener otro motor de documentos.

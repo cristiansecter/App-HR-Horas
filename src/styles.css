@@ -200,3 +200,13 @@ input[type="date"] {
 .brand-glow {
   box-shadow: 0 0 50px -10px rgba(26, 190, 251, 0.35);
 }
+
+
+/* Al imprimir un recibo (Liquidación) se oculta toda la app y queda solo el recibo, en negro sobre fondo blanco. */
+@media print {
+  body > *:not(.receipt-portal) { display: none !important; }
+  .receipt-portal { position: static !important; display: block !important; overflow: visible !important; background: #fff !important; padding: 0 !important; }
+  .receipt-portal > div { max-width: none !important; margin: 0 !important; }
+  #receipt-print { background: #fff; color: #000; box-shadow: none; border-radius: 0; padding: 0; }
+  html, body { background: #fff !important; }
+}

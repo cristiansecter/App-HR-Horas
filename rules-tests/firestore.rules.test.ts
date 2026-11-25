@@ -204,6 +204,61 @@ describe("rendimiento (módulo): tarifas de proyecto y parámetros de costos", (
   });
 });
 
+describe("liquidación (módulo): recibos, parámetros y cierre de período", () => {
+  const modules = (payroll: boolean) => env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), "settings/features"), { modules: { compensation: true, performance: false, payroll }, payModel: "salary" });
+  });
+  const admin = () => asRole("ana", "admin");
+  const slip = (uid = "emi", period = "2026-11", extra: Record<string, unknown> = {}) => ({ userId: uid, period, manual: {}, result: { neto: 1 }, rate: 1, payModel: "salary", createdAt: serverTimestamp(), createdBy: "a@x", ...extra });
+  const closePeriod = (period: string, closed = true) => env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), `payroll_periods/${period}`), { closed }); });
+
+  it("con el módulo apagado nada de esto se lee ni se escribe", async () => {
+    await modules(false);
+    await assertFails(setDoc(doc(admin(), "payslips/emi_2026-11"), slip()));
+    await assertFails(setDoc(doc(admin(), "payroll_periods/2026-11"), { closed: true }));
+    await assertFails(setDoc(doc(admin(), "settings/payroll"), { params: {}, visibility: {} }));
+  });
+  it("con el módulo activo el admin guarda recibos y parámetros", async () => {
+    await modules(true);
+    await assertSucceeds(setDoc(doc(admin(), "payslips/emi_2026-11"), slip()));
+    await assertSucceeds(getDoc(doc(admin(), "payslips/emi_2026-11")));
+    await assertSucceeds(setDoc(doc(admin(), "settings/payroll"), { params: { a: 1 }, visibility: {}, updatedAt: serverTimestamp(), updatedBy: "a@x" }));
+  });
+  it("supervisor, empleado (aunque sea su recibo) y Configurador no ven nada", async () => {
+    await modules(true);
+    await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "payslips/emi_2026-11"), slip("emi", "2026-11", { createdAt: new Date() })); });
+    for (const [uid, role] of [["sofia", "supervisor"], ["emi", "employee"]] as const) {
+      await assertFails(getDoc(doc(asRole(uid, role), "payslips/emi_2026-11")));
+      await assertFails(setDoc(doc(asRole(uid, role), "payslips/emi_2026-11"), slip()));
+    }
+    await assertFails(getDoc(doc(env.authenticatedContext("prov", { configurator: true }).firestore(), "payslips/emi_2026-11")));
+  });
+  it("el id del recibo tiene que ser usuario_período y el período válido", async () => {
+    await modules(true);
+    await assertFails(setDoc(doc(admin(), "payslips/cualquiera"), slip()));
+    await assertFails(setDoc(doc(admin(), "payslips/emi_2026-13"), slip("emi", "2026-13")));
+    await assertFails(setDoc(doc(admin(), "payslips/eze_2026-11"), slip("emi", "2026-11")));
+    await assertFails(setDoc(doc(admin(), "payslips/emi_2026-11"), slip("emi", "2026-11", { extra: 1 })));
+  });
+  it("un período cerrado bloquea crear, cambiar y borrar recibos; al reabrirlo vuelve a andar", async () => {
+    await modules(true);
+    await assertSucceeds(setDoc(doc(admin(), "payslips/emi_2026-11"), slip()));
+    await closePeriod("2026-11");
+    await assertFails(setDoc(doc(admin(), "payslips/emi_2026-11"), slip("emi", "2026-11", { rate: 2 })));
+    await assertFails(setDoc(doc(admin(), "payslips/eze_2026-11"), slip("eze", "2026-11")));
+    await assertFails(deleteDoc(doc(admin(), "payslips/emi_2026-11")));
+    await assertSucceeds(setDoc(doc(admin(), "payslips/emi_2026-10"), slip("emi", "2026-10"))); // otro mes sigue abierto
+    await assertSucceeds(setDoc(doc(admin(), "payroll_periods/2026-11"), { closed: false, reopenedAt: serverTimestamp(), reopenedBy: "a@x" }));
+    await assertSucceeds(setDoc(doc(admin(), "payslips/emi_2026-11"), slip("emi", "2026-11", { rate: 2 })));
+  });
+  it("el admin cierra un período, con forma válida", async () => {
+    await modules(true);
+    await assertSucceeds(setDoc(doc(admin(), "payroll_periods/2026-11"), { closed: true, closedAt: serverTimestamp(), closedBy: "a@x" }));
+    await assertFails(setDoc(doc(admin(), "payroll_periods/noviembre"), { closed: true }));
+    await assertFails(setDoc(doc(admin(), "payroll_periods/2026-12"), { closed: "si" }));
+  });
+});
+
 describe("baja de una persona", () => {
   it("con el perfil dado de baja pierde el acceso aunque el token siga vigente", async () => {
     await env.withSecurityRulesDisabled(async (ctx) => { await updateDoc(doc(ctx.firestore(), "users/emi"), { active: false }); });

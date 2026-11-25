@@ -132,6 +132,31 @@ service cloud.firestore {
         && request.resource.data.billable is bool;
     }
 
+    // Liquidación de sueldos (módulo "Liquidación"): solo el administrador y solo con el módulo activo.
+    // Un período cerrado no admite crear, cambiar ni borrar recibos.
+    function periodClosed(period) {
+      return exists(/databases/$(database)/documents/payroll_periods/$(period))
+        && get(/databases/$(database)/documents/payroll_periods/$(period)).data.get('closed', false) == true;
+    }
+    match /payslips/{id} {
+      allow read: if isAdmin() && moduleOn('payroll');
+      allow create, update: if isAdmin() && moduleOn('payroll')
+        && request.resource.data.keys().hasOnly(['userId', 'period', 'manual', 'result', 'rate', 'payModel', 'createdAt', 'createdBy', 'updatedAt'])
+        && request.resource.data.userId is string && request.resource.data.period is string
+        && request.resource.data.period.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
+        && id == request.resource.data.userId + '_' + request.resource.data.period
+        && request.resource.data.result is map && request.resource.data.manual is map
+        && !periodClosed(request.resource.data.period);
+      allow delete: if isAdmin() && moduleOn('payroll') && !periodClosed(resource.data.period);
+    }
+    match /payroll_periods/{period} {
+      allow read: if isAdmin() && moduleOn('payroll');
+      allow create, update: if isAdmin() && moduleOn('payroll')
+        && period.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
+        && request.resource.data.keys().hasOnly(['closed', 'closedAt', 'closedBy', 'reopenedAt', 'reopenedBy'])
+        && request.resource.data.closed is bool;
+    }
+
     // Datos sensibles (CUIL, DNI, teléfono, modalidad): solo el administrador.
     match /employee_private/{uid} {
       allow read, write: if isAdmin();
@@ -151,6 +176,12 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['employerContributionsPct', 'monthlyHours', 'updatedAt', 'updatedBy'])
         && request.resource.data.employerContributionsPct is number && request.resource.data.employerContributionsPct >= 0 && request.resource.data.employerContributionsPct <= 200
         && request.resource.data.monthlyHours is number && request.resource.data.monthlyHours >= 1 && request.resource.data.monthlyHours <= 400;
+    }
+    match /settings/payroll {
+      allow read, delete: if isAdmin() && moduleOn('payroll');
+      allow create, update: if isAdmin() && moduleOn('payroll')
+        && request.resource.data.keys().hasOnly(['params', 'visibility', 'updatedAt', 'updatedBy'])
+        && request.resource.data.params is map && request.resource.data.visibility is map;
     }
     // El resto de `settings` (menos los documentos con regla propia) lo lee todo el equipo y lo escribe el administrador.
     match /settings/{doc} {
