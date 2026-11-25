@@ -1,4 +1,4 @@
-# Revisión de seguridad — Horus
+# Revisión de seguridad — SG Black
 
 Revisión hecha sobre el código y las reglas de Firestore del repositorio, al cierre del desarrollo inicial. Está escrita para alguien que no tiene el código delante. Severidad: 🔴 crítico · 🟡 mejorable · 🟢 menor · ✅ bien resuelto.
 

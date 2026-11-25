@@ -1,6 +1,6 @@
 # Guía del Configurador
 
-Esto lo hace una sola persona (el Configurador de Horus) para cada instancia de cliente. El administrador de la pyme **no** puede cambiar roles ni crear accesos por su cuenta.
+Esto lo hace una sola persona (el Configurador de SG Black) para cada instancia de cliente. El administrador de la pyme **no** puede cambiar roles ni crear accesos por su cuenta.
 
 Cada cliente tiene su propio proyecto de Firebase. Nada se comparte entre clientes.
 

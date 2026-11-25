@@ -17,8 +17,8 @@ describe("tema del cliente", () => {
   });
 
   it("elige texto oscuro sobre colores claros y blanco sobre oscuros", () => {
-    expect(readableTextOn("#1ABEFB")).toBe("#0B1020");
-    expect(readableTextOn("#FFD54A")).toBe("#0B1020");
+    expect(readableTextOn("#1ABEFB")).toBe("#090715");
+    expect(readableTextOn("#FFD54A")).toBe("#090715");
     expect(readableTextOn("#0058F8")).toBe("#FFFFFF");
     expect(readableTextOn("#7A1F1F")).toBe("#FFFFFF");
   });

@@ -16,7 +16,7 @@ export const luminance = (hex: string): number => {
 };
 
 /** Color de texto legible sobre un fondo de marca: oscuro sobre colores claros, blanco sobre oscuros. */
-export const readableTextOn = (hex: string): string => (luminance(hex) > 0.4 ? "#0B1020" : "#FFFFFF");
+export const readableTextOn = (hex: string): string => (luminance(hex) > 0.4 ? "#090715" : "#FFFFFF");
 
 /** Variables CSS que genera la marca del cliente. Falla si algún color no es #RRGGBB. */
 export const tenantCssVariables = (colors: TenantColors): Record<string, string> => {

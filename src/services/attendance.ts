@@ -5,7 +5,7 @@ import type { SessionUser } from "@/domain/types";
 import { getFirebase } from "./firebase";
 
 /** Aviso interno: cambió una marca de asistencia y las pantallas abiertas deben volver a leer. */
-export const ATTENDANCE_CHANGED = "horus:attendance-changed";
+export const ATTENDANCE_CHANGED = "sgblack:attendance-changed";
 const announce = () => window.dispatchEvent(new Event(ATTENDANCE_CHANGED));
 
 const chunk = <T>(items: T[], size: number): T[][] => Array.from({ length: Math.ceil(items.length / size) }, (_, i) => items.slice(i * size, i * size + size));

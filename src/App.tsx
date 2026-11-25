@@ -129,7 +129,7 @@ function AuthGate() {
   useForcedDark(loading || Boolean(configurator) || !user);
   if (loading) {
     return (
-      <div className="bg-horus-mesh flex min-h-screen items-center justify-center text-sm text-navy-300" role="status">
+      <div className="bg-sg-mesh flex min-h-screen items-center justify-center text-sm text-ink-300" role="status">
         Cargando…
       </div>
     );

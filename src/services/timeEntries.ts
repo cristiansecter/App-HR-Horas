@@ -17,7 +17,7 @@ import { classifyEntry, type ClassificationContext } from "@/domain/overtime";
 import { getFirebase } from "./firebase";
 
 /** Aviso interno: algo cambió en los registros y las pantallas abiertas deben volver a leerlos. */
-export const ENTRIES_CHANGED = "horus:entries-changed";
+export const ENTRIES_CHANGED = "sgblack:entries-changed";
 const announceChange = () => window.dispatchEvent(new Event(ENTRIES_CHANGED));
 
 export interface NewTimeEntry {

@@ -70,8 +70,8 @@ export interface PayrollInput {
   absences: readonly AbsenceRow[];
 }
 
-const HEADER_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF151D32" } };
-const TOTAL_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE3F6FD" } };
+const HEADER_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF14102A" } };
+const TOTAL_FILL: ExcelJS.Fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFE8FE" } };
 const HOURS_FORMAT = "#,##0.00";
 
 const titleBlock = (sheet: ExcelJS.Worksheet, input: PayrollInput, title: string, columns: number) => {
@@ -101,7 +101,7 @@ const sum = (rows: readonly number[]): number => Math.round(rows.reduce((a, b) =
 /** Arma la planilla para el contador: hojas Resumen, Detalle de horas y Ausencias. */
 export const buildPayrollWorkbook = (input: PayrollInput): ExcelJS.Workbook => {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Horus";
+  wb.creator = "SG Black";
 
   // ---- Resumen: una fila por empleado
   const resumen = wb.addWorksheet("Resumen");

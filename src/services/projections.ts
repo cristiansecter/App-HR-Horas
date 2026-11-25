@@ -3,7 +3,7 @@ import type { SessionUser } from "@/domain/types";
 import { getFirebase } from "./firebase";
 
 /** Aviso interno: cambió una proyección de horas; las pantallas abiertas deben volver a leer. */
-export const PROJECTIONS_CHANGED = "horus:projections-changed";
+export const PROJECTIONS_CHANGED = "sgblack:projections-changed";
 
 /** `projections/{proyecto}_{persona}_{AAAA-MM}`: horas que se prevé que una persona dedique a un proyecto en un mes. */
 export interface Projection {

@@ -5,7 +5,7 @@ import type { SessionUser } from "@/domain/types";
 import { getFirebase } from "./firebase";
 
 /** Aviso interno: cambió algo en las licencias y las pantallas abiertas deben volver a leerlas. */
-export const LEAVES_CHANGED = "horus:leaves-changed";
+export const LEAVES_CHANGED = "sgblack:leaves-changed";
 const announceChange = () => window.dispatchEvent(new Event(LEAVES_CHANGED));
 
 const withIds = (docs: { id: string; data: () => unknown }[]): LeaveRequest[] =>
@@ -100,7 +100,7 @@ export async function decideLeave(leave: LeaveRequest, reviewer: SessionUser, ap
   }
   await batch.commit();
   announceChange();
-  if (approve && flags) window.dispatchEvent(new Event("horus:leave-flags-changed"));
+  if (approve && flags) window.dispatchEvent(new Event("sgblack:leave-flags-changed"));
 }
 
 export interface NewLeaveFor {
@@ -138,7 +138,7 @@ export async function registerLeaveFor(reviewer: SessionUser, input: NewLeaveFor
   if (flags) batch.set(doc(db, "leave_flags", ref.id), { userId: input.userId, losesPresentism: flags.losesPresentism, losesPrize: flags.losesPrize, updatedBy: reviewer.uid, updatedAt: serverTimestamp() });
   await batch.commit();
   announceChange();
-  if (flags) window.dispatchEvent(new Event("horus:leave-flags-changed"));
+  if (flags) window.dispatchEvent(new Event("sgblack:leave-flags-changed"));
   return ref.id;
 }
 

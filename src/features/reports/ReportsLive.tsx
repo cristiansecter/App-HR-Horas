@@ -77,7 +77,7 @@ export default function ReportsLive() {
           absences: payroll.absences,
         },
         kind,
-        `horus-planilla-${month}`,
+        `sgblack-planilla-${month}`,
       );
     } catch (e) {
       console.error("No se pudo generar la planilla", e);

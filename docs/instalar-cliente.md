@@ -1,4 +1,4 @@
-# Instalar Horus para un cliente nuevo
+# Instalar SG Black para un cliente nuevo
 
 Guía paso a paso. Cada cliente tiene **su propio proyecto de Firebase y su propio sitio**: nada se comparte entre clientes. Tiempo estimado: 45 a 60 minutos la primera vez.
 

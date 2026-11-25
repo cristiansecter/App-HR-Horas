@@ -47,7 +47,7 @@ const semester = (period: string) => {
   return m <= 6 ? { from: `${y}-01`, to: `${y}-06` } : { from: `${y}-07`, to: `${y}-12` };
 };
 
-/** Seguimiento de liquidaciones (módulo activable): anotación del mes con las novedades de Horus, detalle por persona y cierre de período. */
+/** Seguimiento de liquidaciones (módulo activable): anotación del mes con las novedades de SG Black, detalle por persona y cierre de período. */
 export default function PayrollView() {
   const company = useCompany();
   const actor = useUser();
@@ -193,7 +193,7 @@ export default function PayrollView() {
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `horus-liquidacion-${month}.csv`;
+    a.download = `sgblack-liquidacion-${month}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };

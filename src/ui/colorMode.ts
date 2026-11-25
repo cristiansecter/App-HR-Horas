@@ -7,7 +7,7 @@ import { useEffect, useSyncExternalStore } from "react";
 export type ColorPref = "system" | "light" | "dark";
 export type ColorMode = "light" | "dark";
 
-export const COLOR_PREF_KEY = "horus:color-mode";
+export const COLOR_PREF_KEY = "sgblack:color-mode";
 export const COLOR_PREFS: readonly ColorPref[] = ["system", "light", "dark"];
 
 /** Lo guardado puede faltar o venir roto: cualquier cosa que no sea una opción válida vale "automático". */
@@ -50,7 +50,7 @@ export function applyColorMode(): void {
   const root = document.documentElement;
   root.dataset.theme = mode;
   root.style.colorScheme = mode;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", mode === "dark" ? "#0f131c" : "#f5f7fb");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", mode === "dark" ? "#0b0914" : "#f4f2fb");
 }
 
 export function setColorPref(next: ColorPref): void {

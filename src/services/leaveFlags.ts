@@ -4,7 +4,7 @@ import type { SessionUser } from "@/domain/types";
 import { getFirebase } from "./firebase";
 
 /** Aviso interno: cambió una marca de premio o presentismo y las pantallas abiertas deben volver a leer. */
-export const LEAVE_FLAGS_CHANGED = "horus:leave-flags-changed";
+export const LEAVE_FLAGS_CHANGED = "sgblack:leave-flags-changed";
 
 const chunk = <T>(items: T[], size: number): T[][] => Array.from({ length: Math.ceil(items.length / size) }, (_, i) => items.slice(i * size, i * size + size));
 

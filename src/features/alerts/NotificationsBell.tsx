@@ -3,7 +3,7 @@ import { AlertList } from "./AlertList";
 import { useAlerts } from "./AlertsContext";
 
 /** Evento para abrir la campanita desde otro lugar (por ejemplo "Ver todos" en el Inicio). */
-export const OPEN_ALERTS_EVENT = "horus:open-alerts";
+export const OPEN_ALERTS_EVENT = "sgblack:open-alerts";
 
 /** Campanita del encabezado: muestra cuántos avisos hay y los lista al tocarla. */
 export function NotificationsBell() {

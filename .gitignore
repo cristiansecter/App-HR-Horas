@@ -11,4 +11,5 @@ dist
 *-adminsdk*.json
 *service-account*.json
 serviceAccount*.json
+sgblack-*-key.json
 horus-*-key.json

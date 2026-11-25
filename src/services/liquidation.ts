@@ -6,7 +6,7 @@ import type { ManualNovelties } from "@/domain/payroll/novelties";
 import { getFirebase } from "./firebase";
 
 /** Aviso interno: cambió algo de la liquidación y las pantallas abiertas deben volver a leerla. */
-export const PAYROLL_CHANGED = "horus:payroll-changed";
+export const PAYROLL_CHANGED = "sgblack:payroll-changed";
 
 /** Datos de la persona congelados en el recibo: si después cambia su ficha, el recibo de ese mes no cambia. */
 export interface PayslipSnapshot {

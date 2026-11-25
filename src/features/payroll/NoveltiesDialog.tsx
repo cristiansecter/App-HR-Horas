@@ -38,7 +38,7 @@ export default function NoveltiesDialog({ name, auto, manual, onSave, onClose }:
           <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">Lo de arriba se carga solo desde las horas y licencias aprobadas. Lo de abajo lo cargás vos.</p>
         </div>
         <div className="rounded-lg bg-surface-container p-3 font-body-sm text-body-sm text-on-surface">
-          <p className="mb-1 font-label-md text-label-md font-semibold text-on-surface-variant">Desde Horus</p>
+          <p className="mb-1 font-label-md text-label-md font-semibold text-on-surface-variant">Desde SG Black</p>
           <p>Horas normales: <strong>{auto.normalHours}</strong>{tiers.map(([id, h]) => <span key={id}> · {id}: <strong>{h}</strong> h</span>)}</p>
           <p>Inasistencias injustificadas: <strong>{auto.inasist}</strong> días · Vacaciones: <strong>{auto.vacaciones}</strong> días</p>
         </div>

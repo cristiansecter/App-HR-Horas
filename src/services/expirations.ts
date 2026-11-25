@@ -4,7 +4,7 @@ import type { SessionUser } from "@/domain/types";
 import { getFirebase } from "./firebase";
 
 /** Aviso interno: cambió un vencimiento y las pantallas abiertas deben volver a leer. */
-export const EXPIRATIONS_CHANGED = "horus:expirations-changed";
+export const EXPIRATIONS_CHANGED = "sgblack:expirations-changed";
 const announce = () => window.dispatchEvent(new Event(EXPIRATIONS_CHANGED));
 
 const chunk = <T>(items: T[], size: number): T[][] => Array.from({ length: Math.ceil(items.length / size) }, (_, i) => items.slice(i * size, i * size + size));

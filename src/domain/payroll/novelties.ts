@@ -3,7 +3,7 @@ import type { LeaveRequest, TimeEntry } from "../model";
 import type { Holiday, WorkSchedule } from "../overtime/types";
 import { EMPTY_NOVELTIES, type Novelties } from "./engine";
 
-/** Lo que Horus ya sabe del mes de una persona: se carga solo en la liquidación. */
+/** Lo que SG Black ya sabe del mes de una persona: se carga solo en la liquidación. */
 export type AutoNovelties = Pick<Novelties, "hoursByTier" | "normalHours" | "inasist" | "vacaciones">;
 
 /** Lo que carga a mano el administrador. */

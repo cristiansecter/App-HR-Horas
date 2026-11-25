@@ -1,5 +1,5 @@
 /**
- * Deja lista una instancia nueva de Horus: configuración inicial de la empresa, feriados nacionales y el
+ * Deja lista una instancia nueva de SG Black: configuración inicial de la empresa, feriados nacionales y el
  * primer administrador. Por defecto SOLO MUESTRA lo que haría; con --apply escribe.
  *
  *   npx tsx scripts/provision-instance.ts --company "Nombre SRL" --admin-email dueño@empresa.com \

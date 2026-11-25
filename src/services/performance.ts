@@ -3,7 +3,7 @@ import { DEFAULT_COSTING, type Billing, type CostingParams, type ProjectRate } f
 import { getFirebase } from "./firebase";
 
 /** Aviso interno: cambió una tarifa o un parámetro de costos. */
-export const PERFORMANCE_CHANGED = "horus:performance-changed";
+export const PERFORMANCE_CHANGED = "sgblack:performance-changed";
 
 /** Número finito y no negativo; cualquier otra cosa vale 0. */
 const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0);

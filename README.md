@@ -1,4 +1,4 @@
-# Horus
+# SG Black
 
 Gestión de horas, licencias y datos del equipo para pymes argentinas, con pre-liquidación para el contador. Marca blanca: **cada cliente tiene su propio proyecto de Firebase y su propio sitio**.
 
@@ -28,6 +28,7 @@ npm run build
 - `src/domain/`: lógica de negocio pura (horas extra, feriados, licencias, planilla, costos, liquidación), sin pantalla ni Firebase.
 - `src/services/`: **único lugar que habla con Firebase.**
 - `src/features/`: pantallas por tema. `src/config/`: marca, navegación y constantes de seguridad.
+- **Marca:** el manual de marca de SG Black está en `docs/marca/` (`index.html` y `SG-Black-Manual-de-marca.pdf`). Los logos originales viven en `brand/source/`; `python3 scripts/brand-assets.py` regenera todas las variantes y `python3 scripts/build-brand-manual.py` + `node scripts/brand-manual-pdf.cjs` regeneran el manual.
 - `firestore.rules` + `rules-tests/`: las reglas y sus pruebas. Las reglas son la barrera real de permisos.
 - `scripts/`: alta de la instancia, de usuarios y cambios de rol (Admin SDK, con clave local).
 

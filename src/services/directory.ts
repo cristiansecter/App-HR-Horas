@@ -4,7 +4,7 @@ import type { WorkSchedule } from "@/domain/overtime";
 import { getFirebase } from "./firebase";
 
 /** Aviso interno: cambió una ficha y las pantallas abiertas deben volver a leer el equipo. */
-export const DIRECTORY_CHANGED = "horus:directory-changed";
+export const DIRECTORY_CHANGED = "sgblack:directory-changed";
 
 /** Datos sensibles de todo el equipo (solo administrador). */
 export async function listEmployeePrivate(): Promise<Map<string, EmployeePrivate>> {

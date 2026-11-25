@@ -25,8 +25,8 @@ export const tenantConfig: TenantConfig = {
   companyName: "Empresa Demo SRL",
   logoUrl: null,
   colors: {
-    primary: "#1ABEFB",
-    secondary: "#0058F8",
-    accent: "#E3F6FD",
+    primary: "#833DF2",
+    secondary: "#6722DB",
+    accent: "#EFE8FE",
   },
 };

@@ -21,7 +21,7 @@ export const downloadPayroll = async (kind: "xlsx" | "csv"): Promise<void> => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `horus-planilla-2026-11.${kind}`;
+  a.download = `sgblack-planilla-2026-11.${kind}`;
   a.click();
   URL.revokeObjectURL(url);
 };

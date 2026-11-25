@@ -3,7 +3,7 @@ import { addRate, DEFAULT_PAY_PROFILE, removeRate, replaceRate, type EmployeePay
 import { getFirebase } from "./firebase";
 
 /** Aviso interno: cambió una remuneración y las pantallas abiertas deben volver a leerla. */
-export const PAY_CHANGED = "horus:pay-changed";
+export const PAY_CHANGED = "sgblack:pay-changed";
 
 const fromDoc = (uid: string, data: Partial<EmployeePay> | undefined): EmployeePay => ({
   ...DEFAULT_PAY_PROFILE,

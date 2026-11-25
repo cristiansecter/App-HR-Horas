@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Reglas de seguridad de Horus. Los permisos los hacen cumplir estas reglas; la pantalla solo esconde lo que
+// Reglas de seguridad de SG Black. Los permisos los hacen cumplir estas reglas; la pantalla solo esconde lo que
 // el usuario no puede usar. El rol sale del custom claim `role` del token ('admin' | 'supervisor' | 'employee'),
 // que solo asigna el Configurador con un script de Admin SDK. Todo lo que no está acá está denegado.
 service cloud.firestore {

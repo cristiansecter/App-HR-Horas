@@ -115,7 +115,7 @@ export default function TeamAttendanceView() {
           detail: team.flatMap((u) => dates.map((d) => ({ fullName: u.fullName, status: statusOf(u, d) }))),
         },
         kind,
-        `horus-asistencia-${month}`,
+        `sgblack-asistencia-${month}`,
       );
     } catch (e) {
       console.error("No se pudo exportar", e);

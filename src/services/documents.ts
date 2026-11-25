@@ -4,7 +4,7 @@ import type { SessionUser } from "@/domain/types";
 import { getFirebase } from "./firebase";
 
 /** Aviso interno: se subió o borró un documento y las pantallas abiertas deben volver a leer. */
-export const DOCUMENTS_CHANGED = "horus:documents-changed";
+export const DOCUMENTS_CHANGED = "sgblack:documents-changed";
 const announce = () => window.dispatchEvent(new Event(DOCUMENTS_CHANGED));
 
 const chunk = <T>(items: T[], size: number): T[][] => Array.from({ length: Math.ceil(items.length / size) }, (_, i) => items.slice(i * size, i * size + size));

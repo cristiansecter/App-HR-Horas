@@ -139,7 +139,7 @@ export default function DirectoryLive() {
           <div role="dialog" aria-label="Alta de un empleado" className="relative flex w-full max-w-md flex-col gap-4 rounded-xl bg-surface-container-low p-space-lg shadow-2xl">
             <h2 className="font-headline-md text-headline-md text-on-surface">Alta de un empleado</h2>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Por ahora las altas las hace el Configurador de Horus: le pasás nombre completo, email, quién lo supervisa y el área, y te avisa cuando la persona ya puede entrar. Después completás su ficha desde acá.
+              Por ahora las altas las hace el Configurador de SG Black: le pasás nombre completo, email, quién lo supervisa y el área, y te avisa cuando la persona ya puede entrar. Después completás su ficha desde acá.
             </p>
             <p className="font-body-sm text-body-sm text-on-surface-variant">La invitación por email desde la app se habilita con el plan Blaze de Firebase.</p>
             <div className="flex justify-end"><button type="button" onClick={() => setHelp(false)} className="rounded-lg bg-primary-container px-5 py-2 font-label-lg text-label-lg font-bold text-on-primary hover:brightness-110">Entendido</button></div>

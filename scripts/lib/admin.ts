@@ -4,7 +4,7 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
 /**
- * Acceso de administración a una instancia de Horus. Lo usa SOLO el Configurador, desde su máquina o desde
+ * Acceso de administración a una instancia de SG Black. Lo usa SOLO el Configurador, desde su máquina o desde
  * Codespaces, con la clave de cuenta de servicio de esa instancia. La clave nunca va al repositorio ni al chat.
  *
  * Dónde se busca la clave, en este orden:
@@ -58,7 +58,7 @@ export function connect(args: Args) {
   const keyPath = args.get("key") ?? process.env.GOOGLE_APPLICATION_CREDENTIALS;
   if (!getApps().length) {
     if (usingEmulator) {
-      initializeApp({ projectId: args.get("project") ?? "horus-emulator" });
+      initializeApp({ projectId: args.get("project") ?? "sgblack-emulator" });
     } else {
       if (!keyPath) {
         throw new Error("Falta la clave de la cuenta de servicio. Pasala con --key ruta/clave.json o con GOOGLE_APPLICATION_CREDENTIALS.");

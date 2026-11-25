@@ -1,0 +1,393 @@
+<!doctype html><html lang="es-AR"><head><meta charset="utf-8"><title>SG Black · Manual de marca</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+@page { size: A4; margin: 0 }
+:root { --ink:#090715; --violet:#833df2; --deep:#6722db; --intense:#440ca0; --light:#c28ff9; --silver:#ada5c7;
+  --paper:#ffffff; --bg:#f4f2fb; --text:#17132b; --muted:#4d4768; --line:#e3def2; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { margin:0; font-family:"Inter",system-ui,sans-serif; color:var(--text); background:#d9d4ea; font-size:12.5px; line-height:1.5; }
+h1,h2,h3 { font-family:"Plus Jakarta Sans","Inter",sans-serif; letter-spacing:-.01em; margin:0; }
+.page { width:210mm; min-height:297mm; margin:0 auto 12px; background:var(--paper); padding:13mm 15mm 14mm; position:relative; break-after:page; overflow:hidden; }
+.page.dark { background:var(--ink); color:#e9e6f5; }
+.page.dark .muted { color:#b9b3d0; }
+.cover { padding:0; display:flex; flex-direction:column; justify-content:space-between; background:
+  radial-gradient(circle at 50% 28%, rgba(131,61,242,.30) 0%, rgba(103,34,219,.12) 38%, transparent 68%),
+  radial-gradient(circle at 92% 96%, rgba(131,61,242,.18) 0%, transparent 42%),
+  radial-gradient(circle at 6% 96%, rgba(68,12,160,.22) 0%, transparent 42%), var(--ink); }
+.cover .mid { text-align:center; padding:0 20mm; }
+.cover img.logo { width:150mm; max-width:100%; }
+.cover h1 { color:#fff; font-size:34px; margin-top:16mm; font-weight:800; }
+.cover p { color:#b9b3d0; margin:3mm 0 0; }
+.cover .top, .cover .bot { padding:16mm 17mm; color:#8e86ab; font-size:11px; letter-spacing:.14em; text-transform:uppercase; display:flex; justify-content:space-between; }
+.eyebrow { font-size:10.5px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--violet); }
+.page.dark .eyebrow { color:var(--light); }
+h2 { font-size:25px; font-weight:800; margin:1mm 0 4mm; }
+h3 { font-size:14px; font-weight:700; margin:5mm 0 2mm; }
+p { margin:0 0 3mm; }
+.lead { font-size:13.5px; color:var(--muted); max-width:150mm; }
+.muted { color:var(--muted); }
+.small { font-size:11px; color:var(--muted); }
+ul { margin:0 0 3mm; padding-left:5mm; } li { margin-bottom:1.2mm; }
+code { font-family:ui-monospace,"SFMono-Regular",Menlo,monospace; font-size:11.5px; background:#efeaff; padding:1px 5px; border-radius:4px; }
+table { width:100%; border-collapse:collapse; font-size:11px; margin:2mm 0; break-inside:avoid; }
+th { text-align:left; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); border-bottom:1.5px solid var(--line); padding:2mm 2mm; }
+td { padding:1.3mm 2mm; border-bottom:1px solid var(--line); vertical-align:top; }
+.num { font-variant-numeric:tabular-nums; white-space:nowrap; }
+.ok { color:#047857; font-weight:600; } .mid { color:#a16207; font-weight:600; } .bad { color:#be123c; font-weight:600; }
+.grid { display:grid; gap:5mm; } .g2 { grid-template-columns:1fr 1fr; } .g3 { grid-template-columns:repeat(3,1fr); } .g4 { grid-template-columns:repeat(4,1fr); }
+.card { border:1px solid var(--line); border-radius:12px; padding:4mm; break-inside:avoid; background:#fff; }
+.card.tint { background:var(--bg); }
+.stage { border-radius:12px; display:flex; align-items:center; justify-content:center; padding:8mm; }
+.stage img { max-width:100%; }
+.stage.ink { background:var(--ink); } .stage.light { background:var(--bg); } .stage.white { background:#fff; border:1px solid var(--line); } .stage.violet { background:var(--violet); }
+.cap { font-size:11px; color:var(--muted); margin-top:2mm; }
+.sw .chip { height:24mm; border-radius:10px 10px 0 0; padding:4mm; display:flex; flex-direction:column; justify-content:flex-end; font-size:12px; }
+.sw .chip b { font-size:14px; } .sw .chip span { font-family:ui-monospace,Menlo,monospace; letter-spacing:.04em; }
+.sw dl { display:grid; grid-template-columns:auto 1fr; gap:0 4mm; margin:0; padding:3mm 4mm; border:1px solid var(--line); border-top:0; font-size:11px; }
+.sw dt { color:var(--muted); } .sw dd { margin:0; font-variant-numeric:tabular-nums; }
+.sw p { font-size:11.5px; color:var(--muted); margin:2mm 1mm 0; }
+.sw.big .chip { height:44mm; }
+.dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:-1px; border:1px solid rgba(0,0,0,.18); }
+.pair { display:inline-flex; width:30px; height:22px; border-radius:6px; align-items:center; justify-content:center; font-weight:700; font-size:12px; border:1px solid rgba(0,0,0,.12); }
+.bar { display:flex; height:16mm; border-radius:10px; overflow:hidden; margin:3mm 0; }
+.bar div { display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; }
+.no { position:relative; } .no::after { content:"✕"; position:absolute; top:3mm; right:4mm; color:#be123c; font-weight:800; font-size:16px; }
+.yes::after { content:"✓"; position:absolute; top:3mm; right:4mm; color:#047857; font-weight:800; font-size:16px; }
+.yes { position:relative; }
+.note { border-left:4px solid var(--violet); background:#f4efff; padding:3mm 4mm; border-radius:0 8px 8px 0; margin:3mm 0; font-size:12.5px; break-inside:avoid; }
+.warn { border-left-color:#a16207; background:#fff8e6; }
+/* componentes de ejemplo */
+.ui { font-family:"Inter",sans-serif; }
+.btn { display:inline-flex; align-items:center; gap:6px; border-radius:10px; padding:8px 14px; font-weight:700; font-size:12.5px; border:0; }
+.btn.p { background:var(--violet); color:#fff; } .btn.s { background:#e6e2f3; color:#17132b; } .btn.d { background:#be123c; color:#fff; } .btn.g { background:transparent; color:var(--muted); }
+.chipx { display:inline-block; border-radius:999px; padding:2px 10px; font-size:10.5px; font-weight:700; letter-spacing:.03em; }
+.t-ok { background:#d1fae5; color:#047857; } .t-warn { background:#fef3c7; color:#a16207; } .t-bad { background:#ffe4e6; color:#be123c; } .t-info { background:#ede4ff; color:#512696; } .t-muted { background:#ece9f5; color:#4d4768; }
+.dk .t-ok { background:rgba(0,212,146,.14); color:#00d492; } .dk .t-warn { background:rgba(255,210,48,.14); color:#ffd230; } .dk .t-bad { background:rgba(255,180,171,.14); color:#ffb4ab; } .dk .t-info { background:rgba(131,61,242,.2); color:#c28ff9; } .dk .t-muted { background:#221d33; color:#b9b3d0; }
+.panel { border-radius:12px; padding:5mm; } .panel.dk { background:#120f1d; color:#e9e6f5; } .panel.lt { background:#fff; border:1px solid var(--line); }
+.row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:2mm 0; }
+.toc { columns:2; column-gap:12mm; font-size:14px; } .toc li { list-style:none; margin-bottom:2.5mm; } .toc b { color:var(--violet); margin-right:4px; }
+.foot { position:absolute; left:15mm; right:15mm; bottom:7mm; font-size:10px; color:#8b84a6; display:flex; justify-content:space-between; }
+.page.dark .foot { color:#7d7699; }
+@media screen { body { padding:12px 0; } .page { box-shadow:0 2px 18px rgba(9,7,21,.18); } }
+@media print { body { background:#fff; padding:0; } .page { margin:0; box-shadow:none; } }
+</style></head><body>
+<section class="page cover"><div class="top"><span>Manual de marca</span><span>v1.0</span></div>
+<div class="mid"><img class="logo" src="../../public/brand/sgblack-logo-on-dark.png" alt="SG Black"><h1>Manual de marca</h1>
+<p>Identidad visual, voz y reglas del producto</p></div>
+<div class="bot"><span>25 de noviembre de 2026</span><span>Uso interno y de socios</span></div></section><section class="page "><div class="eyebrow">Contenido</div><h2>Qué hay en este manual</h2>
+<ul class="toc"><li><b>01</b> La marca</li><li><b>02</b> El nombre</li><li><b>03</b> Logotipo e isotipo</li><li><b>04</b> Color</li>
+<li><b>05</b> Tipografía</li><li><b>06</b> Formas, íconos y espacios</li><li><b>07</b> Interfaz</li><li><b>08</b> Modo claro y oscuro</li>
+<li><b>09</b> Marca blanca por cliente</li><li><b>10</b> Voz y tono</li><li><b>11</b> El producto (decisiones establecidas)</li>
+<li><b>12</b> Aplicaciones y archivos</li><li><b>13</b> Registro y cuestiones legales</li></ul>
+<p class="small">Este manual reemplaza a toda la identidad anterior. Lo que antes se llamaba <b>Horus</b> pasó a llamarse <b>SG Black</b>
+y esa marca ya no se usa en ningún material.</p>
+<div style="height:6mm"></div>
+<div class="eyebrow">01 · La marca</div><h2>SG Black</h2>
+<p class="lead">Una plataforma web para que las pymes argentinas lleven al día las horas, la asistencia y las licencias de su gente, y le
+pasen al contador la información lista para liquidar.</p>
+<div class="grid g2">
+<div class="card"><h3 style="margin-top:0">Qué hace</h3><ul>
+<li>Carga y aprobación de horas por proyecto, o asistencia diaria por jornada.</li>
+<li>Licencias, ausencias, vencimientos y avisos.</li>
+<li>Legajos, documentos (certificados y recibos) y organigrama.</li>
+<li>Planilla para el contador, en Excel o CSV.</li>
+<li>Módulos opcionales: sueldos, rendimiento, facturación, dedicación, liquidaciones y presentismo.</li></ul></div>
+<div class="card"><h3 style="margin-top:0">Para quién</h3><ul>
+<li>Pymes que hoy llevan todo en planillas y mensajes.</li>
+<li>Consultoras que facturan por proyecto y empresas donde importa la asistencia.</li>
+<li>Tres roles: <b>administrador</b>, <b>supervisor</b> y <b>empleado</b>.</li>
+<li>Cada empresa tiene su propia instancia, con su marca y su configuración.</li></ul></div></div>
+<h3>Personalidad</h3>
+<div class="grid g4">
+<div class="card tint"><b>Confiable</b><p class="small">Maneja datos de sueldos y salud: cuida lo que muestra y a quién.</p></div>
+<div class="card tint"><b>Clara</b><p class="small">Dice lo que pasa y lo que sigue, sin tecnicismos.</p></div>
+<div class="card tint"><b>Cercana</b><p class="small">Habla en rioplatense, de vos, como una persona del equipo.</p></div>
+<div class="card tint"><b>Sobria</b><p class="small">Negro, violeta y plata. Sin adornos que distraigan.</p></div></div>
+<div class="note"><b>Lo que SG Black no es.</b> No es una herramienta de liquidación legal ni reemplaza el trabajo del contador: es una forma digital de
+anotar y hacer seguimiento. Esa frase se mantiene en todo lo comercial.</div><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>2</span></div></section><section class="page "><div class="eyebrow">02 · El nombre</div><h2>Cómo se escribe y cómo se usa</h2>
+<div class="grid g2">
+<div class="card yes"><h3 style="margin-top:0">Correcto</h3><p style="font-size:20px;font-weight:700;margin:0 0 2mm">SG Black</p>
+<ul><li>Dos palabras, con espacio.</li><li><b>S</b>, <b>G</b> y <b>B</b> en mayúscula; el resto en minúscula.</li>
+<li>En textos corridos: «SG Black» (sin comillas ni cursiva especial).</li><li>En el pie de las pantallas: <i>Powered by SG Black</i>.</li></ul></div>
+<div class="card no"><h3 style="margin-top:0">Incorrecto</h3><p style="font-size:15px;margin:0 0 2mm">SGBlack · Sg Black · sg black · SG-Black · SG BLACK<sup>*</sup> · Horus</p>
+<ul><li>No se pega ni se pone con guion.</li><li>No se traduce («SG Negro»).</li><li>No se conjuga ni se declina.</li></ul>
+<p class="small"><sup>*</sup> Todo en mayúscula solo se admite como estilo tipográfico en etiquetas chicas (por ejemplo, el pie de la barra lateral).</p></div></div>
+<h3>Nombre de la plataforma y nombre del cliente</h3>
+<p>SG Black es la <b>plataforma</b>. Cada empresa cliente usa la app con <b>su propio nombre, logo y colores</b>. Cuando hay que nombrar los dos:</p>
+<table><tr><th>Dónde</th><th>Qué se ve</th></tr>
+<tr><td>Dentro de la app de un cliente</td><td>El nombre y el logo del cliente. SG Black aparece solo al pie del menú lateral: <i>Powered by SG Black</i>.</td></tr>
+<tr><td>Pantalla de entrada y consola del Configurador</td><td>Siempre SG Black, en modo oscuro, aunque cada persona haya elegido modo claro.</td></tr>
+<tr><td>Planillas y archivos que se descargan</td><td>Nombre de archivo <code>sgblack-…</code>; adentro, el nombre de la empresa cliente.</td></tr>
+<tr><td>Comunicación comercial</td><td>SG Black, con el logotipo horizontal.</td></tr></table>
+<h3>El nombre anterior</h3>
+<p><b>Horus</b> se retiró porque hay marcas parecidas registradas que podían entrar en conflicto. No se usa en pantallas, archivos, documentos ni
+código visible. Lo único que conserva el nombre viejo es el identificador técnico del proyecto de Firebase de la demo
+(<code>horus-demo-929b0</code>), que no se puede cambiar y no lo ve ningún usuario.</p>
+<div class="note warn"><b>Antes de comunicar «SG Black» hacia afuera</b>, hay que hacer la búsqueda de antecedentes en el INPI para este nombre y este logo
+(ver sección 13). Es lo mismo que hizo falta con Horus y no se da por resuelto.</div><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>3</span></div></section><section class="page "><div class="eyebrow">03 · Logotipo e isotipo</div><h2>Las piezas de la marca</h2>
+<p class="lead">El isotipo es una <b>S</b> formada por cintas que se pliegan en un hexágono: orden, estructura y un recorrido continuo.
+El logotipo lo acompaña con «SG Black». Las piezas son dibujos propios: no se reescriben con ninguna tipografía.</p>
+<div class="grid g2">
+<div><div class="stage ink" style="height:44mm"><img src="../../public/brand/sgblack-logo-on-dark.png" style="width:100%"></div><p class="cap"><b>Logotipo horizontal</b> · sobre fondo oscuro (texto blanco). Es la versión principal.</p></div>
+<div><div class="stage light" style="height:44mm"><img src="../../public/brand/sgblack-logo-on-light.png" style="width:100%"></div><p class="cap"><b>Logotipo horizontal</b> · sobre fondo claro (texto casi negro).</p></div>
+<div><div class="stage white" style="height:44mm"><img src="../../public/brand/sgblack-isotipo-512.png" style="height:34mm"></div><p class="cap"><b>Isotipo / ícono de la app</b> · el glifo dentro de su cuadrado redondeado. Para favicon, ícono de celular, avatar.</p></div>
+<div><div class="stage ink" style="height:44mm;gap:8mm;overflow:hidden"><img src="../../public/brand/sgblack-glyph.png" style="height:20mm;max-width:40%;object-fit:contain"><img src="../../public/brand/sgblack-logo-horizontal.png" style="width:52%;border-radius:6px"></div><p class="cap"><b>Glifo solo</b> (sin cuadrado, transparente) para usar chico sobre cualquier fondo, y <b>panel horizontal</b> completo para banners.</p></div></div>
+<div class="foot"><span>SG Black · Manual de marca v1.0</span><span>4</span></div></section><section class="page "><h3>Qué versión usar</h3>
+<table><tr><th>Fondo</th><th>Pieza</th><th>Archivo</th></tr>
+<tr><td>Negro u oscuro</td><td>Logotipo horizontal con texto blanco</td><td><code>sgblack-logo-on-dark.png</code></td></tr>
+<tr><td>Blanco o claro</td><td>Logotipo horizontal con texto casi negro</td><td><code>sgblack-logo-on-light.png</code></td></tr>
+<tr><td>Espacio cuadrado (avatar, ícono)</td><td>Isotipo en su cuadrado</td><td><code>sgblack-isotipo.png</code> (1024) y <code>-512</code>, <code>-192</code></td></tr>
+<tr><td>Espacio muy chico o sobre cualquier fondo</td><td>Glifo solo</td><td><code>sgblack-glyph.png</code></td></tr>
+<tr><td>Banner o presentación</td><td>Panel horizontal completo</td><td><code>sgblack-logo-horizontal.png</code></td></tr></table>
+<h3>Zona de respeto y tamaños mínimos</h3>
+<div class="grid g2">
+<div class="card"><div style="position:relative;display:inline-block;padding:9mm;border:1.5px dashed #833df2;border-radius:8px;background:#f4f2fb"><img src="../../public/brand/sgblack-logo-on-light.png" style="width:62mm;display:block"></div>
+<p class="small" style="margin-top:2mm"><b>Zona de respeto:</b> alrededor de la pieza, un espacio libre igual a <b>la mitad de la altura del isotipo</b>. Nada de texto, bordes ni imágenes invade esa zona.</p></div>
+<div class="card"><table style="margin:0"><tr><th>Pieza</th><th>Mínimo</th></tr><tr><td>Logotipo horizontal</td><td class="num">120 px · 30 mm</td></tr><tr><td>Isotipo en cuadrado</td><td class="num">16 px · 6 mm</td></tr><tr><td>Glifo solo</td><td class="num">14 px · 5 mm</td></tr></table>
+<p class="small" style="margin-top:2mm">Por debajo del mínimo, se pasa a una pieza más simple (del logotipo al isotipo, del isotipo al glifo).</p></div></div><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>5</span></div></section><section class="page "><div class="eyebrow">03 · Logotipo e isotipo</div><h2>Usos incorrectos y archivos de ícono</h2>
+<h3 style="margin-top:0">Qué no hacer</h3>
+<div class="grid g4">
+<div class="no"><div class="stage ink" style="height:30mm;overflow:hidden"><img src="../../public/brand/sgblack-logo-on-dark.png" style="width:100%;transform:scaleX(.55)"></div><p class="cap">No deformar ni estirar.</p></div>
+<div class="no"><div class="stage ink" style="height:30mm;overflow:hidden"><img src="../../public/brand/sgblack-logo-on-dark.png" style="width:90%;transform:rotate(-12deg)"></div><p class="cap">No rotar ni inclinar.</p></div>
+<div class="no"><div class="stage ink" style="height:30mm;overflow:hidden"><img src="../../public/brand/sgblack-logo-on-dark.png" style="width:90%;filter:hue-rotate(140deg) saturate(1.8)"></div><p class="cap">No cambiar los colores.</p></div>
+<div class="no"><div class="stage" style="height:30mm;background:linear-gradient(135deg,#f6c445,#ef6c3b);overflow:hidden"><img src="../../public/brand/sgblack-logo-on-dark.png" style="width:90%"></div><p class="cap">No usar sobre fondos de color o fotos sin contraste.</p></div>
+<div class="no"><div class="stage white" style="height:30mm;overflow:hidden"><img src="../../public/brand/sgblack-logo-on-dark.png" style="width:90%"></div><p class="cap">No usar la versión de fondo oscuro sobre blanco: el texto casi no se ve.</p></div>
+<div class="no"><div class="stage ink" style="height:30mm;overflow:hidden"><img src="../../public/brand/sgblack-logo-on-light.png" style="width:90%"></div><p class="cap">No usar la versión de fondo claro sobre negro.</p></div>
+<div class="no"><div class="stage ink" style="height:30mm;overflow:hidden"><img src="../../public/brand/sgblack-logo-on-dark.png" style="width:90%;filter:drop-shadow(0 0 6px #fff) drop-shadow(3px 3px 0 #f0f)"></div><p class="cap">No agregar sombras, brillos ni contornos.</p></div>
+<div class="no"><div class="stage ink" style="height:30mm;overflow:hidden;gap:3mm"><img src="../../public/brand/sgblack-glyph.png" style="height:20mm"><span style="color:#fff;font:700 22px 'Plus Jakarta Sans'">SG Black</span></div><p class="cap">No rearmar el logotipo con otra tipografía.</p></div></div>
+<h3>Favicons e íconos de la app</h3>
+<table><tr><th>Uso</th><th>Archivo</th><th>Tamaño</th></tr>
+<tr><td>Pestaña del navegador</td><td><code>favicon.ico</code> · <code>favicon-16.png</code> · <code>favicon-32.png</code> · <code>favicon-48.png</code></td><td class="num">16 · 32 · 48</td></tr>
+<tr><td>Ícono de iPhone / iPad</td><td><code>sgblack-apple-touch-icon.png</code> (fondo opaco)</td><td class="num">180</td></tr>
+<tr><td>Ícono adaptable de Android</td><td><code>sgblack-isotipo-maskable-512.png</code> (con margen de seguridad)</td><td class="num">512</td></tr>
+<tr><td>Avatar, redes, ícono general</td><td><code>sgblack-isotipo-512.png</code> · <code>-192.png</code> · <code>sgblack-isotipo.png</code></td><td class="num">512 · 192 · 1024</td></tr></table>
+<div class="row" style="gap:10mm;margin-top:4mm"><div style="text-align:center"><img src="../../public/brand/sgblack-isotipo-512.png" style="width:20mm"><div class="cap">App</div></div>
+<div style="text-align:center"><img src="../../public/brand/favicon-48.png" style="width:12mm"><div class="cap">48</div></div><div style="text-align:center"><img src="../../public/brand/favicon-32.png" style="width:8mm"><div class="cap">32</div></div>
+<div style="text-align:center"><img src="../../public/brand/favicon-16.png" style="width:4mm"><div class="cap">16</div></div>
+<div style="text-align:center"><div style="width:20mm;height:20mm;border-radius:50%;overflow:hidden;background:#090715"><img src="../../public/brand/sgblack-isotipo-maskable-512.png" style="width:100%"></div><div class="cap">Adaptable</div></div></div>
+<p class="small">Los archivos se generan a partir de dos originales con <code>python3 scripts/brand-assets.py</code>; ver la sección 12.</p><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>6</span></div></section><section class="page "><div class="eyebrow">04 · Color</div><h2>La paleta</h2>
+<p class="lead">Negro violáceo, violeta y plata lavanda. Los colores salen del isotipo; no se inventan otros.</p>
+<h3 style="margin-top:2mm">Principales</h3><div class="grid g4"><div class="sw"><div class="chip" style="background:#090715;color:#ffffff"><b>Negro SG</b><span>#090715</span></div><dl><dt>RGB</dt><dd>9, 7, 21</dd><dt>HSL</dt><dd>249°, 50%, 5%</dd><dt>CMYK*</dt><dd>57, 67, 0, 92</dd></dl><p>Fondo de la marca: entrada, consola del Configurador, portadas y el fondo del logotipo. No es negro puro: lleva un toque de violeta.</p></div><div class="sw"><div class="chip" style="background:#833DF2;color:#ffffff"><b>Violeta SG</b><span>#833DF2</span></div><dl><dt>RGB</dt><dd>131, 61, 242</dd><dt>HSL</dt><dd>263°, 87%, 59%</dd><dt>CMYK*</dt><dd>46, 75, 0, 5</dd></dl><p>Color principal. Botones, ítem activo del menú, enlaces, acentos. Es el color que cada cliente puede reemplazar por el suyo.</p></div><div class="sw"><div class="chip" style="background:#6722DB;color:#ffffff"><b>Violeta profundo</b><span>#6722DB</span></div><dl><dt>RGB</dt><dd>103, 34, 219</dd><dt>HSL</dt><dd>262°, 73%, 50%</dd><dt>CMYK*</dt><dd>53, 84, 0, 14</dd></dl><p>Segundo color: degradados, estados presionados y fondos de énfasis.</p></div><div class="sw"><div class="chip" style="background:#440CA0;color:#ffffff"><b>Violeta intenso</b><span>#440CA0</span></div><dl><dt>RGB</dt><dd>68, 12, 160</dd><dt>HSL</dt><dd>263°, 86%, 34%</dd><dt>CMYK*</dt><dd>58, 92, 0, 37</dd></dl><p>Sombras de color y fondos muy cargados.</p></div></div>
+<h3>De apoyo</h3><div class="grid g3"><div class="sw"><div class="chip" style="background:#C28FF9;color:#090715"><b>Violeta claro</b><span>#C28FF9</span></div><dl><dt>RGB</dt><dd>194, 143, 249</dd><dt>HSL</dt><dd>269°, 90%, 77%</dd><dt>CMYK*</dt><dd>22, 43, 0, 2</dd></dl><p>Texto de acento sobre fondo oscuro y brillos. Es lo que se usa cuando el violeta SG no alcanza de contraste.</p></div><div class="sw"><div class="chip" style="background:#ADA5C7;color:#090715"><b>Plata lavanda</b><span>#ADA5C7</span></div><dl><dt>RGB</dt><dd>173, 165, 199</dd><dt>HSL</dt><dd>254°, 23%, 71%</dd><dt>CMYK*</dt><dd>13, 17, 0, 22</dd></dl><p>Texto secundario, bordes y detalles metálicos del isotipo.</p></div><div class="sw"><div class="chip" style="background:#FFFFFF;color:#090715"><b>Blanco</b><span>#FFFFFF</span></div><dl><dt>RGB</dt><dd>255, 255, 255</dd><dt>HSL</dt><dd>0°, 0%, 100%</dd><dt>CMYK*</dt><dd>0, 0, 0, 0</dd></dl><p>Texto sobre violeta y sobre negro; tarjetas en modo claro.</p></div></div>
+<p class="small">* CMYK aproximado, calculado por conversión simple desde RGB. Para impresión, pedir prueba de color a la imprenta y ajustar contra el original en pantalla.</p>
+<h3>Proporción</h3>
+<div class="bar"><div style="background:#090715;color:#e9e6f5;flex:60">Negro SG · ~60 %</div><div style="background:#ADA5C7;color:#090715;flex:15">Plata · ~15 %</div><div style="background:#833DF2;color:#fff;flex:20">Violeta · ~20 %</div><div style="background:#C28FF9;color:#090715;flex:5">5</div></div>
+<p>En pantalla, la mayor parte es <b>neutro</b> (fondos y texto). El violeta se reserva para lo que se puede tocar o lo que importa: un botón, el ítem activo, un aviso. Si todo es violeta, nada destaca.</p>
+<div class="grid g2"><div class="stage" style="background:linear-gradient(135deg,#440ca0,#6722db 45%,#833df2 80%,#c28ff9);height:26mm;color:#fff;font-weight:700">Degradé de marca</div>
+<div class="card"><p class="small" style="margin:0"><b>Degradé de marca:</b> violeta intenso → profundo → violeta → claro, a 135°. Es el que sugiere el brillo del isotipo; se usa en portadas y banners, nunca como fondo de texto largo.</p></div></div><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>7</span></div></section><section class="page "><div class="eyebrow">04 · Color</div><h2>Color en la interfaz</h2>
+<h3 style="margin-top:0">Neutros por modo</h3>
+<table><tr><th>Token</th><th>Oscuro</th><th>Claro</th><th>Uso</th></tr><tr><td><code>background / surface</code></td><td><span class="dot" style="background:#0b0914"></span>#0B0914</td><td><span class="dot" style="background:#f4f2fb"></span>#F4F2FB</td><td>Fondo de la app</td></tr><tr><td><code>surface-container-lowest</code></td><td><span class="dot" style="background:#07060f"></span>#07060F</td><td><span class="dot" style="background:#f7f5fd"></span>#F7F5FD</td><td>Campos de formulario</td></tr><tr><td><code>surface-container-low</code></td><td><span class="dot" style="background:#120f1d"></span>#120F1D</td><td><span class="dot" style="background:#ffffff"></span>#FFFFFF</td><td>Tarjetas y paneles</td></tr><tr><td><code>surface-container</code></td><td><span class="dot" style="background:#181426"></span>#181426</td><td><span class="dot" style="background:#efecf8"></span>#EFECF8</td><td>Bloques dentro de una tarjeta</td></tr><tr><td><code>surface-container-high</code></td><td><span class="dot" style="background:#221d33"></span>#221D33</td><td><span class="dot" style="background:#e6e2f3"></span>#E6E2F3</td><td>Botones secundarios, filas con foco</td></tr><tr><td><code>surface-container-highest</code></td><td><span class="dot" style="background:#2d2742"></span>#2D2742</td><td><span class="dot" style="background:#dcd7ec"></span>#DCD7EC</td><td>Bordes fuertes, barras de scroll</td></tr><tr><td><code>on-surface</code></td><td><span class="dot" style="background:#e9e6f5"></span>#E9E6F5</td><td><span class="dot" style="background:#17132b"></span>#17132B</td><td>Texto principal</td></tr><tr><td><code>on-surface-variant</code></td><td><span class="dot" style="background:#b9b3d0"></span>#B9B3D0</td><td><span class="dot" style="background:#4d4768"></span>#4D4768</td><td>Texto secundario</td></tr><tr><td><code>outline-variant</code></td><td><span class="dot" style="background:#3b3452"></span>#3B3452</td><td><span class="dot" style="background:#cbc5e0"></span>#CBC5E0</td><td>Divisores</td></tr></table>
+<h3>Colores de estado</h3>
+<p>Siempre el mismo significado, en toda la app. El color nunca es lo único que informa: va con un texto o un ícono.</p>
+<div class="grid g2">
+<div class="panel dk ui dk"><div class="row"><span class="chipx t-ok">Aprobado</span><span class="chipx t-warn">Atención</span><span class="chipx t-bad">Urgente</span><span class="chipx t-info">Información</span><span class="chipx t-muted">Neutro</span></div><p class="small" style="color:#b9b3d0;margin:2mm 0 0">Modo oscuro</p></div>
+<div class="panel lt ui"><div class="row"><span class="chipx t-ok">Aprobado</span><span class="chipx t-warn">Atención</span><span class="chipx t-bad">Urgente</span><span class="chipx t-info">Información</span><span class="chipx t-muted">Neutro</span></div><p class="small" style="margin:2mm 0 0">Modo claro</p></div></div>
+<table><tr><th>Estado</th><th>Oscuro</th><th>Claro</th><th>Cuándo</th></tr>
+<tr><td><code>Éxito</code></td><td><span class="dot" style="background:#00d492"></span>#00D492</td><td><span class="dot" style="background:#047857"></span>#047857</td><td>Aprobado, guardado, al día</td></tr>
+<tr><td><code>Atención</code></td><td><span class="dot" style="background:#ffd230"></span>#FFD230</td><td><span class="dot" style="background:#a16207"></span>#A16207</td><td>Pendiente, por vencer, revisar</td></tr>
+<tr><td><code>Error / urgente</code></td><td><span class="dot" style="background:#ffb4ab"></span>#FFB4AB</td><td><span class="dot" style="background:#b3261e"></span>#B3261E</td><td>Falló, vencido, rechazado, ausencia sin justificar</td></tr>
+<tr><td><code>Información</code></td><td><span class="dot" style="background:#c28ff9"></span>#C28FF9</td><td><span class="dot" style="background:#512696"></span>#512696</td><td>Datos neutros y avisos informativos (usa el color de marca)</td></tr></table>
+<div class="foot"><span>SG Black · Manual de marca v1.0</span><span>8</span></div></section><section class="page "><h3>Contraste (WCAG)</h3>
+<p>El mínimo para texto normal es 4,5:1. Estos son los pares que usa la marca:</p>
+<table><tr><th></th><th>Par</th><th>Relación</th><th>Cumple</th><th>Regla</th></tr>
+<tr><td><span class="pair" style="background:#833df2;color:#ffffff">Aa</span></td><td>Blanco sobre violeta SG</td><td class="num">5.4:1</td><td class="ok">AA</td><td>Texto de botones principales</td></tr>
+<tr><td><span class="pair" style="background:#6722db;color:#ffffff">Aa</span></td><td>Blanco sobre violeta profundo</td><td class="num">7.4:1</td><td class="ok">AA</td><td></td></tr>
+<tr><td><span class="pair" style="background:#090715;color:#c28ff9">Aa</span></td><td>Violeta claro sobre negro SG</td><td class="num">8.2:1</td><td class="ok">AA</td><td>Texto de acento sobre oscuro</td></tr>
+<tr><td><span class="pair" style="background:#090715;color:#ada5c7">Aa</span></td><td>Plata lavanda sobre negro SG</td><td class="num">8.5:1</td><td class="ok">AA</td><td>Texto secundario sobre oscuro</td></tr>
+<tr><td><span class="pair" style="background:#090715;color:#833df2">Aa</span></td><td>Violeta SG sobre negro SG</td><td class="num">3.7:1</td><td class="mid">solo texto grande y elementos de interfaz</td><td>No usar en texto chico sobre oscuro; sí en íconos y bordes</td></tr>
+<tr><td><span class="pair" style="background:#ffffff;color:#833df2">Aa</span></td><td>Violeta SG sobre blanco</td><td class="num">5.4:1</td><td class="ok">AA</td><td>Aceptable para texto en modo claro</td></tr>
+<tr><td><span class="pair" style="background:#f4f2fb;color:#17132b">Aa</span></td><td>Texto principal sobre fondo claro</td><td class="num">16.3:1</td><td class="ok">AA</td><td></td></tr>
+<tr><td><span class="pair" style="background:#ffffff;color:#4d4768">Aa</span></td><td>Texto secundario sobre blanco (modo claro)</td><td class="num">8.7:1</td><td class="ok">AA</td><td></td></tr>
+<tr><td><span class="pair" style="background:#0b0914;color:#e9e6f5">Aa</span></td><td>Texto principal sobre fondo oscuro</td><td class="num">16.1:1</td><td class="ok">AA</td><td></td></tr>
+<tr><td><span class="pair" style="background:#0b0914;color:#b9b3d0">Aa</span></td><td>Texto secundario sobre fondo oscuro</td><td class="num">9.8:1</td><td class="ok">AA</td><td></td></tr></table>
+<div class="note warn"><b>Regla:</b> sobre fondo oscuro, el texto violeta usa <b>violeta claro</b> (#C28FF9); el violeta SG (#833DF2) queda para fondos de botones, íconos, bordes y elementos grandes.</div><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>9</span></div></section><section class="page "><div class="eyebrow">05 · Tipografía</div><h2>Dos familias, una escala</h2>
+<div class="grid g2">
+<div class="card"><div style="font:800 40px 'Plus Jakarta Sans'">Aa</div><b>Plus Jakarta Sans</b><p class="small">Títulos y cifras grandes · pesos 600, 700 y 800.</p></div>
+<div class="card"><div style="font:600 40px 'Inter'">Aa</div><b>Inter</b><p class="small">Texto, tablas, formularios y etiquetas · pesos 400, 500, 600 y 700.</p></div></div>
+<p>Las dos son gratuitas (Google Fonts). Si no cargan, el sistema usa la tipografía sans-serif del dispositivo. El logotipo <b>no</b> es una fuente: es un dibujo propio.</p>
+<h3>Escala (la misma que usa la interfaz)</h3>
+<table><tr><th>Nombre</th><th>Tamaño / alto de línea</th><th>Peso</th><th>Ejemplo</th></tr>
+<tr><td>headline-xl</td><td class="num">36 / 44 px</td><td>700</td><td style="font:700 22px 'Plus Jakarta Sans'">Resumen del mes</td></tr>
+<tr><td>headline-lg</td><td class="num">28 / 36 px</td><td>600</td><td style="font:600 20px 'Plus Jakarta Sans'">Asistencia del equipo</td></tr>
+<tr><td>headline-md</td><td class="num">22 / 30 px</td><td>600</td><td style="font:600 18px 'Plus Jakarta Sans'">Cargar horas de Emi</td></tr>
+<tr><td>headline-sm</td><td class="num">18 / 26 px</td><td>600</td><td style="font:600 16px 'Plus Jakarta Sans'">Licencias pendientes</td></tr>
+<tr><td>body-lg</td><td class="num">16 / 26 px</td><td>400</td><td style="font-size:15px">Texto destacado de una pantalla.</td></tr>
+<tr><td>body-md</td><td class="num">14 / 22 px</td><td>400</td><td>Texto general de la app.</td></tr>
+<tr><td>body-sm</td><td class="num">12 / 18 px</td><td>400</td><td style="font-size:12px">Ayudas, notas al pie y detalles.</td></tr>
+<tr><td>label-lg / md</td><td class="num">14 y 12 px</td><td>600 / 500</td><td><b>Etiquetas de campos y botones</b></td></tr>
+<tr><td>label-xs-mono</td><td class="num">11 px · espaciado .06em</td><td>600</td><td style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:600">Encabezados de tabla</td></tr></table>
+<h3>Reglas</h3>
+<ul><li><b>Cifras alineadas:</b> horas, importes, fechas y contadores usan cifras tabulares, para que las columnas se lean parejas. Los importes se alinean a la derecha.</li>
+<li>Los títulos de una pantalla van con el <b>eyebrow</b> (etiqueta chica en mayúsculas sobre el título: «Administrador», «Autogestión», «Repositorio»).</li>
+<li>No más de dos pesos por bloque. No usar cursiva para dar énfasis: se usa negrita.</li>
+<li>Las mayúsculas sostenidas solo en etiquetas cortas y encabezados de tabla.</li>
+<li>Tamaño de texto base: 14 px. Ningún texto de lectura baja de 12 px.</li></ul><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>10</span></div></section><section class="page "><div class="eyebrow">06 · Formas, íconos y espacios</div><h2>El lenguaje visual</h2>
+<div class="grid g2">
+<div><h3 style="margin-top:0">Íconos</h3><p><b>Material Symbols Outlined</b>, trazo regular, siempre con un texto al lado o una etiqueta accesible. Tamaños: 16, 18, 20 y 24 px.</p>
+<p>Cada pantalla tiene un ícono fijo en el menú (por ejemplo: <i>how_to_reg</i> para Mi asistencia, <i>folder_open</i> para Documentos, <i>notifications</i> para los avisos). No se cambian de una versión a otra.</p></div>
+<div><h3 style="margin-top:0">Formas</h3><div class="row" style="gap:6mm">
+<div style="width:26mm;height:18mm;border-radius:12px;background:#120f1d;border:1px solid #2d2742;color:#b9b3d0;display:flex;align-items:center;justify-content:center;font-size:11px">Tarjeta · 12 px</div>
+<div style="width:26mm;height:18mm;border-radius:8px;background:#e6e2f3;display:flex;align-items:center;justify-content:center;font-size:11px">Campo · 8 px</div>
+<div style="width:26mm;height:18mm;border-radius:999px;background:#ede4ff;color:#512696;display:flex;align-items:center;justify-content:center;font-size:11px">Etiqueta</div></div>
+<p style="margin-top:3mm">Esquinas redondeadas: <b>12 px</b> tarjetas, diálogos y botones grandes · <b>8 px</b> campos y botones chicos · <b>círculo</b> avatares y etiquetas.</p></div></div>
+<h3>Espacios</h3>
+<table><tr><th>Token</th><th>Valor</th><th>Uso</th></tr>
+<tr><td><code>space-xs</code></td><td class="num">4 px</td><td>Entre ícono y texto muy cercanos</td></tr><tr><td><code>space-sm</code></td><td class="num">8 px</td><td>Entre elementos de una misma fila</td></tr>
+<tr><td><code>space-md</code></td><td class="num">16 px</td><td>Padding de tablas y bloques</td></tr><tr><td><code>space-lg</code></td><td class="num">24 px</td><td>Padding de tarjetas, separación entre secciones</td></tr>
+<tr><td><code>space-xl</code></td><td class="num">36 px</td><td>Separación entre grandes bloques</td></tr><tr><td><code>gutter</code></td><td class="num">20 px</td><td>Entre tarjetas de una grilla</td></tr></table>
+<h3>Celular</h3>
+<ul><li>Un solo punto de quiebre: <b>900 px</b>. Por debajo, el menú pasa a un panel desplegable y las tablas pasan a <b>tarjetas</b>, una por fila, con el título de cada dato.</li>
+<li>La pantalla tiene que verse completa a <b>375 px</b> de ancho, <b>sin scroll horizontal</b> de la página.</li>
+<li>Los botones y casillas se pueden tocar con el dedo: mínimo 36 px de alto.</li></ul><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>11</span></div></section><section class="page "><div class="eyebrow">07 · Interfaz</div><h2>Componentes y principios</h2>
+<div class="grid g2">
+<div class="panel dk ui dk"><div class="row"><span class="btn p">+ Cargar horas</span><span class="btn s">Cancelar</span><span class="btn d">Borrar</span><span class="btn g">Descartar</span></div>
+<div class="row"><span class="chipx t-ok">Aprobada</span><span class="chipx t-warn">Atención</span><span class="chipx t-bad">Urgente</span><span class="chipx t-info">Tarde 12 min</span></div>
+<div style="border-radius:12px;background:#181426;padding:10px 12px;margin-top:6px"><b style="font-size:12.5px">Seguro de Emi vence en 5 días</b> <span class="chipx t-bad">Urgente</span><div style="color:#b9b3d0;font-size:11px">Vence el 30/11/2026.</div></div></div>
+<div class="panel lt ui"><div class="row"><span class="btn p">+ Cargar horas</span><span class="btn s">Cancelar</span><span class="btn d">Borrar</span><span class="btn g">Descartar</span></div>
+<div class="row"><span class="chipx t-ok">Aprobada</span><span class="chipx t-warn">Atención</span><span class="chipx t-bad">Urgente</span><span class="chipx t-info">Tarde 12 min</span></div>
+<div style="border-radius:12px;background:#efecf8;padding:10px 12px;margin-top:6px"><b style="font-size:12.5px">Seguro de Emi vence en 5 días</b> <span class="chipx t-bad">Urgente</span><div style="color:#4d4768;font-size:11px">Vence el 30/11/2026.</div></div></div></div>
+<h3>Reglas de componentes</h3>
+<table><tr><th>Componente</th><th>Regla</th></tr>
+<tr><td>Botón principal</td><td>Violeta, texto blanco, <b>uno solo</b> por pantalla o diálogo (la acción que se espera). Texto con verbo: «Guardar», «Aprobar», «Cargar y aprobar».</td></tr>
+<tr><td>Botón peligroso</td><td>Rojo. Solo para borrar o rechazar, <b>siempre con diálogo de confirmación</b> que explica qué pasa.</td></tr>
+<tr><td>Etiquetas de estado</td><td>Cinco tonos fijos: éxito, atención, error, información y neutro. Siempre con texto.</td></tr>
+<tr><td>Tablas</td><td>Encabezado en mayúsculas chicas, cifras tabulares, filas con foco al pasar. En celular pasan a tarjetas con el título de cada dato.</td></tr>
+<tr><td>Formularios</td><td>Etiqueta arriba, campo debajo, ayuda en gris. «Opcional» se marca con una etiqueta; lo obligatorio no se marca.</td></tr>
+<tr><td>Casillas e interruptores</td><td>Responden <b>al instante</b> (se actualizan antes de que vuelva el servidor) y vuelven atrás con aviso si falla.</td></tr>
+<tr><td>Diálogos</td><td>Un título, una explicación en una o dos frases, y los botones Cancelar y acción. Se cierran con Escape o tocando afuera.</td></tr>
+<tr><td>Avisos (campanita)</td><td>Tres niveles: <b>urgente</b>, <b>atención</b> y <b>para tener en cuenta</b>; los urgentes primero. Solo se muestra lo que la persona puede ver.</td></tr>
+<tr><td>Confirmaciones</td><td>Un cartel breve abajo a la derecha: «Guardaste…», «Aprobaste…». Dice qué pasó y a quién.</td></tr></table>
+<h3>Principios de producto</h3>
+<ul><li><b>Un botón que no hace nada es peor que no tener el botón.</b> No se dibuja nada en pantalla hasta que funciona.</li>
+<li>Una pantalla muestra solo lo que ese rol puede usar; lo que el rol no puede hacer lo impiden además las reglas del servidor.</li>
+<li>Lo que depende del cliente se <b>activa</b> (módulos, modos, permisos): no hay funciones «por defecto» que algunos no usan.</li>
+<li>Los errores se explican en lenguaje claro y llevan un código corto para soporte.</li></ul><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>12</span></div></section><section class="page "><div class="eyebrow">08 · Modo claro y oscuro</div><h2>Cada persona elige el suyo</h2>
+<ul><li>Un botón en el encabezado alterna <b>Automático</b> (sigue al dispositivo), <b>Claro</b> y <b>Oscuro</b>. La elección se recuerda en ese navegador.</li>
+<li>El oscuro es el <b>modo de la marca</b>; el claro es la misma paleta con fondos lavanda muy suaves y el violeta oscurecido para que el texto se lea.</li>
+<li>La <b>pantalla de entrada</b> y la <b>consola del Configurador</b> son de la marca y se ven <b>siempre oscuras</b>.</li>
+<li>Los <b>recibos y planillas impresas</b> salen siempre en claro, en negro sobre blanco.</li>
+<li>Ninguna pantalla define colores propios: todo sale de los mismos tokens, así los dos modos se ven bien sin tocar pantallas.</li></ul>
+<div class="grid g2"><div class="stage" style="background:#0b0914"><div style="background:#120f1d;border:1px solid #2d2742;border-radius:12px;padding:10px 14px;color:#e9e6f5;width:100%"><b>Oscuro</b><div style="color:#b9b3d0;font-size:11px">Tarjeta sobre fondo #0B0914</div></div></div>
+<div class="stage" style="background:#f4f2fb"><div style="background:#fff;border:1px solid #e3def2;border-radius:12px;padding:10px 14px;color:#17132b;width:100%"><b>Claro</b><div style="color:#4d4768;font-size:11px">Tarjeta sobre fondo #F4F2FB</div></div></div></div>
+<div style="height:4mm"></div>
+<div class="eyebrow">09 · Marca blanca por cliente</div><h2>Cada empresa, su identidad</h2>
+<p>Cada cliente tiene su propia instancia de SG Black. Su administrador puede personalizarla desde <b>Configuración → Empresa</b>; el resto lo define quien instala el producto (el Configurador).</p>
+<table><tr><th>Qué se personaliza</th><th>Quién</th><th>Dónde</th></tr>
+<tr><td>Nombre de la empresa</td><td>Administrador del cliente</td><td>Aparece en el menú, en las planillas y en los avisos</td></tr>
+<tr><td>Logo (dirección https) o monograma con las iniciales</td><td>Administrador del cliente</td><td>Menú lateral y encabezado del celular</td></tr>
+<tr><td>Color principal, secundario y de acento</td><td>Administrador del cliente</td><td>Botones, ítem activo, etiquetas. El violeta SG es el valor inicial</td></tr>
+<tr><td>Jornada, feriados, horas extra, tolerancia de llegada</td><td>Administrador del cliente</td><td>Configuración</td></tr>
+<tr><td>Modo de trabajo, módulos, modelo de pago, permisos</td><td>Configurador (SG Black)</td><td>Consola del Configurador</td></tr></table>
+<div class="grid g2"><div class="card"><b>Lo que no cambia</b><ul class="small" style="margin-top:2mm"><li>La estructura, el orden del menú, los íconos y los textos del producto.</li><li>La pantalla de entrada y la consola del Configurador, siempre con la marca SG Black.</li><li>El pie «Powered by SG Black».</li></ul></div>
+<div class="card"><b>Cuidado con el contraste</b><p class="small" style="margin:2mm 0 0">Si un cliente elige un color principal muy claro, el texto del botón pasa solo a oscuro (la app calcula el contraste). Conviene pedirle que use un color con contraste suficiente sobre blanco y sobre negro.</p></div></div><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>13</span></div></section><section class="page "><div class="eyebrow">10 · Voz y tono</div><h2>Cómo habla SG Black</h2>
+<p class="lead">Como una persona del equipo que sabe del tema: directa, clara y de vos. Español rioplatense, sin tecnicismos y sin vueltas.</p>
+<div class="grid g2"><div class="card"><b>Sí</b><ul class="small" style="margin-top:2mm"><li><b>Voseo:</b> «cargá», «elegí», «tenés», «mirá», «fijate».</li><li><b>Verbo primero:</b> «Aprobá la licencia», «Subí el certificado».</li><li><b>Decir qué pasó y a quién:</b> «Aprobaste la licencia de Emi Demo».</li><li><b>Explicar qué pasa después:</b> «Las fechas que cubría pasan a usar la vigencia anterior».</li><li>Frases cortas. Números con puntos de miles y coma decimal: <span class="num">$ 1.850.000</span>, <span class="num">7,5 h</span>.</li></ul></div>
+<div class="card"><b>No</b><ul class="small" style="margin-top:2mm"><li>«Tú», «usted» ni español neutro.</li><li>Jerga técnica: «documento», «registro» y «colección» en lugar de «doc», «payload» o «endpoint».</li><li>Culpar a la persona: no «Ingresó mal la fecha», sí «Elegí una fecha válida».</li><li>Prometer lo que no es: no «liquidación automática», no «auditado», no «100 % seguro».</li><li>Signos de exclamación y emojis.</li></ul></div></div>
+<h3>Frases fijas (no se reescriben)</h3>
+<table><tr><th>Cuándo</th><th>Texto</th></tr>
+<tr><td>Liquidaciones</td><td>«Anotación y seguimiento digital: no es una herramienta de liquidación legal ni reemplaza el trabajo del contador.»</td></tr>
+<tr><td>Vacaciones</td><td>«Es una estimación según la ley y tu fecha de ingreso; tu convenio puede darte más días. Confirmalo con la empresa.»</td></tr>
+<tr><td>Premio y presentismo</td><td>«Solo queda registrado: no calcula descuentos.»</td></tr>
+<tr><td>Sueldos</td><td>«Solo lo ve el administrador.» (o «de solo lectura» cuando un supervisor tiene el permiso)</td></tr>
+<tr><td>Error al guardar</td><td>«No se pudo guardar. Probá de nuevo.» + código corto de soporte</td></tr></table>
+<div class="foot"><span>SG Black · Manual de marca v1.0</span><span>14</span></div></section><section class="page "><h3>Glosario del producto</h3>
+<table><tr><th>Término</th><th>Significa</th></tr>
+<tr><td>Administrador · Supervisor · Empleado</td><td>Los tres roles. El rol lo asigna el Configurador, no se cambia desde la app.</td></tr>
+<tr><td>Configurador</td><td>Quien instala y configura la plataforma para cada cliente (activa módulos y el modo de trabajo).</td></tr>
+<tr><td>Modo de trabajo</td><td><b>Por proyectos</b> (horas en proyectos) o <b>por asistencia</b> (marcar presente cada día).</td></tr>
+<tr><td>Módulo activable</td><td>Función opcional que el cliente contrata: sueldos, rendimiento, facturación por proyecto, dedicación, liquidaciones.</td></tr>
+<tr><td>Marca de asistencia</td><td>La hora de llegada de un día. «Tarde» se calcula contra la jornada y una tolerancia.</td></tr>
+<tr><td>Licencia · ausencia</td><td>Una licencia se pide y se aprueba; la ausencia injustificada la registra quien supervisa.</td></tr>
+<tr><td>Vigencia</td><td>Un sueldo con la fecha desde la que rige. El historial no se pisa.</td></tr>
+<tr><td>Aviso</td><td>Algo para saber antes de que pase (vacaciones, vencimientos). Sale en la campanita.</td></tr></table><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>15</span></div></section><section class="page "><div class="eyebrow">11 · El producto</div><h2>Decisiones establecidas</h2>
+<p class="small">Resumen de lo que se definió durante la construcción. Uso interno: sirve para vender, configurar un cliente nuevo y no volver a discutir lo ya resuelto.</p>
+<h3 style="margin-top:2mm">Roles y quién ve qué</h3>
+<table><tr><th>Dato o acción</th><th>Empleado</th><th>Supervisor</th><th>Administrador</th></tr>
+<tr><td>Cargar sus horas o marcar su asistencia</td><td>Sí</td><td>Sí</td><td>—</td></tr>
+<tr><td>Cargar horas y licencias por otra persona</td><td>—</td><td>Su equipo</td><td>Cualquiera</td></tr>
+<tr><td>Aprobar horas y licencias</td><td>—</td><td>Su equipo</td><td>Todos</td></tr>
+<tr><td>Asignar proyectos y ver el organigrama</td><td>—</td><td>Asigna a su equipo</td><td>Todo; ordena el organigrama</td></tr>
+<tr><td>Sueldos y valor hora</td><td>Solo su recibo publicado</td><td>Solo lectura de su equipo, si el Configurador lo permite</td><td>Ve y edita todo</td></tr>
+<tr><td>Certificados (salud)</td><td>Los suyos</td><td>Los de su equipo</td><td>Todos</td></tr>
+<tr><td>Recibos de sueldo (documentos)</td><td>Los suyos</td><td>No los ve</td><td>Los sube y los ve todos</td></tr>
+<tr><td>Premio y presentismo por licencia</td><td>No lo ve</td><td>Su equipo</td><td>Todo</td></tr>
+<tr><td>Vencimientos (seguro, prueba, pasantía)</td><td>No los ve</td><td>Los de su equipo</td><td>Los carga y los ve todos</td></tr>
+<tr><td>Datos personales (CUIL, DNI, teléfono)</td><td>—</td><td>—</td><td>Solo el administrador</td></tr></table>
+<div class="foot"><span>SG Black · Manual de marca v1.0</span><span>16</span></div></section><section class="page "><h3>Modos y módulos</h3>
+<table><tr><th>Pieza</th><th>Qué es</th><th>Depende de</th></tr>
+<tr><td>Modo por proyectos</td><td>Horas en proyectos, aprobaciones, horas extra, planilla del contador</td><td>—</td></tr>
+<tr><td>Modo por asistencia</td><td>Marcar presente, tardanzas, resumen mensual. Sueldo mensual. Apaga los módulos de proyectos</td><td>—</td></tr>
+<tr><td>Sueldos en el legajo</td><td>Sueldo con vigencias; base de otros módulos</td><td>—</td></tr>
+<tr><td>Rendimiento</td><td>Costo por proyecto, persona y mes</td><td>Sueldos</td></tr>
+<tr><td>Facturación por proyecto</td><td>Por hora (con tarifas por persona), precio cerrado o interno; ingreso y margen</td><td>Rendimiento</td></tr>
+<tr><td>Dedicación y proyección</td><td>Porcentaje por asignación y reparto de horas por mes</td><td>— (solo por proyectos)</td></tr>
+<tr><td>Seguimiento de liquidaciones</td><td>Anotación del mes y recibo propio de cada persona</td><td>Sueldos</td></tr>
+<tr><td>Premio y presentismo</td><td>Marcas por licencia, valores por defecto, regla de tardanzas</td><td>—</td></tr></table>
+<p class="small">Se prenden y apagan solo desde la consola del Configurador. El administrador del cliente no ve la lista de módulos.</p><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>17</span></div></section><section class="page "><div class="eyebrow">11 · El producto</div><h2>Datos, seguridad y operación</h2>
+<h3 style="margin-top:0">Principios de datos</h3>
+<ul><li><b>Una instancia por cliente.</b> Cada empresa tiene su propio proyecto de Firebase: sus datos no conviven con los de otra, y cada una tiene su backup.</li>
+<li><b>Los permisos los hace cumplir el servidor</b> (las reglas de Firestore), no solo la pantalla. La pantalla esconde lo que no se puede usar.</li>
+<li><b>Datos sensibles separados:</b> CUIL y DNI, sueldos, certificados y recibos viven en lugares aparte con permisos más estrictos.</li>
+<li><b>Lo aprobado no se recalcula:</b> las horas se congelan al aprobar. Un cambio de reglas rige hacia adelante.</li>
+<li><b>Todo lo importante deja constancia:</b> quién lo cargó, quién lo corrigió y cuándo; de dónde vino una marca de asistencia (la persona, un superior o un sistema externo).</li>
+<li><b>Sin servidor propio:</b> las cuentas las da de alta el Configurador con un script; no hay registro libre.</li>
+<li>Se cierra la sesión sola a los 30 minutos sin actividad.</li></ul>
+<div class="foot"><span>SG Black · Manual de marca v1.0</span><span>18</span></div></section><section class="page "><h3>Cómo se instala un cliente nuevo</h3>
+<ol style="margin:0 0 3mm;padding-left:5mm"><li>Se crea el proyecto de Firebase del cliente y se completa su configuración.</li><li>Se corre el script de alta (nombre de la empresa, primer administrador, acceso a proyectos y feriados).</li>
+<li>El Configurador elige el modo de trabajo, el modelo de pago y los módulos, y activa los permisos que el cliente necesite.</li>
+<li>Se alta a las personas y se ordena el organigrama; el administrador del cliente carga su logo y colores.</li><li>Se publican las reglas y la app (la publicación la hace siempre el responsable, nunca de forma automática).</li></ol>
+<p class="small">La guía completa está en <code>docs/instalar-cliente.md</code>.</p>
+<h3>Límites conocidos</h3>
+<table><tr><th>Tema</th><th>Hoy</th></tr>
+<tr><td>Archivos (certificados, recibos)</td><td>Dentro de Firestore, hasta 700 KB por archivo (PDF o imagen). Con el plan Blaze se puede migrar a un almacenamiento de archivos.</td></tr>
+<tr><td>Horas aprobadas</td><td>Las calcula el navegador de quien aprueba y las reglas verifican que sean números. Una versión con servidor propio lo cerraría del todo.</td></tr>
+<tr><td>Saldo de vacaciones</td><td>Estimación según la ley; muchos convenios dan más días.</td></tr>
+<tr><td>Premio y presentismo</td><td>Solo se registran las marcas y se reportan: no se calculan importes.</td></tr></table>
+<h3>Pendientes y próximos pasos</h3>
+<table><tr><th>Cuándo</th><th>Qué</th></tr>
+<tr><td>Con el plan Blaze</td><td>Backups programados, avisos por mail, conexión por API a un sistema de fichaje, restringir la clave de la API y activar App Check.</td></tr>
+<tr><td>Antes de vender a un cliente con datos reales</td><td>Revisión de seguridad por un tercero; política de privacidad y acuerdo de tratamiento de datos (ley 25.326).</td></tr>
+<tr><td>Cuando haga falta</td><td>Jornada rotativa por turnos; entrada y salida con horas nocturnas; publicar a varios clientes con un solo comando.</td></tr>
+<tr><td>Marca</td><td>Búsqueda en el INPI de «SG Black» y su logo, y registro.</td></tr></table><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>19</span></div></section><section class="page "><div class="eyebrow">12 · Aplicaciones y archivos</div><h2>Dónde vive la marca</h2>
+<h3 style="margin-top:0">En el producto</h3>
+<table><tr><th>Lugar</th><th>Cómo</th></tr>
+<tr><td>Pantalla de entrada</td><td>Logotipo horizontal sobre fondo de marca (negro con luz violeta), siempre oscura.</td></tr>
+<tr><td>Consola del Configurador</td><td>Glifo + título; fondo de marca.</td></tr>
+<tr><td>Pie del menú lateral</td><td>«Powered by» + glifo + SG BLACK, en pequeño y discreto.</td></tr>
+<tr><td>Pestaña del navegador</td><td>Título «SG Black»; favicon con el isotipo.</td></tr>
+<tr><td>Instalación en el celular</td><td>Ícono de iPhone y Android con el isotipo (versión opaca y adaptable).</td></tr></table>
+<h3>En los archivos que se descargan</h3>
+<table><tr><th>Archivo</th><th>Nombre</th></tr>
+<tr><td>Planilla del contador (horas)</td><td><code>sgblack-planilla-AAAA-MM.xlsx</code> / <code>.csv</code></td></tr>
+<tr><td>Resumen de asistencia</td><td><code>sgblack-asistencia-AAAA-MM.xlsx</code> / <code>.csv</code></td></tr>
+<tr><td>Seguimiento de liquidaciones</td><td><code>sgblack-liquidacion-AAAA-MM.csv</code></td></tr></table>
+<p>Las planillas usan los colores de la marca: encabezado en negro violáceo <code>#14102A</code> con texto blanco, y fila de totales en lavanda claro <code>#EFE8FE</code>. Adentro figura el nombre de la <b>empresa cliente</b>, no el de SG Black.</p>
+<h3>Comunicación y firma</h3>
+<ul><li><b>Avatar</b> de redes y perfiles: isotipo en su cuadrado (<code>sgblack-isotipo-512.png</code>).</li><li><b>Banner</b>: panel horizontal completo (<code>sgblack-logo-horizontal.png</code>), recortado sin cortar el logotipo.</li>
+<li><b>Firma de mail</b>: logotipo horizontal con texto casi negro sobre fondo blanco, 160 px de ancho; debajo, nombre, cargo y contacto en Inter 12 px.</li><li><b>Presentaciones</b>: portada sobre negro SG con el logotipo en blanco; interiores en claro, títulos en Plus Jakarta Sans.</li></ul>
+<div class="foot"><span>SG Black · Manual de marca v1.0</span><span>20</span></div></section><section class="page "><h3>Archivos de la marca</h3>
+<table><tr><th>Carpeta</th><th>Contenido</th></tr>
+<tr><td><code>brand/source/</code></td><td>Los dos originales: isotipo (<code>.webp</code>) y logotipo horizontal (<code>.jpg</code>). Son la fuente de todo lo demás: no se pierden.</td></tr>
+<tr><td><code>public/brand/</code></td><td>Todas las variantes que usa la app (PNG con transparencia), y <code>public/favicon.ico</code>.</td></tr>
+<tr><td><code>scripts/brand-assets.py</code></td><td>Regenera todas las variantes desde los originales.</td></tr>
+<tr><td><code>src/config/sgblack.brand.ts</code></td><td>Nombre, rutas y paleta de la marca en el código.</td></tr>
+<tr><td><code>src/styles.css</code></td><td>Los colores de la interfaz (modo oscuro, modo claro y marca por cliente).</td></tr>
+<tr><td><code>docs/marca/</code></td><td>Este manual (HTML y PDF). Se regenera con <code>python3 scripts/build-brand-manual.py</code>.</td></tr></table>
+<div class="note"><b>Nota técnica:</b> los originales no incluyen una versión vectorial (SVG). Para imprenta en gran formato (cartelería, vinilos) conviene pedir al diseñador una versión vectorial del isotipo y el logotipo, y sumarla a <code>brand/source/</code>.</div><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>21</span></div></section><section class="page "><div class="eyebrow">13 · Registro y cuestiones legales</div><h2>Antes de comunicar la marca</h2>
+<p class="lead">Este apartado es una lista de pendientes, no asesoramiento legal. Lo tiene que revisar un agente de propiedad intelectual o un abogado.</p>
+<table><tr><th>Tema</th><th>Qué hay que hacer</th><th>Estado</th></tr>
+<tr><td>Búsqueda de antecedentes del nombre «SG Black»</td><td>Consultar en el INPI marcas iguales o parecidas, en las clases que corresponden a software, servicios comerciales y servicios tecnológicos (clases 9, 35 y 42 de la clasificación de Niza). «Black» es una palabra muy usada: conviene que el agente evalúe el riesgo de confusión con marcas del mismo rubro.</td><td class="mid">Pendiente</td></tr>
+<tr><td>Búsqueda del logo (isotipo y logotipo)</td><td>El isotipo es una «S» en hexágono: una forma que puede parecerse a marcas ya registradas. Pedir búsqueda de similitud figurativa.</td><td class="mid">Pendiente</td></tr>
+<tr><td>Autoría y derechos del logo</td><td>Confirmar quién creó el diseño y con qué herramienta, y asegurarse de tener la cesión de derechos o la titularidad por escrito. Si se generó con herramientas de inteligencia artificial, consultar con el abogado cómo afecta eso al registro y a la protección.</td><td class="mid">Pendiente</td></tr>
+<tr><td>Registro de la marca</td><td>Solicitar el registro del nombre y del logo (mixto) en el INPI, a nombre de quien corresponda.</td><td class="mid">Pendiente</td></tr>
+<tr><td>Nombre de dominio y perfiles</td><td>Reservar el dominio y los usuarios de redes con el nombre nuevo antes de anunciarlo.</td><td class="mid">Pendiente</td></tr>
+<tr><td>Datos personales</td><td>Política de privacidad y acuerdo de tratamiento de datos con cada cliente (ley 25.326), porque la plataforma guarda CUIL, DNI, sueldos y certificados.</td><td class="mid">Pendiente</td></tr>
+<tr><td>Revisión de seguridad</td><td>No presentar la plataforma como «auditada» hasta que la revise un tercero.</td><td class="mid">Pendiente</td></tr></table>
+<div class="note warn"><b>Mientras tanto:</b> el nombre se puede usar internamente y en la demo, pero no conviene invertir en material impreso ni en publicidad hasta tener resuelta la búsqueda de antecedentes.</div>
+<div style="height:8mm"></div>
+<div class="stage ink" style="height:52mm"><img src="../../public/brand/sgblack-logo-on-dark.png" style="width:110mm"></div>
+<p class="small" style="margin-top:3mm;text-align:center">SG Black · Manual de marca v1.0 · 25 de noviembre de 2026</p><div class="foot"><span>SG Black · Manual de marca v1.0</span><span>22</span></div></section>
+</body></html>

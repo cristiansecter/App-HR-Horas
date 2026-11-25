@@ -1,5 +1,5 @@
 {
-  "name": "horus",
+  "name": "sg-black",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -11,7 +11,7 @@
     "test": "vitest run",
     "build:demo": "tsc --noEmit && vite build --mode demo",
     "deploy:demo": "npm run build:demo && npx firebase-tools deploy --only hosting,firestore:rules,firestore:indexes --project demo",
-    "test:rules": "npx --yes firebase-tools@15 emulators:exec --only firestore --project horus-rules-test \"vitest run --config vitest.rules.config.ts\"",
+    "test:rules": "npx --yes firebase-tools@15 emulators:exec --only firestore --project sgblack-rules-test \"vitest run --config vitest.rules.config.ts\"",
     "provision": "tsx scripts/provision-instance.ts",
     "create-user": "tsx scripts/create-user.ts",
     "set-role": "tsx scripts/set-role.ts"

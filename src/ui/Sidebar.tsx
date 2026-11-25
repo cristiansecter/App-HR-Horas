@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { navigationFor } from "@/config/navigation";
-import { horusBrand } from "@/config/horus.brand";
+import { sgBlackBrand } from "@/config/sgblack.brand";
 import { useCompany } from "@/company/CompanyContext";
 import { usePending } from "@/features/approvals/usePending";
 import { usePendingLeaves } from "@/features/approvals/usePendingLeaves";
@@ -134,8 +134,8 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </div>
         <div className="flex items-center justify-center gap-1.5 pt-space-xs opacity-70 transition-opacity hover:opacity-100">
           <span className="font-label-xs-mono text-label-xs-mono tracking-wider text-on-surface-variant uppercase">Powered by</span>
-          <img alt="" src={horusBrand.iconUrl} className="size-4 rounded" />
-          <span className="font-headline-sm text-[12px] font-bold tracking-tight text-primary">HORUS</span>
+          <img alt="" src={sgBlackBrand.glyphUrl} className="h-4 w-auto" />
+          <span className="font-headline-sm text-[12px] font-bold tracking-tight text-primary">SG BLACK</span>
         </div>
         <p className="pt-1 text-center font-label-xs-mono text-[10px] text-on-surface-variant/60" title="Versión publicada">v {__BUILD_ID__}</p>
       </div>

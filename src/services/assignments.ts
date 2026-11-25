@@ -3,7 +3,7 @@ import type { SessionUser } from "@/domain/types";
 import { getFirebase } from "./firebase";
 
 /** Aviso interno: cambió una asignación de proyectos o un superior; las pantallas abiertas deben volver a leer. */
-export const ASSIGNMENTS_CHANGED = "horus:assignments-changed";
+export const ASSIGNMENTS_CHANGED = "sgblack:assignments-changed";
 
 export interface Assignment {
   projectId: string;

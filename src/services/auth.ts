@@ -6,7 +6,7 @@ import { ROLES, type Role, type SessionUser } from "@/domain/types";
 import type { UserProfile } from "@/domain/model";
 import { getFirebase } from "./firebase";
 
-/** Lo que pasa cuando hay una cuenta de Firebase pero no se puede armar una sesión de Horus. */
+/** Lo que pasa cuando hay una cuenta de Firebase pero no se puede armar una sesión de SG Black. */
 export class SessionError extends Error {}
 
 /** Cuenta del Configurador (proveedor del sistema): entra solo con Google y solo con el correo de `CONFIGURATOR_EMAIL`. */
