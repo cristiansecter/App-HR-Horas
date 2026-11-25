@@ -16,6 +16,8 @@ interface CompanyValue {
   /** Jornada de la empresa. Si la persona tiene una propia, se usa esa. */
   defaultSchedule: WorkSchedule;
   editWindowDays: number;
+  /** Cómo se eligen los proyectos para cargar horas (ver CompanyData). En la demo, todos abiertos. */
+  projectAccess: "open" | "assigned";
   /** Módulos activos y modelo de pago (los define el Configurador). En la demo, todo apagado. */
   features: Features;
   companyName: string;
@@ -33,6 +35,7 @@ const DEMO_VALUE: CompanyValue = {
   overtime: DEMO_OVERTIME_CONFIG,
   defaultSchedule: DEMO_SCHEDULE,
   editWindowDays: 7,
+  projectAccess: "open",
   features: DEFAULT_FEATURES,
   companyName: tenantConfig.companyName,
   logoUrl: tenantConfig.logoUrl,
@@ -84,6 +87,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       overtime: data?.overtime ?? DEMO_OVERTIME_CONFIG,
       defaultSchedule: data?.defaultSchedule ?? DEMO_SCHEDULE,
       editWindowDays: data?.editWindowDays ?? 7,
+      projectAccess: data?.projectAccess ?? "assigned",
       features: data?.features ?? DEFAULT_FEATURES,
       companyName: data?.companyName?.trim() || tenantConfig.companyName,
       logoUrl: data?.logoUrl?.trim() || tenantConfig.logoUrl,

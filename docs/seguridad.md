@@ -4,7 +4,7 @@ Revisión hecha sobre el código y las reglas de Firestore del repositorio, al c
 
 ## Resumen
 
-No se encontraron fallas críticas abiertas. Los permisos los hacen cumplir las **reglas de Firestore** (no solo la pantalla), están probadas con 99 casos contra el emulador y no hay ninguna colección sin regla explícita. Lo que queda son mejoras de endurecimiento (🟡) que conviene hacer cuando la instancia pase a producción con clientes reales.
+No se encontraron fallas críticas abiertas. Los permisos los hacen cumplir las **reglas de Firestore** (no solo la pantalla), están probadas con 110 casos contra el emulador y no hay ninguna colección sin regla explícita. Lo que queda son mejoras de endurecimiento (🟡) que conviene hacer cuando la instancia pase a producción con clientes reales.
 
 ## Lo que está bien resuelto (✅)
 
@@ -16,6 +16,7 @@ No se encontraron fallas críticas abiertas. Los permisos los hacen cumplir las 
 - **Módulos apagados = datos bloqueados.** Si un módulo no está activo, las reglas niegan sus colecciones aunque alguien las pida directamente.
 - **Período cerrado.** Con el mes de liquidaciones cerrado, las reglas rechazan crear, cambiar o borrar recibos (solo se puede publicar o retirar la publicación).
 - **Recibos publicados.** La persona solo puede pedir los suyos y publicados; una consulta sin esas condiciones es rechazada. El costo patronal de la empresa no se guarda en el recibo.
+- **Proyectos asignados.** Cada persona carga horas solo en los proyectos que su supervisor o el administrador le asignó (por defecto); las reglas lo exigen, y un supervisor solo asigna a su equipo.
 - **Registros aprobados congelados.** Las horas y el desglose los escribe solo quien aprueba y no se pueden editar después.
 - **Sin XSS por construcción.** React escapa lo que muestra; no hay `dangerouslySetInnerHTML`, `innerHTML`, `eval` ni `new Function` en el código.
 - **Sin secretos en el repositorio.** Solo está la configuración web de Firebase (pública por diseño). Las claves de cuenta de servicio están excluidas por `.gitignore` y los scripts las leen de un archivo local.
@@ -60,7 +61,7 @@ No es seguridad pero sí riesgo para el cliente: la liquidación es una herramie
 
 ## Cómo se verificó
 
-- Revisión línea por línea de `firestore.rules` y sus 99 pruebas (`npm run test:rules`).
+- Revisión línea por línea de `firestore.rules` y sus 110 pruebas (`npm run test:rules`).
 - Búsqueda de secretos, correos, `innerHTML`/`eval`, almacenamiento local y archivos sensibles versionados.
 - `npm audit` y revisión de dependencias sin uso (se quitó `lucide-react`).
 - Recorridos de punta a punta en navegador contra los emuladores de Auth y Firestore para cada rol y cada módulo.

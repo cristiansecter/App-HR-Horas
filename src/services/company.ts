@@ -11,6 +11,8 @@ export interface CompanyData {
   overtime: OvertimeConfig;
   defaultSchedule: WorkSchedule;
   editWindowDays: number;
+  /** "assigned": cada persona carga horas solo en los proyectos que le asignan. "open": en cualquiera activo. */
+  projectAccess: "open" | "assigned";
   features: Features;
   companyName?: string;
   logoUrl?: string;
@@ -28,6 +30,7 @@ interface SettingsDoc {
   overtime?: OvertimeConfig;
   defaultSchedule?: WorkSchedule;
   editWindowDays?: number;
+  projectAccess?: "open" | "assigned";
 }
 
 export async function loadCompany(): Promise<CompanyData> {
@@ -53,6 +56,7 @@ export async function loadCompany(): Promise<CompanyData> {
     overtime: settings.overtime ?? defaultOvertimeConfig(),
     defaultSchedule: settings.defaultSchedule ?? defaultWorkSchedule(),
     editWindowDays: settings.editWindowDays ?? 7,
+    projectAccess: settings.projectAccess === "open" ? "open" : "assigned",
     features: normalizeFeatures(featuresSnap.exists() ? featuresSnap.data() : undefined),
     companyName: settings.companyName,
     logoUrl: settings.logoUrl,

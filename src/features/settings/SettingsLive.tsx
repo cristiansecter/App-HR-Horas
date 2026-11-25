@@ -3,11 +3,13 @@ import { useCompany } from "@/company/CompanyContext";
 import { Page, PageHeader } from "@/ui/Page";
 import BrandingSection from "./BrandingSection";
 import HolidaysSection from "./HolidaysSection";
+import OrgChartSection from "./OrgChartSection";
 import WorkRulesSection from "./WorkRulesSection";
 
 const TABS = [
   ["company", "Empresa", "business"],
   ["rules", "Jornada y horas extra", "schedule"],
+  ["org", "Organigrama", "account_tree"],
   ["holidays", "Feriados", "flag"],
 ] as const;
 
@@ -36,6 +38,8 @@ export default function SettingsLive() {
         <p className="text-on-surface-variant">Cargando la configuración…</p>
       ) : tab === "company" ? (
         <BrandingSection />
+      ) : tab === "org" ? (
+        <OrgChartSection />
       ) : tab === "rules" ? (
         <WorkRulesSection />
       ) : (

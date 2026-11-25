@@ -23,6 +23,7 @@ export interface WorkRulesEdit {
   overtime: OvertimeConfig;
   defaultSchedule: WorkSchedule;
   editWindowDays: number;
+  projectAccess: "open" | "assigned";
 }
 
 /** Cambia las reglas hacia adelante: lo ya aprobado conserva las horas que se congelaron al aprobar. */
@@ -30,7 +31,7 @@ export async function saveWorkRules(edit: WorkRulesEdit): Promise<void> {
   const { db } = getFirebase();
   await setDoc(
     doc(db, "settings", "main"),
-    { overtime: edit.overtime, defaultSchedule: edit.defaultSchedule, editWindowDays: edit.editWindowDays },
+    { overtime: edit.overtime, defaultSchedule: edit.defaultSchedule, editWindowDays: edit.editWindowDays, projectAccess: edit.projectAccess },
     { merge: true },
   );
 }

@@ -82,12 +82,28 @@ service cloud.firestore {
         && ms <= request.time.toMillis() + 24 * 60 * 60 * 1000;
     }
 
+    // ------------------------------------------------------------ proyectos asignados
+    // Por defecto cada persona carga horas solo en los proyectos que su supervisor (o el administrador) le asignó.
+    // La empresa puede abrir todos los proyectos con settings/main.projectAccess == 'open'.
+    function projectAccessOpen() {
+      return exists(/databases/$(database)/documents/settings/main)
+        && get(/databases/$(database)/documents/settings/main).data.get('projectAccess', 'assigned') == 'open';
+    }
+    function isAssigned(uid, code) {
+      return exists(/databases/$(database)/documents/assignments/$(code + '_' + uid));
+    }
+    function canUseProject(code) {
+      return code is string && (projectAccessOpen() || isAssigned(me(), code));
+    }
+
     // ------------------------------------------------------------ registros de horas: quién puede qué
     function ownerEdits() {
       return hasRole() && resource.data.userId == me()
         && resource.data.status in ['draft', 'observed']
         && request.resource.data.status in ['draft', 'submitted']
         && inWindow(resource.data.dateMs) && inWindow(request.resource.data.dateMs)
+        // Solo se exige el proyecto asignado si se está cambiando de proyecto: corregir otros datos de un registro viejo sigue andando.
+        && (request.resource.data.projectId == resource.data.projectId || canUseProject(request.resource.data.projectId))
         && onlyChanges(['projectId', 'date', 'dateMs', 'startTime', 'endTime', 'isOnCall', 'ticketRef', 'notes',
                         'status', 'updatedAt']);
     }
@@ -216,6 +232,20 @@ service cloud.firestore {
     // ------------------------------------------------------------ registros de horas
     // El empleado carga fecha, desde y hasta. Las horas y el desglose finales (hours, breakdown) los escribe
     // únicamente quien aprueba, y quedan congelados. Un registro aprobado no se edita.
+    // Asignación de un proyecto a una persona: un documento por pareja. La crea o la borra el administrador o el
+    // supervisor de esa persona (nadie se asigna proyectos a sí mismo, salvo el administrador).
+    match /assignments/{id} {
+      allow read: if hasRole() && (resource.data.userId == me() || isApproverOf(resource.data.userId));
+      allow create: if hasRole()
+        && request.resource.data.keys().hasOnly(['projectId', 'userId', 'assignedBy', 'createdAt'])
+        && request.resource.data.projectId is string && request.resource.data.userId is string
+        && id == request.resource.data.projectId + '_' + request.resource.data.userId
+        && request.resource.data.assignedBy == me()
+        && isApproverOf(request.resource.data.userId)
+        && exists(/databases/$(database)/documents/projects/$(request.resource.data.projectId));
+      allow delete: if hasRole() && isApproverOf(resource.data.userId);
+    }
+
     match /time_entries/{id} {
       allow read: if hasRole() && (resource.data.userId == me() || isApproverOf(resource.data.userId));
 
@@ -225,6 +255,7 @@ service cloud.firestore {
                                                  'isOnCall', 'ticketRef', 'notes', 'status', 'createdAt', 'updatedAt'])
         && request.resource.data.status in ['draft', 'submitted']
         && request.resource.data.startTime is string && request.resource.data.endTime is string
+        && canUseProject(request.resource.data.projectId)
         && inWindow(request.resource.data.dateMs);
 
       // El dueño corrige mientras el registro está en borrador u observado y dentro de la ventana.

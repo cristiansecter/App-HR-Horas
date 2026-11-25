@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useCompany } from "@/company/CompanyContext";
+import { useMyProjects } from "./useMyProjects";
 import { addDays, dateInBuenosAires } from "@/domain/dates";
 import { classifyEntry, dayTypeOf, InvalidEntryError, type ClassifiedEntry, type DayType, type WorkDay, type WorkSchedule } from "@/domain/overtime";
 import { useSession, useUser } from "@/session/SessionContext";
@@ -87,7 +88,7 @@ function LoadHoursDrawer({ entry, initialDate, onClose }: { entry: TimeEntry | n
   const { isReal } = useSession();
   const company = useCompany();
   const schedule = user.workSchedule ?? company.defaultSchedule;
-  const projects = useMemo(() => company.projects.filter((p) => p.active), [company.projects]);
+  const { projects, restricted } = useMyProjects();
   const categoryLabel = (id: string): string => (id === "normal" ? "Normales" : (company.overtime.tiers.find((t) => t.id === id)?.label ?? id));
   const today = dateInBuenosAires(new Date());
   const earliest = addDays(today, -company.editWindowDays);
@@ -205,7 +206,7 @@ function LoadHoursDrawer({ entry, initialDate, onClose }: { entry: TimeEntry | n
                 </option>
               ))}
             </select>
-            {projects.length === 0 ? <p role="alert" className="mt-1.5 font-body-sm text-body-sm text-error">No hay proyectos activos. Pedile al administrador que cree uno.</p> : null}
+            {projects.length === 0 ? <p role="alert" className="mt-1.5 font-body-sm text-body-sm text-error">{restricted ? "Todavía no tenés proyectos asignados. Pedile a tu supervisor que te asigne uno." : "No hay proyectos activos. Pedile al administrador que cree uno."}</p> : null}
           </label>
 
           <label className="block">

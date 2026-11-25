@@ -10,11 +10,11 @@ describe("navegación por rol", () => {
   });
 
   it("el supervisor ve lo del empleado y además aprueba", () => {
-    expect(ids("supervisor")).toEqual(["home", "week", "hours", "leave", "team", "approvals"]);
+    expect(ids("supervisor")).toEqual(["home", "week", "hours", "leave", "team", "approvals", "assignments"]);
   });
 
   it("el admin administra todo y no carga horas propias", () => {
-    expect(ids("admin")).toEqual(["home", "team", "approvals", "directory", "projects", "reports", "settings"]);
+    expect(ids("admin")).toEqual(["home", "team", "approvals", "assignments", "directory", "projects", "reports", "settings"]);
   });
 
   it("canAccess bloquea las rutas que el rol no ve", () => {
@@ -23,6 +23,9 @@ describe("navegación por rol", () => {
     expect(canAccess("supervisor", "/reportes")).toBe(false);
     expect(canAccess("admin", "/semana")).toBe(false);
     expect(canAccess("admin", "/reportes")).toBe(true);
+    expect(canAccess("employee", "/asignaciones")).toBe(false);
+    expect(canAccess("supervisor", "/asignaciones")).toBe(true);
+    expect(canAccess("admin", "/asignaciones")).toBe(true);
   });
 
   it("una ruta que no existe no es accesible para nadie", () => {

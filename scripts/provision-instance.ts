@@ -6,6 +6,9 @@
  *       --admin-name "Nombre Apellido" --key clave.json            (simulación)
  *   npx tsx scripts/provision-instance.ts ... --apply               (escribe)
  *
+ * Opciones: --saturday lct|flat_50 (sábado) y --project-access assigned|open (por defecto "assigned": cada persona
+ * carga horas solo en los proyectos que su supervisor o el administrador le asignan; "open" = en cualquier proyecto).
+ *
  * Es seguro repetirlo: no pisa una configuración existente salvo que agregues --reset-settings, y los feriados
  * que el administrador ya editó se conservan (solo se agregan los que faltan).
  */
@@ -23,6 +26,9 @@ async function main() {
   const adminName = args.require("admin-name");
   const saturdayMode = (args.get("saturday") ?? "lct") as SaturdayMode;
   if (saturdayMode !== "lct" && saturdayMode !== "flat_50") throw new Error('--saturday debe ser "lct" o "flat_50".');
+
+  const projectAccess = args.get("project-access") ?? "assigned";
+  if (projectAccess !== "assigned" && projectAccess !== "open") throw new Error('--project-access debe ser "assigned" o "open".');
 
   const overtime = defaultOvertimeConfig({ saturdayMode });
   const problems = validateOvertimeConfig(overtime);
@@ -53,6 +59,7 @@ async function main() {
       companyName: company,
       timezone: "America/Argentina/Buenos_Aires",
       editWindowDays: 7,
+      projectAccess,
       overtime,
       defaultSchedule: { ...defaultWorkSchedule() },
       createdAt: FieldValue.serverTimestamp(),

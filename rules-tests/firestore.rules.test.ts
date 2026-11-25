@@ -38,7 +38,7 @@ beforeEach(async () => {
     await setDoc(doc(db, "users/eze"), { ...base, fullName: "Eze", role: "employee", supervisorId: "sofia" });
     await setDoc(doc(db, "users/olga"), { ...base, fullName: "Olga", role: "employee", supervisorId: "otro" });
     await setDoc(doc(db, "employee_private/emi"), { cuil: "00-00000000-0" });
-    await setDoc(doc(db, "settings/main"), { editWindowDays: 7 });
+    await setDoc(doc(db, "settings/main"), { editWindowDays: 7, projectAccess: "open" });
     await setDoc(doc(db, "projects/p1"), { name: "Proyecto" });
   });
 });
@@ -53,6 +53,88 @@ const seedEntry = async (id: string, userId: string, status: string, offsetDays 
     const { createdAt: _c, updatedAt: _u, ...rest } = newEntry(userId, offsetDays, { status, ...extra });
     await setDoc(doc(ctx.firestore(), `time_entries/${id}`), rest);
   });
+
+describe("proyectos asignados", () => {
+  const mode = (m: "open" | "assigned" | null) => env.withSecurityRulesDisabled(async (ctx) => {
+    if (m === null) await deleteDoc(doc(ctx.firestore(), "settings/main"));
+    else await setDoc(doc(ctx.firestore(), "settings/main"), { editWindowDays: 7, projectAccess: m });
+  });
+  const assign = (code: string, uid: string, by: string) => ({ projectId: code, userId: uid, assignedBy: by, createdAt: serverTimestamp() });
+  const seedAssignment = (code: string, uid: string) => env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), `assignments/${code}_${uid}`), { projectId: code, userId: uid, assignedBy: "ana" }); });
+
+  it("modo asignado: sin asignación no se cargan horas; con asignación sí", async () => {
+    await mode("assigned");
+    const db = asRole("emi", "employee");
+    await assertFails(setDoc(doc(db, "time_entries/n1"), newEntry("emi")));
+    await seedAssignment("p1", "emi");
+    await assertSucceeds(setDoc(doc(db, "time_entries/n1"), newEntry("emi")));
+  });
+  it("sin settings/main se considera modo asignado (por defecto)", async () => {
+    await mode(null);
+    await assertFails(setDoc(doc(asRole("emi", "employee"), "time_entries/n1"), newEntry("emi")));
+  });
+  it("modo abierto: cualquier proyecto sirve", async () => {
+    await mode("open");
+    await assertSucceeds(setDoc(doc(asRole("emi", "employee"), "time_entries/n1"), newEntry("emi", 0, { projectId: "cualquiera" })));
+  });
+  it("una asignación a otra persona o a otro proyecto no sirve", async () => {
+    await mode("assigned");
+    await seedAssignment("p1", "eze");
+    await seedAssignment("p2", "emi");
+    await assertFails(setDoc(doc(asRole("emi", "employee"), "time_entries/n1"), newEntry("emi", 0, { projectId: "p1" })));
+  });
+  it("cambiar un registro propio de proyecto exige la asignación del proyecto nuevo; corregir otros datos no", async () => {
+    await mode("assigned");
+    await seedAssignment("p1", "emi");
+    await seedEntry("d1", "emi", "draft", -1, { projectId: "p1" });
+    const db = asRole("emi", "employee");
+    await assertSucceeds(updateDoc(doc(db, "time_entries/d1"), { notes: "ok", updatedAt: serverTimestamp() }));
+    await assertFails(updateDoc(doc(db, "time_entries/d1"), { projectId: "p9", updatedAt: serverTimestamp() }));
+    // se le quita la asignación y puede seguir corrigiendo otros datos de un registro viejo
+    await env.withSecurityRulesDisabled(async (ctx) => { await deleteDoc(doc(ctx.firestore(), "assignments/p1_emi")); });
+    await assertSucceeds(updateDoc(doc(db, "time_entries/d1"), { notes: "otra vez", updatedAt: serverTimestamp() }));
+  });
+  it("el admin asigna a cualquiera, y también a sí mismo", async () => {
+    await assertSucceeds(setDoc(doc(asRole("ana", "admin"), "assignments/p1_emi"), assign("p1", "emi", "ana")));
+    await assertSucceeds(setDoc(doc(asRole("ana", "admin"), "assignments/p1_olga"), assign("p1", "olga", "ana")));
+    await assertSucceeds(setDoc(doc(asRole("ana", "admin"), "assignments/p1_ana"), assign("p1", "ana", "ana")));
+  });
+  it("el supervisor asigna solo a su equipo, no a sí mismo ni a otro equipo", async () => {
+    const sup = asRole("sofia", "supervisor");
+    await assertSucceeds(setDoc(doc(sup, "assignments/p1_emi"), assign("p1", "emi", "sofia")));
+    await assertFails(setDoc(doc(sup, "assignments/p1_olga"), assign("p1", "olga", "sofia")));
+    await assertFails(setDoc(doc(sup, "assignments/p1_sofia"), assign("p1", "sofia", "sofia")));
+  });
+  it("un empleado no asigna: ni a sí mismo ni a otro", async () => {
+    await assertFails(setDoc(doc(asRole("emi", "employee"), "assignments/p1_emi"), assign("p1", "emi", "emi")));
+    await assertFails(setDoc(doc(asRole("emi", "employee"), "assignments/p1_eze"), assign("p1", "eze", "emi")));
+  });
+  it("valida la forma: id = proyecto_persona, 'assignedBy' propio, proyecto existente, sin campos de más", async () => {
+    const admin = asRole("ana", "admin");
+    await assertFails(setDoc(doc(admin, "assignments/cualquiera"), assign("p1", "emi", "ana")));
+    await assertFails(setDoc(doc(admin, "assignments/p1_emi"), assign("p1", "emi", "otro")));
+    await assertFails(setDoc(doc(admin, "assignments/inexistente_emi"), assign("inexistente", "emi", "ana")));
+    await assertFails(setDoc(doc(admin, "assignments/p1_emi"), { ...assign("p1", "emi", "ana"), extra: 1 }));
+  });
+  it("quitar la asignación: admin y el supervisor de la persona sí; el empleado y otros supervisores no", async () => {
+    await seedAssignment("p1", "emi");
+    await assertFails(deleteDoc(doc(asRole("emi", "employee"), "assignments/p1_emi")));
+    await assertFails(deleteDoc(doc(asRole("eze", "employee"), "assignments/p1_emi")));
+    await assertSucceeds(deleteDoc(doc(asRole("sofia", "supervisor"), "assignments/p1_emi")));
+    await seedAssignment("p1", "olga");
+    await assertFails(deleteDoc(doc(asRole("sofia", "supervisor"), "assignments/p1_olga")));
+    await assertSucceeds(deleteDoc(doc(asRole("ana", "admin"), "assignments/p1_olga")));
+  });
+  it("lectura: cada persona ve las suyas; el supervisor las de su equipo; el admin todas; nadie las de otros", async () => {
+    await seedAssignment("p1", "emi"); await seedAssignment("p1", "olga");
+    await assertSucceeds(getDocs(query(collection(asRole("emi", "employee"), "assignments"), where("userId", "==", "emi"))));
+    await assertFails(getDocs(query(collection(asRole("emi", "employee"), "assignments"), where("userId", "==", "eze"))));
+    await assertFails(getDocs(collection(asRole("emi", "employee"), "assignments")));
+    await assertSucceeds(getDocs(query(collection(asRole("sofia", "supervisor"), "assignments"), where("userId", "in", ["emi", "eze"]))));
+    await assertFails(getDocs(query(collection(asRole("sofia", "supervisor"), "assignments"), where("userId", "==", "olga"))));
+    await assertSucceeds(getDocs(collection(asRole("ana", "admin"), "assignments")));
+  });
+});
 
 describe("acceso sin rol", () => {
   it("sin sesión no lee nada", async () => {
@@ -445,14 +527,14 @@ describe("registros de horas: carga del empleado", () => {
   it("no carga fuera de la ventana de edición", async () => {
     await assertFails(setDoc(doc(asRole("emi", "employee"), "time_entries/n1"), newEntry("emi", -10)));
   });
-  it("sin settings/main usa 7 días por defecto", async () => {
-    await env.withSecurityRulesDisabled(async (ctx) => { await deleteDoc(doc(ctx.firestore(), "settings/main")); });
+  it("sin editWindowDays en settings/main usa 7 días por defecto", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "settings/main"), { projectAccess: "open" }); });
     const db = asRole("emi", "employee");
     await assertSucceeds(setDoc(doc(db, "time_entries/n1"), newEntry("emi", -6)));
     await assertFails(setDoc(doc(db, "time_entries/n2"), newEntry("emi", -10)));
   });
   it("respeta una ventana distinta configurada por la empresa", async () => {
-    await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "settings/main"), { editWindowDays: 30 }); });
+    await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "settings/main"), { editWindowDays: 30, projectAccess: "open" }); });
     await assertSucceeds(setDoc(doc(asRole("emi", "employee"), "time_entries/n1"), newEntry("emi", -20)));
   });
   it("no carga en el futuro lejano", async () => {

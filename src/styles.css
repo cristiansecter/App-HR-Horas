@@ -210,3 +210,24 @@ input[type="date"] {
   #receipt-print { background: #fff; color: #000; box-shadow: none; border-radius: 0; padding: 0; }
   html, body { background: #fff !important; }
 }
+
+/* Organigrama (Configuración): árbol vertical, de arriba hacia abajo, con conectores entre cada nivel. */
+.org-tree, .org-tree ul { list-style: none; margin: 0; padding: 0; }
+.org-tree ul { display: flex; justify-content: center; padding-top: 1.5rem; position: relative; }
+.org-tree li { position: relative; display: flex; flex-direction: column; align-items: center; padding: 1.5rem 0.6rem 0; }
+.org-tree li::before, .org-tree li::after { content: ""; position: absolute; top: 0; right: 50%; width: 50%; height: 1.5rem; border-top: 2px solid var(--org-line, #44506b); }
+.org-tree li::after { right: auto; left: 50%; border-left: 2px solid var(--org-line, #44506b); }
+.org-tree li:only-child::before, .org-tree li:only-child::after { display: none; }
+.org-tree li:only-child { padding-top: 0; }
+.org-tree li:first-child::before, .org-tree li:last-child::after { border: 0 none; }
+.org-tree li:last-child::before { border-right: 2px solid var(--org-line, #44506b); border-radius: 0 8px 0 0; }
+.org-tree li:first-child::after { border-radius: 8px 0 0 0; }
+.org-tree li > ul::before { content: ""; position: absolute; top: 0; left: 50%; height: 1.5rem; border-left: 2px solid var(--org-line, #44506b); }
+.org-tree > li { padding-top: 0; }
+.org-tree > li::before, .org-tree > li::after { display: none; }
+/* Empleados de un supervisor: apilados en vertical debajo de su tarjeta. */
+.org-tree ul.org-leaves { display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem; padding-top: 1.5rem; padding-left: 0; }
+.org-tree ul.org-leaves::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; border-left: 2px solid var(--org-line, #44506b); }
+.org-tree ul.org-leaves > li { position: relative; z-index: 1; }
+.org-tree ul.org-leaves > li { padding: 0; align-items: stretch; }
+.org-tree ul.org-leaves > li::before, .org-tree ul.org-leaves > li::after { display: none; }

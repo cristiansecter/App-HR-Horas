@@ -87,8 +87,10 @@ Todas las pantallas leen y escriben en Firestore con una cuenta real. Solo la en
 | Sueldos en el legajo (módulo activable) | Real: sueldo mensual o valor hora según el modelo de pago, con historial de vigencias (quién y cuándo). Solo lo lee el administrador y solo con el módulo activo; ni el supervisor, ni la propia persona, ni el Configurador lo ven |
 | Rendimiento (módulo activable): costos contra facturación por proyecto, por persona y por mes | Real: tarifa de cobro por hora y marca "facturable" en cada proyecto (los internos tienen costo sin ingreso); costo con el sueldo vigente en la fecha de cada registro, el recargo de las horas extra y un % de cargas configurable. Solo administrador y con el módulo activo |
 | Seguimiento de liquidaciones (módulo activable): anotación del mes, detalle para imprimir o guardar como PDF, publicación para que cada persona vea el suyo, parámetros y conceptos editables, exportación CSV y cierre de período | Real: las novedades (horas normales y extra por tramo, inasistencias injustificadas, vacaciones) salen solas de las horas y licencias aprobadas; el resto se carga a mano. Solo administrador y con el módulo activo |
+| Asignar proyectos: el administrador (a cualquiera) y el supervisor (a su equipo) deciden en qué proyectos carga horas cada persona | Real: grilla personas × proyectos, "asignar a todos" y filtro de la carga de horas; las reglas lo exigen aunque se intente saltear la pantalla |
+| Organigrama (Configuración): árbol vertical administrador → supervisores → empleados, con arrastrar y soltar y panel "reporta a" | Real: cambia el supervisor de cada persona (solo el administrador). Los roles siguen siendo del Configurador |
 | Reportes: planilla del mes con horas aprobadas, avisos de lo que falta y descarga en Excel/CSV | Real: el resumen y el detalle suman lo mismo; lo no aprobado no entra y se avisa.  |
-| Reglas de seguridad de Firestore | Reales y probadas (99 pruebas de reglas y 184 de lógica) |
+| Reglas de seguridad de Firestore | Reales y probadas (110 pruebas de reglas y 194 de lógica) |
 | Alta de usuarios, cambio de rol, configuración inicial y feriados | Real, por script |
 | Mi semana: grilla de lunes a domingo con feriados y licencias, carga por día, corrección y envío de borradores | Real |
 
@@ -161,3 +163,13 @@ Cada detalle guarda una copia de los datos de la persona (nombre, CUIL, legajo, 
 ### Recibo en PDF
 
 El detalle se imprime con el botón "Imprimir / guardar como PDF" del navegador (se oculta todo lo demás y sale en blanco y negro). No hay un generador de PDF propio: es una decisión para no mantener otro motor de documentos.
+
+## Proyectos asignados y organigrama
+
+**Asignar proyectos.** Por defecto cada persona carga horas **solo en los proyectos que le asignaron**. El administrador asigna a cualquiera (incluido él) y el supervisor, a las personas que tiene a cargo, desde *Asignar proyectos*. Las reglas de Firestore lo exigen: un empleado no puede cargar horas en un proyecto sin asignación aunque lo intente por fuera de la pantalla. Corregir otros datos de un registro viejo sigue funcionando aunque después se le quite el proyecto; lo que se bloquea es cargar horas nuevas ahí.
+
+Una empresa chica puede preferir no asignar nada: en *Configuración → Jornada y horas extra* se apaga "Cada persona carga horas solo en los proyectos que le asignan" y todos cargan en cualquier proyecto activo. El provisionamiento deja el valor en `assigned`; `--project-access open` lo deja abierto. Una instancia que ya existía y no tiene el campo se comporta como `assigned`.
+
+**Organigrama.** En *Configuración → Organigrama* el administrador ve el árbol de la empresa (administrador → supervisores → empleados) y cambia a quién reporta cada persona: arrastrándola sobre su nuevo supervisor, o haciendo clic en ella y eligiendo "Reporta a". No deja formar círculos ni poner a alguien bajo un empleado. Quien aprueba las horas y licencias de una persona, y quien le asigna proyectos, es su supervisor.
+
+**Qué no se cambia desde acá: los roles.** Quién es administrador o supervisor lo asigna el Configurador con `npm run set-role` (el rol vive en el token de la persona y solo se puede escribir con el Admin SDK). Hacerlo desde la aplicación requiere el plan Blaze y una Cloud Function; queda como mejora para ese momento.

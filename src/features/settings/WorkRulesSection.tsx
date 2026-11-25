@@ -34,6 +34,7 @@ export default function WorkRulesSection() {
   const [rules, setRules] = useState<OvertimeRule[]>(() => company.overtime.rules.map((r) => ({ ...r })));
   const [onCall, setOnCall] = useState(company.overtime.onCallCountsAsNormal);
   const [windowDays, setWindowDays] = useState(String(company.editWindowDays));
+  const [assignedOnly, setAssignedOnly] = useState(company.projectAccess === "assigned");
   const [schedule, setSchedule] = useState<WorkSchedule>(company.defaultSchedule);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +73,7 @@ export default function WorkRulesSection() {
     setOnCall(d.onCallCountsAsNormal);
     setSchedule(defaultWorkSchedule());
     setWindowDays("7");
+    setAssignedOnly(true);
     setError(null);
   };
 
@@ -85,6 +87,7 @@ export default function WorkRulesSection() {
         overtime: { tiers: tiers.map((t) => ({ id: t.id, label: t.label.trim(), percent: Number(t.percent) })), rules: rules.map((r) => ({ ...r, from: normalizeClock(r.from), to: normalizeClock(r.to) })), onCallCountsAsNormal: onCall },
         defaultSchedule: schedule,
         editWindowDays: Number(windowDays),
+        projectAccess: assignedOnly ? "assigned" : "open",
       });
       company.reload();
       notify("Guardaste las reglas. Se aplican a lo que se apruebe de ahora en más.");
@@ -177,6 +180,13 @@ export default function WorkRulesSection() {
               <p className="font-body-sm text-body-sm text-on-surface-variant">Si está activado, una guardia se computa entera como hora normal aunque caiga fuera de la jornada, y queda identificada en la planilla.</p>
             </div>
             <input type="checkbox" role="switch" aria-label="Guardia cuenta como normal" checked={onCall} onChange={(e) => setOnCall(e.target.checked)} className="size-5 accent-[var(--hz-primary)]" />
+          </label>
+          <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg bg-surface-container p-4">
+            <div>
+              <p className="font-label-lg text-label-lg text-on-surface">Cada persona carga horas solo en los proyectos que le asignan</p>
+              <p className="font-body-sm text-body-sm text-on-surface-variant">Su supervisor (o el administrador) le asigna los proyectos desde “Asignar proyectos”. Si lo apagás, todos pueden cargar horas en cualquier proyecto activo.</p>
+            </div>
+            <input type="checkbox" role="switch" aria-label="Solo proyectos asignados" checked={assignedOnly} onChange={(e) => setAssignedOnly(e.target.checked)} className="size-5 accent-[var(--hz-primary)]" />
           </label>
           <label className="block font-label-lg text-label-lg text-on-surface">
             Ventana de edición (días)

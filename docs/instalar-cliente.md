@@ -72,12 +72,15 @@ npx firebase-tools deploy --only hosting --project CLIENTE
 
 ## 7. Que el cliente complete
 
+- **Organigrama** (*Configuración → Organigrama*): ordenar quién supervisa a quién, y **asignar proyectos** a cada persona (*Asignar proyectos*) o, si prefiere no asignar, apagar "Cada persona carga horas solo en los proyectos que le asignan" en *Configuración → Jornada y horas extra*. Sin asignaciones (y con la opción activa) nadie puede cargar horas.
+
 - **Proyectos** (sin proyectos nadie puede cargar horas), **jornada general** y **reglas de horas extra** (*Configuración → Jornada y horas extra*), **fichas** de cada persona (CUIL, legajo, supervisor, jornada propia si corresponde), **feriados** de años siguientes si hacen falta.
 - Si contrató sueldos: cargar el sueldo o valor hora en cada ficha.
 
 ## 8. Lista de verificación antes de entregar
 
 - [ ] Entrar con el administrador, un supervisor y un empleado de prueba: cada uno ve solo lo suyo.
+- [ ] Un supervisor asigna un proyecto a un empleado → el empleado lo ve en "Cargar horas" y en ningún otro.
 - [ ] Un empleado carga horas → el supervisor las aprueba → aparecen en Reportes y en la planilla de Excel.
 - [ ] Un empleado pide una licencia → el supervisor la aprueba → aparece en el calendario del equipo.
 - [ ] Entrar como Configurador con Google: se ve la consola y el administrador del cliente **no** ve los módulos.
