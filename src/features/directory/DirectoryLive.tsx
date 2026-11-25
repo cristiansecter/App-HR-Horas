@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { WORK_MODE_LABELS, type UserSummary } from "@/domain/model";
 import { ROLE_LABELS } from "@/domain/types";
 import { listUsers } from "@/services/company";
+import { useCompany } from "@/company/CompanyContext";
+import { currentEntry } from "@/domain/compensation";
+import { dateInBuenosAires } from "@/domain/dates";
+import { listEmployeePay, PAY_CHANGED } from "@/services/compensation";
 import { DIRECTORY_CHANGED, listEmployeePrivate } from "@/services/directory";
 import { Chip, Page, PageHeader } from "@/ui/Page";
 import { useAsync } from "@/ui/useAsync";
@@ -14,14 +18,17 @@ const select = "rounded-lg border border-white/10 bg-surface-container-lowest px
 /** Directorio con datos reales: todo el equipo, con filtros y acceso a la ficha de cada persona. */
 export default function DirectoryLive() {
   const navigate = useNavigate();
+  const { features } = useCompany();
+  const withPay = features.modules.compensation;
   const { data, loading, error } = useAsync(
     async () => {
-      const [users, sensitive] = await Promise.all([listUsers(), listEmployeePrivate()]);
-      return { users, sensitive };
+      const [users, sensitive, pay] = await Promise.all([listUsers(), listEmployeePrivate(), withPay ? listEmployeePay() : Promise.resolve(null)]);
+      return { users, sensitive, pay };
     },
-    [],
-    [DIRECTORY_CHANGED],
+    [withPay],
+    [DIRECTORY_CHANGED, PAY_CHANGED],
   );
+  const today = dateInBuenosAires(new Date());
   const [q, setQ] = useState("");
   const [department, setDepartment] = useState("all");
   const [status, setStatus] = useState<"active" | "inactive" | "all">("active");
@@ -112,6 +119,7 @@ export default function DirectoryLive() {
                       <div className="flex flex-wrap gap-1.5">
                         {u.active ? <Chip tone="ok">Activo</Chip> : <Chip tone="muted">Inactivo</Chip>}
                         {u.active && missing(u) ? <Chip tone="warn">Falta CUIL</Chip> : null}
+                        {u.active && withPay && data?.pay && !currentEntry(data.pay.get(u.uid)?.rates ?? [], today) ? <Chip tone="warn">Sin sueldo</Chip> : null}
                       </div>
                     </td>
                   </tr>

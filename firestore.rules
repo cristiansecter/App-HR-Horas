@@ -109,6 +109,19 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+    // Remuneración de cada persona (módulo "Sueldos en el legajo"): solo el administrador y solo si el módulo está
+    // activo en la instancia. Nadie más lo lee, ni siquiera la propia persona ni su supervisor.
+    match /employee_pay/{uid} {
+      allow read, delete: if isAdmin() && moduleOn('compensation');
+      allow create, update: if isAdmin() && moduleOn('compensation')
+        && request.resource.data.keys().hasOnly(['userId', 'rates', 'convenio', 'obraSocial', 'hijos', 'updatedAt', 'updatedBy'])
+        && request.resource.data.userId == uid
+        && request.resource.data.rates is list && request.resource.data.rates.size() <= 400
+        && request.resource.data.get('convenio', true) is bool
+        && request.resource.data.get('obraSocial', '') is string && request.resource.data.get('obraSocial', '').size() <= 80
+        && request.resource.data.get('hijos', 0) is int && request.resource.data.get('hijos', 0) >= 0 && request.resource.data.get('hijos', 0) <= 30;
+    }
+
     // Datos sensibles (CUIL, DNI, teléfono, modalidad): solo el administrador.
     match /employee_private/{uid} {
       allow read, write: if isAdmin();

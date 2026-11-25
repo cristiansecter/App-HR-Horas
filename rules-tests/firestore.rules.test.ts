@@ -116,6 +116,47 @@ describe("módulos activables (solo el Configurador)", () => {
   });
 });
 
+describe("sueldos en el legajo (módulo Sueldos)", () => {
+  const turnOn = (on: boolean) => env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), "settings/features"), { modules: { compensation: on, performance: false, payroll: false }, payModel: "salary" });
+  });
+  const pay = (uid = "emi", extra: Record<string, unknown> = {}) => ({ userId: uid, rates: [{ from: "2026-01-01", amount: 800000, setBy: "a@x", setAt: "2026-01-01T00:00:00Z" }], convenio: true, obraSocial: "OSDE", hijos: 1, updatedAt: serverTimestamp(), updatedBy: "a@x", ...extra });
+  const seedPay = () => env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "employee_pay/emi"), { userId: "emi", rates: [], convenio: true, obraSocial: "", hijos: 0 }); });
+
+  it("con el módulo apagado nadie lee ni escribe sueldos, ni siquiera el admin", async () => {
+    await turnOn(false); await seedPay();
+    const admin = asRole("ana", "admin");
+    await assertFails(getDoc(doc(admin, "employee_pay/emi")));
+    await assertFails(setDoc(doc(admin, "employee_pay/emi"), pay()));
+  });
+  it("sin el documento de módulos tampoco (todo apagado por defecto)", async () => {
+    await seedPay();
+    await assertFails(getDoc(doc(asRole("ana", "admin"), "employee_pay/emi")));
+  });
+  it("con el módulo activo el admin lee y escribe", async () => {
+    await turnOn(true); await seedPay();
+    const admin = asRole("ana", "admin");
+    await assertSucceeds(getDoc(doc(admin, "employee_pay/emi")));
+    await assertSucceeds(setDoc(doc(admin, "employee_pay/emi"), pay()));
+  });
+  it("supervisor, empleado (aunque sea el dueño del dato) y Configurador no lo ven nunca", async () => {
+    await turnOn(true); await seedPay();
+    await assertFails(getDoc(doc(asRole("sofia", "supervisor"), "employee_pay/emi")));
+    await assertFails(getDoc(doc(asRole("emi", "employee"), "employee_pay/emi")));
+    await assertFails(getDoc(doc(env.authenticatedContext("prov", { configurator: true }).firestore(), "employee_pay/emi")));
+    await assertFails(setDoc(doc(asRole("emi", "employee"), "employee_pay/emi"), pay()));
+  });
+  it("valida la forma: userId debe ser el del documento, hijos sin valores absurdos, sin campos de más", async () => {
+    await turnOn(true);
+    const admin = asRole("ana", "admin");
+    await assertFails(setDoc(doc(admin, "employee_pay/emi"), pay("eze")));
+    await assertFails(setDoc(doc(admin, "employee_pay/emi"), pay("emi", { hijos: -1 })));
+    await assertFails(setDoc(doc(admin, "employee_pay/emi"), pay("emi", { hijos: 99 })));
+    await assertFails(setDoc(doc(admin, "employee_pay/emi"), pay("emi", { rates: "mucho" })));
+    await assertFails(setDoc(doc(admin, "employee_pay/emi"), pay("emi", { sueldoOculto: 1 })));
+  });
+});
+
 describe("baja de una persona", () => {
   it("con el perfil dado de baja pierde el acceso aunque el token siga vigente", async () => {
     await env.withSecurityRulesDisabled(async (ctx) => { await updateDoc(doc(ctx.firestore(), "users/emi"), { active: false }); });
