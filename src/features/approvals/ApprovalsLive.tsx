@@ -152,7 +152,7 @@ export default function ApprovalsLive() {
                 return (
                   <tr key={e.id} className="align-top transition-colors hover:bg-surface-container">
                     <td className="px-space-md py-3"><input type="checkbox" aria-label="Seleccionar registro" disabled={!c} checked={selected.has(e.id)} onChange={() => toggle(e.id)} className="size-4 accent-[var(--hz-primary)]" /></td>
-                    <td className="px-space-md py-3 font-semibold">{data?.users.get(e.userId)?.fullName ?? "Persona"}</td>
+                    <td className="px-space-md py-3 font-semibold">{data?.users.get(e.userId)?.fullName ?? "Persona"}{e.createdBy && e.createdBy !== e.userId ? <span className="mt-0.5 block font-body-sm text-body-sm font-normal text-on-surface-variant">Cargado por {data?.users.get(e.createdBy)?.fullName ?? "un superior"}</span> : null}</td>
                     <td className="px-space-md py-3 tabular-nums">{formatDate(e.date)}</td>
                     <td className="px-space-md py-3">
                       <span className="font-semibold">{e.projectId}</span>

@@ -1,13 +1,14 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useCompany } from "@/company/CompanyContext";
 import { dateInBuenosAires } from "@/domain/dates";
-import { countLeaveDays, InvalidLeaveError, formatLeaveDays } from "@/domain/leave/days";
-import { LEAVE_TYPE_LABELS, type LeaveRequest } from "@/domain/model";
+import { countLeaveDays, InvalidLeaveError, formatLeaveDays, rangesOverlap } from "@/domain/leave/days";
+import { LEAVE_STATUS_LABELS, LEAVE_TYPE_LABELS, type LeaveRequest, type LeaveType } from "@/domain/model";
 import { withCode } from "@/services/errors";
-import { decideLeave, registerUnjustified } from "@/services/leaves";
+import { decideLeave, LEAVES_CHANGED, listMyLeaves, registerLeaveFor } from "@/services/leaves";
 import { useUser } from "@/session/SessionContext";
 import { Chip } from "@/ui/Page";
 import { useToast } from "@/ui/Toast";
+import { useAsync } from "@/ui/useAsync";
 import { usePendingLeaves } from "./usePendingLeaves";
 
 const dmy = (iso: string) => iso.split("-").reverse().join("/");
@@ -53,8 +54,8 @@ export default function LeaveReviewSection() {
             <p className="font-body-sm text-body-sm text-on-surface-variant">Al aprobar, la ausencia aparece en el calendario del equipo y en la planilla del mes.</p>
           </div>
           <button type="button" onClick={() => setRegistering(true)} disabled={(data?.reviewable.length ?? 0) === 0} className="flex items-center gap-2 rounded-xl bg-surface-container-high px-4 py-2 font-label-lg text-label-lg font-semibold text-on-surface hover:bg-surface-container-highest disabled:opacity-40">
-            <span className="material-symbols-outlined text-[20px]">person_off</span>
-            Registrar ausencia injustificada
+            <span className="material-symbols-outlined text-[20px]">edit_calendar</span>
+            Registrar licencia de una persona
           </button>
         </div>
 
@@ -119,14 +120,14 @@ export default function LeaveReviewSection() {
       ) : null}
 
       {registering && data ? (
-        <UnjustifiedDialog
+        <RegisterLeaveDialog
           people={data.reviewable}
           holidays={company.holidays}
           defaultSchedule={company.defaultSchedule}
           onClose={() => setRegistering(false)}
           onDone={(name) => {
             setRegistering(false);
-            notify(`Registraste la ausencia injustificada de ${name}.`);
+            notify(`Registraste la licencia de ${name}.`);
           }}
         />
       ) : null}
@@ -134,7 +135,11 @@ export default function LeaveReviewSection() {
   );
 }
 
-function UnjustifiedDialog({
+/** Tipos que se pueden registrar por otra persona: todos los solicitables y la ausencia injustificada (que solo se registra así). */
+const REGISTERABLE: readonly LeaveType[] = ["vacation", "sick", "study", "personal", "unjustified"];
+
+/** Quien supervisa (o el administrador) registra una licencia por alguien de su equipo, ya aprobada. */
+function RegisterLeaveDialog({
   people,
   holidays,
   defaultSchedule,
@@ -150,32 +155,37 @@ function UnjustifiedDialog({
   const reviewer = useUser();
   const today = dateInBuenosAires(new Date());
   const [uid, setUid] = useState(people[0]?.uid ?? "");
+  const [type, setType] = useState<LeaveType>("vacation");
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const person = people.find((p) => p.uid === uid);
+  // Licencias que esa persona ya tiene, para no registrar dos veces el mismo período.
+  const theirs = useAsync(() => (uid ? listMyLeaves(uid) : Promise.resolve([] as LeaveRequest[])), [uid], [LEAVES_CHANGED]);
+  const clash = useMemo(() => (theirs.data ?? []).find((l) => l.status !== "rejected" && rangesOverlap(from, to, l.startDate, l.endDate)), [theirs.data, from, to]);
 
   const preview = useMemo<{ days: number } | { error: string }>(() => {
     try {
-      return { days: countLeaveDays("unjustified", from, to, person?.workSchedule ?? defaultSchedule, holidays) };
+      return { days: countLeaveDays(type, from, to, person?.workSchedule ?? defaultSchedule, holidays) };
     } catch (e) {
       return { error: e instanceof InvalidLeaveError ? e.message : "Revisá las fechas." };
     }
-  }, [from, to, person, defaultSchedule, holidays]);
+  }, [type, from, to, person, defaultSchedule, holidays]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!person || "error" in preview) return;
     if (preview.days === 0) return setFormError("Ese período no tiene ningún día hábil para esa persona.");
+    if (clash) return setFormError(`${person.fullName} ya tiene una licencia ${LEAVE_STATUS_LABELS[clash.status].toLowerCase()} del ${dmy(clash.startDate)} al ${dmy(clash.endDate)}.`);
     setSaving(true);
     setFormError(null);
     try {
-      await registerUnjustified(reviewer, { userId: person.uid, startDate: from, endDate: to, daysCount: preview.days, reason });
+      await registerLeaveFor(reviewer, { userId: person.uid, type, startDate: from, endDate: to, daysCount: preview.days, reason });
     } catch (err) {
-      console.error("No se pudo registrar la ausencia", err);
-      setFormError(withCode("No se pudo registrar la ausencia. Probá de nuevo.", err));
+      console.error("No se pudo registrar la licencia", err);
+      setFormError(withCode("No se pudo registrar la licencia. Probá de nuevo.", err));
       setSaving(false);
       return;
     }
@@ -185,14 +195,20 @@ function UnjustifiedDialog({
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
       <button type="button" aria-label="Cerrar" className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
-      <form role="dialog" aria-label="Registrar ausencia injustificada" onSubmit={(e) => void submit(e)} className="relative flex w-full max-w-md flex-col gap-4 rounded-xl bg-surface-container-low p-space-lg shadow-2xl">
-        <h2 className="font-headline-md text-headline-md text-on-surface">Registrar ausencia injustificada</h2>
+      <form role="dialog" aria-label="Registrar licencia" onSubmit={(e) => void submit(e)} className="relative flex w-full max-w-md flex-col gap-4 rounded-xl bg-surface-container-low p-space-lg shadow-2xl">
+        <h2 className="font-headline-md text-headline-md text-on-surface">Registrar licencia de una persona</h2>
         <label className="block font-label-lg text-label-lg text-on-surface">
           Persona
           <select value={uid} onChange={(e) => setUid(e.target.value)} className={`mt-1.5 ${field}`}>
             {people.map((p) => (
               <option key={p.uid} value={p.uid}>{p.fullName}</option>
             ))}
+          </select>
+        </label>
+        <label className="block font-label-lg text-label-lg text-on-surface">
+          Tipo
+          <select aria-label="Tipo de licencia" value={type} onChange={(e) => setType(e.target.value as LeaveType)} className={`mt-1.5 ${field}`}>
+            {REGISTERABLE.map((t) => <option key={t} value={t}>{LEAVE_TYPE_LABELS[t]}</option>)}
           </select>
         </label>
         <div className="grid grid-cols-2 gap-3">
@@ -208,7 +224,7 @@ function UnjustifiedDialog({
         <p className="rounded-lg bg-surface-container px-3 py-2 font-body-md text-body-md text-on-surface" aria-live="polite">
           {"days" in preview ? (
             <>
-              <span className="font-semibold tabular-nums">{formatLeaveDays(preview.days, "unjustified")}</span>
+              <span className="font-semibold tabular-nums">{formatLeaveDays(preview.days, type)}</span>
             </>
           ) : (
             <span className="text-error">{preview.error}</span>
@@ -218,11 +234,12 @@ function UnjustifiedDialog({
           Observación <span className="font-label-xs-mono text-label-xs-mono text-on-surface-variant uppercase">Opcional</span>
           <textarea rows={2} maxLength={250} value={reason} onChange={(e) => setReason(e.target.value)} className={`mt-1.5 ${field}`} />
         </label>
-        <p className="font-body-sm text-body-sm text-on-surface-variant">Queda aprobada desde el registro y la persona la ve en sus licencias.</p>
+        {clash ? <p role="note" className="font-body-sm text-body-sm text-amber-200">{person?.fullName} ya tiene una licencia {LEAVE_STATUS_LABELS[clash.status].toLowerCase()} del {dmy(clash.startDate)} al {dmy(clash.endDate)}.</p> : null}
+        <p className="font-body-sm text-body-sm text-on-surface-variant">Queda aprobada desde el registro y la persona la ve en sus licencias, anotada como cargada por vos.</p>
         {formError ? <p role="alert" className="font-body-sm text-body-sm text-error">{formError}</p> : null}
         <div className="flex justify-end gap-3">
           <button type="button" onClick={onClose} className="px-4 py-2 font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface">Cancelar</button>
-          <button type="submit" disabled={saving || !person} className="rounded-lg bg-error-container px-5 py-2 font-label-lg text-label-lg font-bold text-on-error-container hover:brightness-110 disabled:opacity-50">{saving ? "Registrando…" : "Registrar"}</button>
+          <button type="submit" disabled={saving || !person} className="rounded-lg bg-primary-container px-5 py-2 font-label-lg text-label-lg font-bold text-on-primary hover:brightness-110 disabled:opacity-50">{saving ? "Registrando…" : "Registrar"}</button>
         </div>
       </form>
     </div>

@@ -4,7 +4,6 @@ import { NAV_ITEMS } from "@/config/navigation";
 import { useCompany } from "@/company/CompanyContext";
 import { BUENOS_AIRES_TZ } from "@/domain/dates";
 import { useLoadHours } from "@/features/hours/LoadHoursDrawer";
-import { useUser } from "@/session/SessionContext";
 import { ColorModeButton } from "./ColorModeButton";
 import { CompanyMark } from "./CompanyMark";
 import { SidebarContent } from "./Sidebar";
@@ -21,12 +20,12 @@ const pageLabel = (pathname: string): string => {
 
 /** Estructura de toda la app con sesión: menú lateral fijo en escritorio y panel desplegable en celular. */
 export function AppShell() {
-  const user = useUser();
   const { pathname } = useLocation();
   const { openDrawer } = useLoadHours();
   const { companyName } = useCompany();
   const [menuOpen, setMenuOpen] = useState(false);
-  const canLoadHours = user.role !== "admin";
+  // Todos pueden abrir el cajón: el empleado carga lo suyo; el supervisor lo suyo y lo de su equipo; el administrador lo de cualquiera.
+  const canLoadHours = true;
 
   const loadButton = (
     <button

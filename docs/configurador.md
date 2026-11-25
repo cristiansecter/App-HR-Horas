@@ -181,6 +181,14 @@ Cada detalle guarda una copia de los datos de la persona (nombre, CUIL, legajo, 
 
 El detalle se imprime con el botón "Imprimir / guardar como PDF" del navegador (se oculta todo lo demás y sale en blanco y negro). No hay un generador de PDF propio: es una decisión para no mantener otro motor de documentos.
 
+## Cargar horas y licencias por otra persona
+
+Además de que cada persona cargue lo suyo, **el supervisor (a su equipo) y el administrador (a cualquiera)** pueden cargar por ella, por ejemplo si no puede hacerlo.
+
+- **Horas:** en "Cargar horas" aparece "Cargar para". Las horas quedan a nombre de la persona y anotadas como cargadas por quien las cargó. "Cargar y enviar" las deja pendientes en Aprobaciones; "Cargar y aprobar" las carga y las aprueba en un paso. El proyecto tiene que estar asignado a la persona (si la empresa exige asignación). Quien carga por otro puede usar días anteriores sin el límite de la ventana, pero no fechas futuras.
+- **Licencias:** en Aprobaciones, "Registrar licencia de una persona" (vacaciones, enfermedad, estudio, asunto personal o ausencia injustificada). Queda aprobada desde el registro, aparece en el calendario del equipo y la persona la ve marcada como registrada por un superior. No deja registrar dos veces el mismo período.
+- Lo hace cumplir Firestore (reglas `time_entries` y `leave_requests`), no solo la pantalla: un supervisor no puede cargar por alguien de otro equipo, ni usar un proyecto no asignado a la persona, ni dejar el registro como aprobado de entrada.
+
 ## Proyectos asignados y organigrama
 
 **Asignar proyectos.** Por defecto cada persona carga horas **solo en los proyectos que le asignaron**. El administrador asigna a cualquiera (incluido él) y el supervisor, a las personas que tiene a cargo, desde *Asignar proyectos*. Las reglas de Firestore lo exigen: un empleado no puede cargar horas en un proyecto sin asignación aunque lo intente por fuera de la pantalla. Corregir otros datos de un registro viejo sigue funcionando aunque después se le quite el proyecto; lo que se bloquea es cargar horas nuevas ahí.

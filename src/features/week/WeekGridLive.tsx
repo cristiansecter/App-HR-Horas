@@ -180,6 +180,7 @@ export default function WeekGridLive() {
                           {entry.projectId}
                           {entry.isOnCall ? <Chip tone="guard">Guardia</Chip> : null}
                           <Chip tone={TONE[entry.status]}>{ENTRY_STATUS_LABELS[entry.status]}</Chip>
+                          {entry.createdBy && entry.createdBy !== entry.userId ? <Chip tone="muted">Cargado por un superior</Chip> : null}
                         </span>
                       </button>
                     </li>

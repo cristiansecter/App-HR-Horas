@@ -136,7 +136,7 @@ export default function MyLeaveLive() {
                   <td className="px-space-md py-3 tabular-nums">{dmy(l.endDate)}</td>
                   <td className="px-space-md py-3 tabular-nums">{formatLeaveDays(l.daysCount, l.type)}</td>
                   <td className="px-space-md py-3">
-                    <Chip tone={TONE[l.status]}>{LEAVE_STATUS_LABELS[l.status]}</Chip>
+                    <Chip tone={TONE[l.status]}>{LEAVE_STATUS_LABELS[l.status]}</Chip>{l.createdBy !== l.userId ? <> <Chip tone="muted">Registrada por un superior</Chip></> : null}
                     {l.reviewerNote ? <p className="mt-1.5 max-w-xs font-body-sm text-body-sm text-on-surface-variant italic">“{l.reviewerNote}”</p> : null}
                   </td>
                   <td className="px-space-md py-3 text-right">

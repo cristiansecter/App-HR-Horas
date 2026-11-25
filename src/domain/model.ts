@@ -43,6 +43,8 @@ export interface TimeEntryDoc {
   ticketRef: string;
   notes: string;
   status: EntryStatus;
+  /** Quién lo cargó, si no fue la propia persona (su supervisor o el administrador). Sin dato = lo cargó ella. */
+  createdBy?: string;
   reviewerNote?: string;
   reviewedBy?: string;
   hours?: number;

@@ -744,6 +744,22 @@ describe("licencias", () => {
   it("el supervisor registra una injustificada de su equipo ya aprobada", async () => {
     await assertSucceeds(setDoc(doc(asRole("sofia", "supervisor"), "leave_requests/u1"), request("emi", { type: "unjustified", status: "approved", createdBy: "sofia", approvedBy: "sofia" })));
   });
+  it("el supervisor (y el admin) registra cualquier tipo de licencia por alguien de su equipo, ya aprobada", async () => {
+    const sup = asRole("sofia", "supervisor");
+    for (const [i, type] of (["vacation", "sick", "study", "personal"] as const).entries()) {
+      await assertSucceeds(setDoc(doc(sup, `leave_requests/v${i}`), request("emi", { type, status: "approved", createdBy: "sofia", approvedBy: "sofia" })));
+    }
+    await assertSucceeds(setDoc(doc(asRole("ana", "admin"), "leave_requests/va"), request("olga", { type: "sick", status: "approved", createdBy: "ana", approvedBy: "ana" })));
+  });
+  it("registrar por otro exige quedar como quien lo cargó y aprobó, y no vale para uno mismo ni para otro equipo", async () => {
+    const sup = asRole("sofia", "supervisor");
+    await assertFails(setDoc(doc(sup, "leave_requests/x1"), request("emi", { status: "approved", createdBy: "sofia", approvedBy: "ana" })));
+    await assertFails(setDoc(doc(sup, "leave_requests/x2"), request("emi", { status: "approved", createdBy: "ana", approvedBy: "sofia" })));
+    await assertFails(setDoc(doc(sup, "leave_requests/x3"), request("emi", { status: "pending", createdBy: "sofia" })));
+    await assertFails(setDoc(doc(sup, "leave_requests/x4"), request("olga", { status: "approved", createdBy: "sofia", approvedBy: "sofia" })));
+    await assertFails(setDoc(doc(sup, "leave_requests/x5"), request("sofia", { status: "approved", createdBy: "sofia", approvedBy: "sofia" })));
+    await assertFails(setDoc(doc(asRole("emi", "employee"), "leave_requests/x6"), request("eze", { status: "approved", createdBy: "emi", approvedBy: "emi" })));
+  });
   it("el supervisor no registra una injustificada de otro equipo", async () => {
     await assertFails(setDoc(doc(asRole("sofia", "supervisor"), "leave_requests/u1"), request("olga", { type: "unjustified", status: "approved", createdBy: "sofia", approvedBy: "sofia" })));
   });
@@ -930,5 +946,58 @@ describe("dedicación y proyección (módulo): porcentaje de asignación y horas
       await assertFails(deleteDoc(doc(asRole("emi", "employee"), pid("emi"))));
       await assertSucceeds(deleteDoc(doc(asRole("sofia", "supervisor"), pid("emi"))));
     });
+  });
+});
+
+describe("cargar horas por otra persona (supervisor o administrador)", () => {
+  const open = (mode: "open" | "assigned") => env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "settings/main"), { editWindowDays: 7, projectAccess: mode }); });
+  const seedAssignment = (code: string, uid: string) => env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), `assignments/${code}_${uid}`), { projectId: code, userId: uid, assignedBy: "ana" }); });
+  const forOther = (uid: string, by: string, offset = 0, extra: Record<string, unknown> = {}) => newEntry(uid, offset, { status: "submitted", createdBy: by, ...extra });
+
+  it("el supervisor le carga horas a alguien de su equipo, enviadas a aprobación", async () => {
+    await assertSucceeds(setDoc(doc(asRole("sofia", "supervisor"), "time_entries/o1"), forOther("emi", "sofia")));
+  });
+  it("el admin le carga horas a cualquiera", async () => {
+    await assertSucceeds(setDoc(doc(asRole("ana", "admin"), "time_entries/o1"), forOther("olga", "ana")));
+    await assertSucceeds(setDoc(doc(asRole("ana", "admin"), "time_entries/o2"), forOther("sofia", "ana")));
+  });
+  it("no vale para otro equipo ni para un empleado común; el supervisor sigue cargando lo suyo por el camino normal", async () => {
+    await assertFails(setDoc(doc(asRole("sofia", "supervisor"), "time_entries/o1"), forOther("olga", "sofia")));
+    await assertFails(setDoc(doc(asRole("emi", "employee"), "time_entries/o3"), forOther("eze", "emi")));
+    await assertSucceeds(setDoc(doc(asRole("sofia", "supervisor"), "time_entries/o2"), newEntry("sofia")));
+    // y por este camino no puede saltarse la ventana de 7 días para sí mismo
+    await assertFails(setDoc(doc(asRole("sofia", "supervisor"), "time_entries/o4"), forOther("sofia", "sofia", -20)));
+  });
+  it("exige 'createdBy' propio y estado enviado (no borrador ni aprobado)", async () => {
+    const sup = asRole("sofia", "supervisor");
+    await assertFails(setDoc(doc(sup, "time_entries/o1"), forOther("emi", "ana")));
+    await assertFails(setDoc(doc(sup, "time_entries/o2"), newEntry("emi", 0, { status: "submitted" })));
+    await assertFails(setDoc(doc(sup, "time_entries/o3"), forOther("emi", "sofia", 0, { status: "draft" })));
+    await assertFails(setDoc(doc(sup, "time_entries/o4"), forOther("emi", "sofia", 0, { status: "approved", hours: 8 })));
+  });
+  it("puede cargar días pasados más allá de la ventana de 7 días, pero no fechas futuras", async () => {
+    const sup = asRole("sofia", "supervisor");
+    await assertSucceeds(setDoc(doc(sup, "time_entries/o1"), forOther("emi", "sofia", -20)));
+    await assertFails(setDoc(doc(sup, "time_entries/o2"), forOther("emi", "sofia", 5)));
+    // el empleado sigue limitado a su ventana
+    await assertFails(setDoc(doc(asRole("emi", "employee"), "time_entries/o3"), newEntry("emi", -20)));
+  });
+  it("con proyectos asignados, el proyecto tiene que estar asignado a la persona (no al supervisor)", async () => {
+    await open("assigned");
+    const sup = asRole("sofia", "supervisor");
+    await assertFails(setDoc(doc(sup, "time_entries/o1"), forOther("emi", "sofia")));
+    await seedAssignment("p1", "sofia");
+    await assertFails(setDoc(doc(sup, "time_entries/o2"), forOther("emi", "sofia")));
+    await seedAssignment("p1", "emi");
+    await assertSucceeds(setDoc(doc(sup, "time_entries/o3"), forOther("emi", "sofia")));
+  });
+  it("un empleado no puede inventarse 'createdBy' de otra persona en lo suyo", async () => {
+    await assertFails(setDoc(doc(asRole("emi", "employee"), "time_entries/o1"), newEntry("emi", 0, { createdBy: "sofia" })));
+    await assertSucceeds(setDoc(doc(asRole("emi", "employee"), "time_entries/o2"), newEntry("emi")));
+  });
+  it("lo cargado por el supervisor lo puede aprobar él mismo (es su equipo) y la persona lo ve", async () => {
+    await assertSucceeds(setDoc(doc(asRole("sofia", "supervisor"), "time_entries/o1"), forOther("emi", "sofia")));
+    await assertSucceeds(getDoc(doc(asRole("emi", "employee"), "time_entries/o1")));
+    await assertSucceeds(updateDoc(doc(asRole("sofia", "supervisor"), "time_entries/o1"), { status: "approved", reviewedBy: "sofia", hours: 8, breakdown: { normal: 8 } }));
   });
 });

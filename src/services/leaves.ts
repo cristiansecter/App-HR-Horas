@@ -99,22 +99,27 @@ export async function decideLeave(leave: LeaveRequest, reviewer: SessionUser, ap
   announceChange();
 }
 
-export interface NewUnjustified {
+export interface NewLeaveFor {
   userId: string;
+  type: LeaveType;
   startDate: string;
   endDate: string;
   daysCount: number;
   reason: string;
 }
 
-/** La ausencia injustificada la registra quien supervisa, directamente aprobada. La persona no la solicita. */
-export async function registerUnjustified(reviewer: SessionUser, input: NewUnjustified): Promise<void> {
+/**
+ * Quien supervisa (o el administrador) registra una licencia por una persona de su equipo, directamente aprobada
+ * (por ejemplo si la persona no puede cargarla). Sirve para cualquier tipo, también la ausencia injustificada,
+ * que solo se registra así. La ausencia queda también en el calendario del equipo.
+ */
+export async function registerLeaveFor(reviewer: SessionUser, input: NewLeaveFor): Promise<string> {
   const { db } = getFirebase();
   const ref = doc(collection(db, "leave_requests"));
   const batch = writeBatch(db);
   batch.set(ref, {
     userId: input.userId,
-    type: "unjustified",
+    type: input.type,
     startDate: input.startDate,
     endDate: input.endDate,
     daysCount: input.daysCount,
@@ -128,6 +133,7 @@ export async function registerUnjustified(reviewer: SessionUser, input: NewUnjus
   batch.set(doc(db, "team_absences", ref.id), { userId: input.userId, startDate: input.startDate, endDate: input.endDate, leaveId: ref.id });
   await batch.commit();
   announceChange();
+  return ref.id;
 }
 
 /** Retira una solicitud propia que todavía está pendiente. */

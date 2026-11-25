@@ -106,6 +106,14 @@ service cloud.firestore {
     function canUseProject(code) {
       return code is string && (projectAccessOpen() || isAssigned(me(), code));
     }
+    // Lo mismo, pero para cargar horas en nombre de otra persona: el proyecto tiene que servirle a ELLA.
+    function canUseProjectFor(uid, code) {
+      return code is string && (projectAccessOpen() || isAssigned(uid, code));
+    }
+    // Quien aprueba puede cargar días pasados sin el límite de la ventana, pero no fechas futuras.
+    function notFuture(ms) {
+      return ms is int && ms <= request.time.toMillis() + 24 * 60 * 60 * 1000;
+    }
 
     // ------------------------------------------------------------ registros de horas: quién puede qué
     function ownerEdits() {
@@ -292,14 +300,26 @@ service cloud.firestore {
     match /time_entries/{id} {
       allow read: if hasRole() && (resource.data.userId == me() || isApproverOf(resource.data.userId));
 
+      // Cada persona carga lo suyo. Además, su supervisor (o el administrador) puede cargárselo (por ejemplo si no puede
+      // hacerlo ella): queda enviado a aprobación y con 'createdBy' = quien lo cargó.
       allow create: if hasRole()
-        && request.resource.data.userId == me()
         && request.resource.data.keys().hasOnly(['userId', 'projectId', 'date', 'dateMs', 'startTime', 'endTime',
-                                                 'isOnCall', 'ticketRef', 'notes', 'status', 'createdAt', 'updatedAt'])
-        && request.resource.data.status in ['draft', 'submitted']
+                                                 'isOnCall', 'ticketRef', 'notes', 'status', 'createdBy', 'createdAt', 'updatedAt'])
         && request.resource.data.startTime is string && request.resource.data.endTime is string
-        && canUseProject(request.resource.data.projectId)
-        && inWindow(request.resource.data.dateMs);
+        && (
+          (request.resource.data.userId == me()
+            && request.resource.data.get('createdBy', me()) == me()
+            && request.resource.data.status in ['draft', 'submitted']
+            && canUseProject(request.resource.data.projectId)
+            && inWindow(request.resource.data.dateMs))
+          ||
+          (request.resource.data.userId != me()
+            && isApproverOf(request.resource.data.userId)
+            && request.resource.data.get('createdBy', '') == me()
+            && request.resource.data.status == 'submitted'
+            && canUseProjectFor(request.resource.data.userId, request.resource.data.projectId)
+            && notFuture(request.resource.data.dateMs))
+        );
 
       // El dueño corrige mientras el registro está en borrador u observado y dentro de la ventana.
       // Quien aprueba (supervisor del dueño o administrador) decide sobre registros enviados.
@@ -310,8 +330,8 @@ service cloud.firestore {
     }
 
     // ------------------------------------------------------------ licencias
-    // El empleado solicita (pendiente). El supervisor del dueño o el admin deciden. La ausencia injustificada
-    // no se solicita: la registra quien supervisa, ya aprobada.
+    // El empleado solicita (pendiente). El supervisor del dueño o el admin deciden. También pueden registrarla ellos
+    // por la persona (ya aprobada). La ausencia injustificada no se solicita: solo la registra quien supervisa.
     match /leave_requests/{id} {
       allow read: if hasRole() && (resource.data.userId == me() || isApproverOf(resource.data.userId));
 
@@ -320,12 +340,15 @@ service cloud.firestore {
                                                  'attachmentPath', 'status', 'createdBy', 'approvedBy', 'decidedAt',
                                                  'createdAt'])
         && (
+          // La persona solicita lo suyo y queda pendiente.
           (request.resource.data.userId == me()
             && request.resource.data.type in ['vacation', 'sick', 'study', 'personal']
             && request.resource.data.status == 'pending')
           ||
+          // Su supervisor (o el administrador) la registra de cualquier tipo, ya aprobada (la ausencia injustificada
+          // solo la puede registrar quien supervisa).
           (isApproverOf(request.resource.data.userId) && request.resource.data.userId != me()
-            && request.resource.data.type == 'unjustified'
+            && request.resource.data.type in ['vacation', 'sick', 'study', 'personal', 'unjustified']
             && request.resource.data.status == 'approved'
             && request.resource.data.approvedBy == me())
         );

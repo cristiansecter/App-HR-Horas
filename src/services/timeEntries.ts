@@ -31,6 +31,8 @@ export interface NewTimeEntry {
   notes: string;
   /** "draft" lo deja editable; "submitted" lo manda a aprobación. */
   status: "draft" | "submitted";
+  /** Solo si lo carga otra persona (supervisor o administrador) en nombre de `userId`: su uid. Las reglas exigen que sea quien escribe. */
+  createdBy?: string;
 }
 
 const withIds = (docs: { id: string; data: () => unknown }[]): TimeEntry[] =>
@@ -55,6 +57,7 @@ export async function createTimeEntry(input: NewTimeEntry): Promise<string> {
     ticketRef: input.ticketRef.trim(),
     notes: input.notes.trim(),
     status: input.status,
+    ...(input.createdBy ? { createdBy: input.createdBy } : {}),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -62,7 +65,7 @@ export async function createTimeEntry(input: NewTimeEntry): Promise<string> {
   return ref.id;
 }
 
-export type EditableEntryFields = Omit<NewTimeEntry, "userId">;
+export type EditableEntryFields = Omit<NewTimeEntry, "userId" | "createdBy">;
 
 /**
  * Corrige un registro propio que sigue en borrador u observado. Al volver a enviarlo (status "submitted")
