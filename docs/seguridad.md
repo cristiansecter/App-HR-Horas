@@ -16,6 +16,7 @@ No se encontraron fallas críticas abiertas. Los permisos los hacen cumplir las 
 - **Módulos apagados = datos bloqueados.** Si un módulo no está activo, las reglas niegan sus colecciones aunque alguien las pida directamente.
 - **Período cerrado.** Con el mes de liquidaciones cerrado, las reglas rechazan crear, cambiar o borrar recibos (solo se puede publicar o retirar la publicación).
 - **Recibos publicados.** La persona solo puede pedir los suyos y publicados; una consulta sin esas condiciones es rechazada. El costo patronal de la empresa no se guarda en el recibo.
+- **Documentos.** Los certificados (datos de salud) los leen solo la persona, su supervisor y el administrador; los recibos, solo la persona y el administrador (nunca el supervisor). Los archivos solo pueden ser PDF o imágenes JPG/PNG/WebP (sin SVG, que puede llevar scripts), de hasta 700 KB; las reglas validan tipo, tamaño y quién sube cada cosa, y que los datos y el contenido se creen juntos. No se modifican: se borran y se vuelven a subir.
 - **Proyectos asignados.** Cada persona carga horas solo en los proyectos que su supervisor o el administrador le asignó (por defecto); las reglas lo exigen, y un supervisor solo asigna a su equipo.
 - **Registros aprobados congelados.** Las horas y el desglose los escribe solo quien aprueba y no se pueden editar después.
 - **Sin XSS por construcción.** React escapa lo que muestra; no hay `dangerouslySetInnerHTML`, `innerHTML`, `eval` ni `new Function` en el código.

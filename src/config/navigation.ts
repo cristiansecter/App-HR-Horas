@@ -8,6 +8,7 @@ export type NavId =
   | "leave"
   | "team"
   | "approvals"
+  | "documents"
   | "directory"
   | "assignments"
   | "projection"
@@ -44,6 +45,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: "hours", label: "Mis horas", path: "/horas", roles: ["supervisor", "employee"], icon: "history_toggle_off", group: "main" },
   { id: "leave", label: "Mis licencias", path: "/licencias", roles: ["supervisor", "employee"], icon: "beach_access", group: "main" },
   { id: "team", label: "Calendario del equipo", path: "/equipo", roles: ALL, icon: "calendar_month", group: "main" },
+  { id: "documents", label: "Documentos", path: "/documentos", roles: ALL, icon: "folder_open", group: "main" },
   { id: "approvals", label: "Aprobaciones", path: "/aprobaciones", roles: ["supervisor", "admin"], icon: "fact_check", group: "management" },
   { id: "assignments", label: "Asignar proyectos", path: "/asignaciones", roles: ["supervisor", "admin"], icon: "assignment_ind", group: "management" },
   { id: "projection", label: "Proyección", path: "/proyeccion", roles: ["supervisor", "admin"], icon: "timeline", group: "management", module: "allocation" },

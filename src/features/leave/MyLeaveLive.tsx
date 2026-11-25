@@ -5,6 +5,8 @@ import { countLeaveDays, InvalidLeaveError, formatLeaveDays, rangesOverlap } fro
 import { LEAVE_STATUS_LABELS, LEAVE_TYPE_LABELS, REQUESTABLE_LEAVE_TYPES, type LeaveRequest, type LeaveType } from "@/domain/model";
 import { withCode } from "@/services/errors";
 import { cancelLeave, createLeaveRequest, LEAVES_CHANGED, listMyLeaves } from "@/services/leaves";
+import { attachCertificate } from "@/services/openDocument";
+import { FileError, prepareFile, type PreparedFile } from "@/services/files";
 import { useUser } from "@/session/SessionContext";
 import { Chip, Page, PageHeader } from "@/ui/Page";
 import { useToast } from "@/ui/Toast";
@@ -28,6 +30,7 @@ export default function MyLeaveLive() {
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const [reason, setReason] = useState("");
+  const [certificate, setCertificate] = useState<File | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -57,18 +60,32 @@ export default function MyLeaveLive() {
     if (preview.days === 0) return setFormError("Ese período no tiene ningún día hábil: elegí otras fechas.");
     setSaving(true);
     setFormError(null);
+    // El certificado se valida y se achica antes de crear nada: si el archivo no sirve, no se envía la solicitud a medias.
+    let prepared: PreparedFile | null = null;
+    if (certificate) {
+      try {
+        prepared = await prepareFile(certificate);
+      } catch (err) {
+        setFormError(err instanceof FileError ? err.message : "No se pudo leer el certificado.");
+        setSaving(false);
+        return;
+      }
+    }
+    let leaveId: string;
     try {
-      await createLeaveRequest({ userId: user.uid, type, startDate: from, endDate: to, daysCount: preview.days, reason });
+      leaveId = await createLeaveRequest({ userId: user.uid, type, startDate: from, endDate: to, daysCount: preview.days, reason });
     } catch (err) {
       console.error("No se pudo enviar la solicitud", err);
       setFormError(withCode("No se pudo enviar la solicitud. Probá de nuevo.", err));
       setSaving(false);
       return;
     }
+    const attached = prepared ? await attachCertificate({ by: user, userId: user.uid, leaveId, title: `Certificado de ${LEAVE_TYPE_LABELS[type].toLowerCase()}`, prepared }) : true;
     setSaving(false);
     setOpen(false);
     setReason("");
-    notify("Solicitud enviada. Tu supervisor la va a revisar.");
+    setCertificate(null);
+    notify(attached ? "Solicitud enviada. Tu supervisor la va a revisar." : "Solicitud enviada, pero no se pudo adjuntar el certificado. Subilo desde Documentos.");
   };
 
   const retire = async (l: LeaveRequest) => {
@@ -194,6 +211,11 @@ export default function MyLeaveLive() {
             <label className="block font-label-lg text-label-lg text-on-surface">
               Motivo <span className="font-label-xs-mono text-label-xs-mono text-on-surface-variant uppercase">Opcional</span>
               <textarea rows={3} maxLength={250} value={reason} onChange={(e) => setReason(e.target.value)} className={`mt-1.5 ${field}`} />
+            </label>
+            <label className="block font-label-lg text-label-lg text-on-surface">
+              Certificado <span className="font-label-xs-mono text-label-xs-mono text-on-surface-variant uppercase">Opcional</span>
+              <input type="file" aria-label="Certificado" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(e) => setCertificate(e.target.files?.[0] ?? null)} className={`mt-1.5 ${field} file:mr-3 file:rounded-md file:border-0 file:bg-surface-container-high file:px-3 file:py-1.5 file:font-label-md file:text-on-surface`} />
+              <span className="mt-1 block font-body-sm text-body-sm font-normal text-on-surface-variant">PDF de hasta 700 KB o una foto (se achica sola). Queda guardado en Documentos.</span>
             </label>
             {formError ? <p role="alert" className="font-body-sm text-body-sm text-error">{formError}</p> : null}
             <div className="flex justify-end gap-3 pt-1">

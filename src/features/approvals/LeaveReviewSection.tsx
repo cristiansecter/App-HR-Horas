@@ -4,7 +4,10 @@ import { dateInBuenosAires } from "@/domain/dates";
 import { countLeaveDays, InvalidLeaveError, formatLeaveDays, rangesOverlap } from "@/domain/leave/days";
 import { LEAVE_STATUS_LABELS, LEAVE_TYPE_LABELS, type LeaveRequest, type LeaveType } from "@/domain/model";
 import { withCode } from "@/services/errors";
+import { listDocumentsForReview, DOCUMENTS_CHANGED } from "@/services/documents";
+import { FileError, prepareFile, type PreparedFile } from "@/services/files";
 import { decideLeave, LEAVES_CHANGED, listMyLeaves, registerLeaveFor } from "@/services/leaves";
+import { attachCertificate, openDocumentInTab } from "@/services/openDocument";
 import { useUser } from "@/session/SessionContext";
 import { Chip } from "@/ui/Page";
 import { useToast } from "@/ui/Toast";
@@ -28,6 +31,13 @@ export default function LeaveReviewSection() {
 
   const nameOf = (uid: string) => data?.users.get(uid)?.fullName ?? "Persona";
   const leaves = data?.leaves ?? [];
+  // Certificados adjuntos a las licencias que se revisan (un supervisor solo ve los de su equipo; lo exigen las reglas).
+  const certs = useAsync(
+    async () => (data && data.reviewable.length > 0 ? listDocumentsForReview(reviewer, data.reviewable.map((u) => u.uid)) : []),
+    [data, reviewer.uid, reviewer.role],
+    [DOCUMENTS_CHANGED, LEAVES_CHANGED],
+  );
+  const certOf = (leaveId: string) => (certs.data ?? []).find((d) => d.kind === "certificate" && d.leaveId === leaveId);
 
   const resolve = async (leave: LeaveRequest, approve: boolean, why = "") => {
     setFailure(null);
@@ -78,7 +88,14 @@ export default function LeaveReviewSection() {
                   <td className="px-space-md py-3 tabular-nums">{dmy(l.startDate)}</td>
                   <td className="px-space-md py-3 tabular-nums">{dmy(l.endDate)}</td>
                   <td className="px-space-md py-3 tabular-nums">{formatLeaveDays(l.daysCount, l.type)}</td>
-                  <td className="px-space-md py-3 font-body-sm text-body-sm text-on-surface-variant italic">{l.reason ? `“${l.reason}”` : ""}</td>
+                  <td className="px-space-md py-3 font-body-sm text-body-sm text-on-surface-variant italic">
+                    {l.reason ? `“${l.reason}”` : ""}
+                    {certOf(l.id) ? (
+                      <button type="button" aria-label={`Ver certificado de ${nameOf(l.userId)}`} onClick={() => void openDocumentInTab(certOf(l.id)!).catch((e) => { console.error(e); setFailure("No se pudo abrir el certificado."); })} className="mt-1 flex items-center gap-1 rounded-lg bg-surface-container-high px-2 py-1 font-label-md text-label-md font-semibold not-italic text-primary hover:bg-surface-container-highest">
+                        <span className="material-symbols-outlined text-[16px]">attach_file</span>Ver certificado
+                      </button>
+                    ) : null}
+                  </td>
                   <td className="px-space-md py-3 text-right">
                     <div className="inline-flex gap-2">
                       <button type="button" disabled={busy === l.id} onClick={() => void resolve(l, true)} className="rounded-lg bg-primary-container/20 px-3 py-1.5 font-label-md text-label-md font-semibold text-primary hover:bg-primary-container/30 disabled:opacity-40">Aprobar</button>
@@ -159,6 +176,7 @@ function RegisterLeaveDialog({
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const [reason, setReason] = useState("");
+  const [certificate, setCertificate] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const person = people.find((p) => p.uid === uid);
@@ -181,8 +199,19 @@ function RegisterLeaveDialog({
     if (clash) return setFormError(`${person.fullName} ya tiene una licencia ${LEAVE_STATUS_LABELS[clash.status].toLowerCase()} del ${dmy(clash.startDate)} al ${dmy(clash.endDate)}.`);
     setSaving(true);
     setFormError(null);
+    let prepared: PreparedFile | null = null;
+    if (certificate) {
+      try {
+        prepared = await prepareFile(certificate);
+      } catch (err) {
+        setFormError(err instanceof FileError ? err.message : "No se pudo leer el certificado.");
+        setSaving(false);
+        return;
+      }
+    }
     try {
-      await registerLeaveFor(reviewer, { userId: person.uid, type, startDate: from, endDate: to, daysCount: preview.days, reason });
+      const leaveId = await registerLeaveFor(reviewer, { userId: person.uid, type, startDate: from, endDate: to, daysCount: preview.days, reason });
+      if (prepared) await attachCertificate({ by: reviewer, userId: person.uid, leaveId, title: `Certificado de ${LEAVE_TYPE_LABELS[type].toLowerCase()}`, prepared });
     } catch (err) {
       console.error("No se pudo registrar la licencia", err);
       setFormError(withCode("No se pudo registrar la licencia. Probá de nuevo.", err));
@@ -233,6 +262,10 @@ function RegisterLeaveDialog({
         <label className="block font-label-lg text-label-lg text-on-surface">
           Observación <span className="font-label-xs-mono text-label-xs-mono text-on-surface-variant uppercase">Opcional</span>
           <textarea rows={2} maxLength={250} value={reason} onChange={(e) => setReason(e.target.value)} className={`mt-1.5 ${field}`} />
+        </label>
+        <label className="block font-label-lg text-label-lg text-on-surface">
+          Certificado <span className="font-label-xs-mono text-label-xs-mono text-on-surface-variant uppercase">Opcional</span>
+          <input type="file" aria-label="Certificado" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(e) => setCertificate(e.target.files?.[0] ?? null)} className={`mt-1.5 ${field} file:mr-3 file:rounded-md file:border-0 file:bg-surface-container-high file:px-3 file:py-1.5 file:font-label-md file:text-on-surface`} />
         </label>
         {clash ? <p role="note" className="font-body-sm text-body-sm text-amber-200">{person?.fullName} ya tiene una licencia {LEAVE_STATUS_LABELS[clash.status].toLowerCase()} del {dmy(clash.startDate)} al {dmy(clash.endDate)}.</p> : null}
         <p className="font-body-sm text-body-sm text-on-surface-variant">Queda aprobada desde el registro y la persona la ve en sus licencias, anotada como cargada por vos.</p>

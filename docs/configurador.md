@@ -189,6 +189,16 @@ Además de que cada persona cargue lo suyo, **el supervisor (a su equipo) y el a
 - **Licencias:** en Aprobaciones, "Registrar licencia de una persona" (vacaciones, enfermedad, estudio, asunto personal o ausencia injustificada). Queda aprobada desde el registro, aparece en el calendario del equipo y la persona la ve marcada como registrada por un superior. No deja registrar dos veces el mismo período.
 - Lo hace cumplir Firestore (reglas `time_entries` y `leave_requests`), no solo la pantalla: un supervisor no puede cargar por alguien de otro equipo, ni usar un proyecto no asignado a la persona, ni dejar el registro como aprobado de entrada.
 
+## Documentos: certificados y recibos
+
+Pantalla **Documentos** (para todos los roles), un repositorio simple dentro de la misma base.
+
+- **Certificados** (por ejemplo médicos): los sube cada persona (los suyos), su supervisor (los suyos y los de su equipo) y el administrador (de cualquiera). Los leen la persona, **su supervisor** (aprueba la licencia y necesita verificarlo) y el administrador; nadie más. Al solicitar una licencia (o al registrarla por otra persona) se puede adjuntar el certificado, y quien aprueba lo abre desde la fila de la licencia.
+- **Recibos**: los sube solo el administrador, con el mes que corresponde. Los leen la persona y el administrador; **el supervisor no los ve** (tienen importes).
+- Borra quien lo subió o el administrador. Los documentos no se editan: para corregir uno se borra y se vuelve a subir.
+- **Límite de tamaño:** 700 KB por archivo. Se aceptan PDF y fotos JPG, PNG o WebP. Las fotos se achican solas a JPG para que entren; un PDF más pesado se rechaza con un aviso. SVG y otros formatos quedan afuera.
+- **Dónde se guardan:** los archivos van dentro de Firestore (`documents` para los datos y `document_files` para el contenido, aparte para no bajarlo al listar). Cloud Storage de Firebase ya no está en el plan gratuito; cuando la empresa pase a Blaze se puede migrar a Storage sin cambiar lo que ve la gente. En el plan gratuito, Firestore da 1 GiB: con archivos de unos 300 KB alcanza para miles de documentos.
+
 ## Proyectos asignados y organigrama
 
 **Asignar proyectos.** Por defecto cada persona carga horas **solo en los proyectos que le asignaron**. El administrador asigna a cualquiera (incluido él) y el supervisor, a las personas que tiene a cargo, desde *Asignar proyectos*. Las reglas de Firestore lo exigen: un empleado no puede cargar horas en un proyecto sin asignación aunque lo intente por fuera de la pantalla. Corregir otros datos de un registro viejo sigue funcionando aunque después se le quite el proyecto; lo que se bloquea es cargar horas nuevas ahí.

@@ -7,15 +7,15 @@ const ids = (role: Parameters<typeof navigationFor>[0]) => navigationFor(role).m
 
 describe("navegación por rol", () => {
   it("el empleado ve su carga, sus licencias y el calendario, pero no aprueba ni administra", () => {
-    expect(ids("employee")).toEqual(["home", "week", "hours", "leave", "team"]);
+    expect(ids("employee")).toEqual(["home", "week", "hours", "leave", "team", "documents"]);
   });
 
   it("el supervisor ve lo del empleado y además aprueba", () => {
-    expect(ids("supervisor")).toEqual(["home", "week", "hours", "leave", "team", "approvals", "assignments"]);
+    expect(ids("supervisor")).toEqual(["home", "week", "hours", "leave", "team", "documents", "approvals", "assignments"]);
   });
 
   it("el admin administra todo y no carga horas propias", () => {
-    expect(ids("admin")).toEqual(["home", "team", "approvals", "assignments", "directory", "projects", "reports", "settings"]);
+    expect(ids("admin")).toEqual(["home", "team", "documents", "approvals", "assignments", "directory", "projects", "reports", "settings"]);
   });
 
   it("canAccess bloquea las rutas que el rol no ve", () => {

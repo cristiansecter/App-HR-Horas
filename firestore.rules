@@ -362,6 +362,49 @@ service cloud.firestore {
       allow delete: if hasRole() && resource.data.userId == me() && resource.data.status == 'pending';
     }
 
+    // ------------------------------------------------------------ documentos (certificados y recibos)
+    // Los archivos se guardan en Firestore (base64): `documents` guarda los datos que se listan y `document_files` el
+    // contenido, aparte para no bajarlo al listar. Se crean juntos (en un mismo lote) y no se modifican: para corregir
+    // algo se borra y se vuelve a subir.
+    // Certificado: lo sube la persona (el suyo), su supervisor o el administrador; lo leen esos tres.
+    // Recibo: lo sube solo el administrador; lo leen la persona y el administrador (nunca su supervisor: tiene importes).
+    function canReadDoc(d) {
+      return hasRole() && (d.userId == me() || isAdmin() || (d.kind == 'certificate' && supervises(d.userId)));
+    }
+    match /documents/{id} {
+      allow read: if canReadDoc(resource.data);
+      allow create: if hasRole()
+        && request.resource.data.keys().hasOnly(['userId', 'kind', 'title', 'fileName', 'mime', 'size', 'period', 'leaveId', 'uploadedBy', 'uploadedAt'])
+        && request.resource.data.userId is string
+        && request.resource.data.kind in ['certificate', 'receipt']
+        && request.resource.data.title is string && request.resource.data.title.size() >= 1 && request.resource.data.title.size() <= 120
+        && request.resource.data.fileName is string && request.resource.data.fileName.size() >= 1 && request.resource.data.fileName.size() <= 120
+        && request.resource.data.mime in ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']
+        && request.resource.data.size is int && request.resource.data.size > 0 && request.resource.data.size <= 716800
+        && request.resource.data.uploadedBy == me()
+        && request.resource.data.uploadedAt == request.time
+        && (!('period' in request.resource.data) || (request.resource.data.kind == 'receipt' && request.resource.data.period.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')))
+        && (!('leaveId' in request.resource.data)
+            || (request.resource.data.kind == 'certificate' && request.resource.data.leaveId is string
+                && get(/databases/$(database)/documents/leave_requests/$(request.resource.data.leaveId)).data.userId == request.resource.data.userId))
+        && (request.resource.data.kind == 'certificate'
+              ? (request.resource.data.userId == me() || isApproverOf(request.resource.data.userId))
+              : isAdmin())
+        && existsAfter(/databases/$(database)/documents/document_files/$(id));
+      allow update: if false;
+      allow delete: if hasRole() && (isAdmin() || resource.data.uploadedBy == me());
+    }
+    match /document_files/{id} {
+      allow read: if canReadDoc(get(/databases/$(database)/documents/documents/$(id)).data);
+      allow create: if hasRole()
+        && request.resource.data.keys().hasOnly(['data'])
+        && request.resource.data.data is string && request.resource.data.data.size() > 0 && request.resource.data.data.size() <= 960000
+        && existsAfter(/databases/$(database)/documents/documents/$(id))
+        && getAfter(/databases/$(database)/documents/documents/$(id)).data.uploadedBy == me();
+      allow update: if false;
+      allow delete: if hasRole() && (isAdmin() || get(/databases/$(database)/documents/documents/$(id)).data.uploadedBy == me());
+    }
+
     // Calendario del equipo: solo "ausente", sin el tipo de licencia (es un dato de salud).
     match /team_absences/{id} {
       allow read: if hasRole();

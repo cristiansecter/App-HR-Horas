@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, serverTimestamp, writeBatch } from "firebase/firestore";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -999,5 +999,127 @@ describe("cargar horas por otra persona (supervisor o administrador)", () => {
     await assertSucceeds(setDoc(doc(asRole("sofia", "supervisor"), "time_entries/o1"), forOther("emi", "sofia")));
     await assertSucceeds(getDoc(doc(asRole("emi", "employee"), "time_entries/o1")));
     await assertSucceeds(updateDoc(doc(asRole("sofia", "supervisor"), "time_entries/o1"), { status: "approved", reviewedBy: "sofia", hours: 8, breakdown: { normal: 8 } }));
+  });
+});
+
+describe("documentos: certificados y recibos", () => {
+  const meta = (userId: string, by: string, over: Record<string, unknown> = {}) => ({
+    userId, kind: "certificate", title: "Certificado médico", fileName: "cert.pdf", mime: "application/pdf", size: 1000, uploadedBy: by, uploadedAt: serverTimestamp(), ...over,
+  });
+  const upload = (db: ReturnType<typeof asRole>, id: string, m: Record<string, unknown>, data = "QUJD") => {
+    const batch = writeBatch(db);
+    batch.set(doc(db, `documents/${id}`), m);
+    batch.set(doc(db, `document_files/${id}`), { data });
+    return batch.commit();
+  };
+  const seed = (id: string, userId: string, by: string, kind = "certificate") => env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), `documents/${id}`), { userId, kind, title: "T", fileName: "f.pdf", mime: "application/pdf", size: 10, uploadedBy: by });
+    await setDoc(doc(ctx.firestore(), `document_files/${id}`), { data: "QUJD" });
+  });
+  const emi = () => asRole("emi", "employee");
+  const sofia = () => asRole("sofia", "supervisor");
+  const ana = () => asRole("ana", "admin");
+
+  it("la persona sube su propio certificado (metadatos + archivo en un solo lote)", async () => {
+    await assertSucceeds(upload(emi(), "d1", meta("emi", "emi")));
+  });
+  it("el supervisor sube certificados de su equipo y los suyos; el admin, de cualquiera", async () => {
+    await assertSucceeds(upload(sofia(), "d1", meta("emi", "sofia")));
+    await assertSucceeds(upload(sofia(), "d2", meta("sofia", "sofia")));
+    await assertSucceeds(upload(ana(), "d3", meta("olga", "ana")));
+  });
+  it("un empleado no sube por otra persona, ni un supervisor por alguien de otro equipo", async () => {
+    await assertFails(upload(emi(), "d1", meta("eze", "emi")));
+    await assertFails(upload(sofia(), "d2", meta("olga", "sofia")));
+  });
+  it("'uploadedBy' tiene que ser quien sube", async () => {
+    await assertFails(upload(emi(), "d1", meta("emi", "sofia")));
+  });
+  it("el recibo lo sube solo el admin", async () => {
+    await assertSucceeds(upload(ana(), "r1", meta("emi", "ana", { kind: "receipt", period: "2026-10", title: "Recibo octubre" })));
+    await assertFails(upload(sofia(), "r2", meta("emi", "sofia", { kind: "receipt", period: "2026-10" })));
+    await assertFails(upload(emi(), "r3", meta("emi", "emi", { kind: "receipt", period: "2026-10" })));
+  });
+  it("el período solo va en recibos y tiene que ser AAAA-MM", async () => {
+    await assertFails(upload(ana(), "d1", meta("emi", "ana", { period: "2026-10" })));
+    await assertFails(upload(ana(), "r1", meta("emi", "ana", { kind: "receipt", period: "2026-13" })));
+  });
+  it("valida tipo de archivo, tamaño, título y campos de más", async () => {
+    await assertFails(upload(emi(), "d1", meta("emi", "emi", { mime: "image/svg+xml" })));
+    await assertFails(upload(emi(), "d2", meta("emi", "emi", { mime: "text/html" })));
+    await assertFails(upload(emi(), "d3", meta("emi", "emi", { size: 716801 })));
+    await assertFails(upload(emi(), "d4", meta("emi", "emi", { size: 0 })));
+    await assertFails(upload(emi(), "d5", meta("emi", "emi", { title: "" })));
+    await assertFails(upload(emi(), "d6", meta("emi", "emi", { title: "x".repeat(121) })));
+    await assertFails(upload(emi(), "d7", meta("emi", "emi", { extra: 1 })));
+    await assertFails(upload(emi(), "d8", meta("emi", "emi", { kind: "otro" })));
+  });
+  it("el contenido tiene que ser texto no vacío y de hasta 960.000 caracteres", async () => {
+    await assertFails(upload(emi(), "d1", meta("emi", "emi"), ""));
+    await assertFails(upload(emi(), "d2", meta("emi", "emi"), "A".repeat(960001)));
+    await assertSucceeds(upload(emi(), "d3", meta("emi", "emi"), "A".repeat(960000)));
+  });
+  it("no se puede subir solo los metadatos ni solo el archivo", async () => {
+    await assertFails(setDoc(doc(emi(), "documents/d1"), meta("emi", "emi")));
+    await assertFails(setDoc(doc(emi(), "document_files/d2"), { data: "QUJD" }));
+  });
+  it("el archivo no puede ser de otro: 'uploadedBy' del documento tiene que coincidir con quien lo escribe", async () => {
+    await seed("d1", "emi", "emi");
+    // alguien intenta agregar un archivo a un documento que subió otra persona
+    await assertFails(setDoc(doc(asRole("eze", "employee"), "document_files/d1"), { data: "OTRO" }));
+  });
+  it("un certificado se puede adjuntar a una licencia propia (la licencia tiene que ser de esa persona)", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "leave_requests/l1"), { userId: "emi", type: "sick", startDate: "2026-12-14", endDate: "2026-12-14", daysCount: 1, status: "pending", createdBy: "emi" }); });
+    await assertSucceeds(upload(emi(), "d1", meta("emi", "emi", { leaveId: "l1" })));
+    await assertFails(upload(asRole("eze", "employee"), "d2", meta("eze", "eze", { leaveId: "l1" })));
+    await assertFails(upload(emi(), "d3", meta("emi", "emi", { leaveId: "no-existe" })));
+    await assertFails(upload(ana(), "r1", meta("emi", "ana", { kind: "receipt", leaveId: "l1" })));
+  });
+
+  it("lectura de un certificado: la persona, su supervisor y el admin; nadie más", async () => {
+    await seed("c1", "emi", "emi");
+    for (const [db, ok] of [[emi(), true], [sofia(), true], [ana(), true], [asRole("eze", "employee"), false], [asRole("olga", "employee"), false]] as const) {
+      await (ok ? assertSucceeds : assertFails)(getDoc(doc(db, "documents/c1")));
+      await (ok ? assertSucceeds : assertFails)(getDoc(doc(db, "document_files/c1")));
+    }
+    await assertFails(getDoc(doc(asRole("sofia2", "supervisor"), "documents/c1")));
+  });
+  it("lectura de un recibo: la persona y el admin; el supervisor NO", async () => {
+    await seed("r1", "emi", "ana", "receipt");
+    await assertSucceeds(getDoc(doc(emi(), "documents/r1")));
+    await assertSucceeds(getDoc(doc(emi(), "document_files/r1")));
+    await assertSucceeds(getDoc(doc(ana(), "document_files/r1")));
+    await assertFails(getDoc(doc(sofia(), "documents/r1")));
+    await assertFails(getDoc(doc(sofia(), "document_files/r1")));
+    await assertFails(getDoc(doc(asRole("eze", "employee"), "documents/r1")));
+    await assertFails(getDoc(doc(configuratorDb(), "documents/r1")));
+  });
+  it("las listas tienen que ir acotadas: la persona por userId, el supervisor por su equipo y solo certificados", async () => {
+    await seed("c1", "emi", "emi");
+    await assertSucceeds(getDocs(query(collection(emi(), "documents"), where("userId", "==", "emi"))));
+    await assertFails(getDocs(query(collection(emi(), "documents"))));
+    await assertSucceeds(getDocs(query(collection(sofia(), "documents"), where("userId", "in", ["emi", "eze"]), where("kind", "==", "certificate"))));
+    await assertFails(getDocs(query(collection(sofia(), "documents"), where("userId", "in", ["emi", "eze"]))));
+    await assertSucceeds(getDocs(query(collection(ana(), "documents"))));
+  });
+  it("no se modifican: ni los datos ni el contenido, ni siquiera quien los subió o el admin", async () => {
+    await seed("c1", "emi", "emi");
+    await assertFails(updateDoc(doc(emi(), "documents/c1"), { title: "otro" }));
+    await assertFails(updateDoc(doc(ana(), "documents/c1"), { title: "otro" }));
+    await assertFails(updateDoc(doc(emi(), "document_files/c1"), { data: "ZZZ" }));
+  });
+  it("borra quien lo subió o el admin (los dos documentos); los demás no", async () => {
+    await seed("c1", "emi", "sofia");
+    await assertFails(deleteDoc(doc(emi(), "documents/c1")));
+    await assertFails(deleteDoc(doc(asRole("olga", "employee"), "documents/c1")));
+    const sdb = sofia();
+    const b = writeBatch(sdb);
+    b.delete(doc(sdb, "documents/c1")); b.delete(doc(sdb, "document_files/c1"));
+    await assertSucceeds(b.commit());
+    await seed("c2", "emi", "emi");
+    const adb = ana();
+    const b2 = writeBatch(adb);
+    b2.delete(doc(adb, "documents/c2")); b2.delete(doc(adb, "document_files/c2"));
+    await assertSucceeds(b2.commit());
   });
 });

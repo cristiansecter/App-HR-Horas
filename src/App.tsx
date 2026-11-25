@@ -8,6 +8,7 @@ import ConfiguratorConsole from "@/features/configurator/ConfiguratorConsole";
 import { useForcedDark } from "@/ui/colorMode";
 import AssignmentsView from "@/features/assignments/AssignmentsView";
 import ProjectionView from "@/features/projection/ProjectionView";
+import DocumentsView from "@/features/documents/DocumentsView";
 import TeamPayView from "@/features/teampay/TeamPayView";
 import ApprovalsLive from "@/features/approvals/ApprovalsLive";
 import HomeLive from "@/features/home/HomeLive";
@@ -90,6 +91,7 @@ const PAGES: Partial<Record<NavId, () => ReactElement>> = {
   assignments: () => <AssignmentsView />,
   projection: () => <ProjectionView />,
   teamPay: () => <TeamPayView />,
+  documents: () => <DocumentsView />,
   directory: () => <DirectoryRoute />,
   reports: () => <ReportsRoute />,
   performance: () => <PerformanceView />,
