@@ -48,7 +48,7 @@ describe("toggleModule", () => {
 
 describe("featureProblems", () => {
   it("detecta dependencias rotas", () => {
-    expect(featureProblems({ modules: { compensation: false, performance: true, payroll: false, projectBilling: false, allocation: false }, payModel: "salary", supervisorsSeePay: false, workMode: "projects" })).toHaveLength(1);
+    expect(featureProblems({ modules: { compensation: false, performance: true, payroll: false, projectBilling: false, allocation: false }, payModel: "salary", supervisorsSeePay: false, workMode: "projects", presentism: false, presentismLateLimit: 0 })).toHaveLength(1);
     expect(featureProblems(DEFAULT_FEATURES)).toEqual([]);
   });
 });
@@ -127,5 +127,32 @@ describe("modo de trabajo: por proyectos o por asistencia", () => {
     const bad = { ...DEFAULT_FEATURES, workMode: "attendance" as const, modules: { ...DEFAULT_FEATURES.modules, allocation: true } };
     expect(featureProblems(bad)).toHaveLength(1);
     expect(featureProblems(setWorkMode(DEFAULT_FEATURES, "attendance"))).toEqual([]);
+  });
+});
+
+describe("premio y presentismo", () => {
+  it("por defecto está apagado y sin regla de tardanzas", () => {
+    expect(DEFAULT_FEATURES.presentism).toBe(false);
+    expect(DEFAULT_FEATURES.presentismLateLimit).toBe(0);
+    expect(normalizeFeatures({ presentism: true }).presentism).toBe(true);
+    expect(normalizeFeatures({ presentism: "si" }).presentism).toBe(false);
+  });
+  it("la regla de tardanzas solo vale por asistencia y con el presentismo activo", () => {
+    expect(normalizeFeatures({ workMode: "attendance", presentism: true, presentismLateLimit: 3 }).presentismLateLimit).toBe(3);
+    expect(normalizeFeatures({ workMode: "attendance", presentism: false, presentismLateLimit: 3 }).presentismLateLimit).toBe(0);
+    expect(normalizeFeatures({ workMode: "projects", presentism: true, presentismLateLimit: 3 }).presentismLateLimit).toBe(0);
+  });
+  it("un límite inválido se lee como sin regla", () => {
+    for (const bad of [-1, 32, 2.5, "3", null]) expect(normalizeFeatures({ workMode: "attendance", presentism: true, presentismLateLimit: bad }).presentismLateLimit).toBe(0);
+  });
+  it("volver a proyectos apaga la regla de tardanzas", () => {
+    const att = { ...setWorkMode(DEFAULT_FEATURES, "attendance"), presentism: true, presentismLateLimit: 3 };
+    expect(setWorkMode(att, "projects").presentismLateLimit).toBe(0);
+    expect(setWorkMode(att, "projects").presentism).toBe(true);
+  });
+  it("avisa una regla de tardanzas sin presentismo o fuera del modo asistencia", () => {
+    expect(featureProblems({ ...DEFAULT_FEATURES, presentismLateLimit: 3 }).length).toBeGreaterThan(0);
+    const att = setWorkMode(DEFAULT_FEATURES, "attendance");
+    expect(featureProblems({ ...att, presentism: true, presentismLateLimit: 3 })).toEqual([]);
   });
 });

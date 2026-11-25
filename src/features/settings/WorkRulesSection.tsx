@@ -1,6 +1,8 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useCompany } from "@/company/CompanyContext";
 import { isValidTolerance } from "@/domain/attendance";
+import { LEAVE_TYPE_LABELS, type LeaveType } from "@/domain/model";
+import type { FlagDefaults } from "@/domain/presentism";
 import { isValidClock, nextTierId, normalizeClock } from "@/domain/overtime/editing";
 import {
   DAY_TYPES,
@@ -41,6 +43,8 @@ export default function WorkRulesSection() {
   const attendance = company.features.workMode === "attendance";
   const [tolerance, setTolerance] = useState(String(company.lateToleranceMin));
   const [overlapPct, setOverlapPct] = useState(String(company.vacationOverlapPct));
+  const [flagDefaults, setFlagDefaults] = useState<FlagDefaults>(company.presentismDefaults);
+  const setDefault = (t: LeaveType, key: "losesPresentism" | "losesPrize", v: boolean) => setFlagDefaults((d) => ({ ...d, [t]: { ...d[t], [key]: v } }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,6 +102,7 @@ export default function WorkRulesSection() {
         projectAccess: assignedOnly ? "assigned" : "open",
         lateToleranceMin: attendance ? Number(tolerance) : company.lateToleranceMin,
         vacationOverlapPct: Number(overlapPct),
+        presentismDefaults: flagDefaults,
       });
       company.reload();
       notify("Guardaste las reglas. Se aplican a lo que se apruebe de ahora en más.");
@@ -130,6 +135,27 @@ export default function WorkRulesSection() {
           <span className="mt-1 block font-body-sm text-body-sm font-normal text-on-surface-variant">Por ejemplo, con 40 % en un equipo de 5 se avisa cuando 2 están de vacaciones a la vez. Solo se calcula en equipos de 3 personas o más.</span>
         </label>
       </section>
+
+      {company.features.presentism ? (
+        <section className={card} aria-label="Premio y presentismo por licencia">
+          <h2 className={h2}>Premio y presentismo por licencia</h2>
+          <p className={hint}>Cada empresa tiene sus propias prácticas. Acá definís qué viene tildado por defecto según el tipo de licencia; al aprobar o registrar una licencia siempre se puede tildar o destildar en cada caso. El sistema solo registra y reporta: no calcula descuentos.</p>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead><tr className="font-label-xs-mono text-label-xs-mono tracking-wider text-on-surface-variant uppercase"><th className="px-space-md py-2 font-semibold">Tipo de licencia</th><th className="px-space-md py-2 text-center font-semibold">Pierde presentismo</th><th className="px-space-md py-2 text-center font-semibold">Pierde premio</th></tr></thead>
+              <tbody className="font-body-md text-body-md text-on-surface">
+                {(Object.keys(flagDefaults) as LeaveType[]).map((t) => (
+                  <tr key={t}>
+                    <td className="px-space-md py-2 font-semibold">{LEAVE_TYPE_LABELS[t]}</td>
+                    <td className="px-space-md py-2 text-center"><input type="checkbox" aria-label={`${LEAVE_TYPE_LABELS[t]}: pierde presentismo`} checked={flagDefaults[t].losesPresentism} onChange={(e) => setDefault(t, "losesPresentism", e.target.checked)} className="size-5 accent-[var(--hz-primary)]" /></td>
+                    <td className="px-space-md py-2 text-center"><input type="checkbox" aria-label={`${LEAVE_TYPE_LABELS[t]}: pierde premio`} checked={flagDefaults[t].losesPrize} onChange={(e) => setDefault(t, "losesPrize", e.target.checked)} className="size-5 accent-[var(--hz-primary)]" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
 
       {attendance ? (
         <section className={card}>

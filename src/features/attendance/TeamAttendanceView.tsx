@@ -4,6 +4,8 @@ import { clockToMinutes, DAY_KIND_LABELS, dayStatus, minutesToClock, summarizeMo
 import { addDays, dateInBuenosAires, dayOfWeek } from "@/domain/dates";
 import { LEAVE_TYPE_LABELS, type UserSummary } from "@/domain/model";
 import { workDayFor } from "@/domain/overtime/schedule";
+import { monthPerks } from "@/domain/presentism";
+import { LEAVE_FLAGS_CHANGED, listFlagsForReview } from "@/services/leaveFlags";
 import { RegisterLeaveDialog } from "@/features/approvals/LeaveReviewSection";
 import { downloadAttendance } from "@/features/export/downloadAttendance";
 import { ATTENDANCE_CHANGED, listMarksForReview, markFor, removeMark } from "@/services/attendance";
@@ -50,13 +52,13 @@ export default function TeamAttendanceView() {
       const users = await listUsers();
       // Administrador: toda la empresa menos los administradores (no tienen jornada). Supervisor: quienes lo tienen como supervisor.
       const team = users.filter((u) => u.active && u.uid !== actor.uid && (actor.role === "admin" ? u.role !== "admin" : u.supervisorId === actor.uid));
-      if (team.length === 0) return { team, marks: [], leaves: [] };
+      if (team.length === 0) return { team, marks: [], leaves: [], flags: new Map() };
       const ids = team.map((u) => u.uid);
-      const [marks, leaves] = await Promise.all([listMarksForReview(actor, ids, loadMonth), listApprovedLeavesForReview(actor, ids)]);
-      return { team, marks, leaves };
+      const [marks, leaves, flags] = await Promise.all([listMarksForReview(actor, ids, loadMonth), listApprovedLeavesForReview(actor, ids), company.features.presentism ? listFlagsForReview(actor, ids) : Promise.resolve(new Map())]);
+      return { team, marks, leaves, flags };
     },
-    [actor.uid, actor.role, loadMonth],
-    [ATTENDANCE_CHANGED, LEAVES_CHANGED],
+    [actor.uid, actor.role, loadMonth, company.features.presentism],
+    [ATTENDANCE_CHANGED, LEAVES_CHANGED, LEAVE_FLAGS_CHANGED],
   );
   const team = data?.team ?? [];
 
@@ -83,9 +85,18 @@ export default function TeamAttendanceView() {
   }, [rows]);
 
   // ---- pestaña Mes
+  const perksOn = company.features.presentism;
   const summaries = useMemo(
-    () => team.map((u) => ({ u, summary: summarizeMonth({ month, today, schedule: scheduleOf(u), holidays: company.holidays, toleranceMin: tol, leaves: (data?.leaves ?? []).filter((l) => l.userId === u.uid), marks: (data?.marks ?? []).filter((m) => m.userId === u.uid) }) })),
-    [team, data, month, today, company.holidays, tol], // eslint-disable-line react-hooks/exhaustive-deps
+    () => team.map((u) => {
+      const leaves = (data?.leaves ?? []).filter((l) => l.userId === u.uid);
+      const summary = summarizeMonth({ month, today, schedule: scheduleOf(u), holidays: company.holidays, toleranceMin: tol, leaves, marks: (data?.marks ?? []).filter((m) => m.userId === u.uid) });
+      // Premio y presentismo del mes: las marcas de las licencias que tocan el mes y, si se definió, las tardanzas acumuladas.
+      const monthStart = `${month}-01`;
+      const monthEnd = `${month}-31`;
+      const perks = perksOn ? monthPerks({ leaves: leaves.filter((l) => l.startDate <= monthEnd && l.endDate >= monthStart), flags: data?.flags ?? new Map(), defaults: company.presentismDefaults, lateCount: summary.late, lateLimit: company.features.presentismLateLimit }) : undefined;
+      return { u, summary, perks };
+    }),
+    [team, data, month, today, company.holidays, tol, perksOn, company.presentismDefaults, company.features.presentismLateLimit], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const exportFile = async (kind: "xlsx" | "csv") => {
@@ -100,7 +111,7 @@ export default function TeamAttendanceView() {
           periodLabel: monthLabel(month),
           generatedOn: dmy(today),
           toleranceMin: tol,
-          summary: summaries.map(({ u, summary }) => ({ fullName: u.fullName, summary })),
+          summary: summaries.map(({ u, summary, perks }) => ({ fullName: u.fullName, summary, ...(perks ? { perks } : {}) })),
           detail: team.flatMap((u) => dates.map((d) => ({ fullName: u.fullName, status: statusOf(u, d) }))),
         },
         kind,
@@ -184,9 +195,9 @@ export default function TeamAttendanceView() {
           </div>
           <div className="overflow-x-auto">
             <table className="stack-table w-full border-collapse text-left" aria-label="Resumen del mes">
-              <thead><tr className="bg-surface-container-lowest/80 font-label-xs-mono text-label-xs-mono tracking-wider text-on-surface-variant uppercase">{["Persona", "Días laborables", "Presentes", "Tardanzas", "Licencias", "Injustificadas", "Sin registro", "Sin tardanzas ni faltas"].map((h) => <th key={h} className="px-space-md py-3.5 font-semibold">{h}</th>)}</tr></thead>
+              <thead><tr className="bg-surface-container-lowest/80 font-label-xs-mono text-label-xs-mono tracking-wider text-on-surface-variant uppercase">{["Persona", "Días laborables", "Presentes", "Tardanzas", "Licencias", "Injustificadas", "Sin registro", "Sin tardanzas ni faltas", ...(perksOn ? ["Pierde presentismo", "Pierde premio"] : [])].map((h) => <th key={h} className="px-space-md py-3.5 font-semibold">{h}</th>)}</tr></thead>
               <tbody className="font-body-md text-body-md text-on-surface">
-                {summaries.map(({ u, summary: s }) => (
+                {summaries.map(({ u, summary: s, perks }) => (
                   <tr key={u.uid} className="hover:bg-surface-container">
                     <td className="px-space-md py-2.5 font-semibold">{u.fullName}</td>
                     <td data-label="Días laborables" className="px-space-md py-2.5 tabular-nums">{s.workingDays}</td>
@@ -196,6 +207,12 @@ export default function TeamAttendanceView() {
                     <td data-label="Injustificadas" className="px-space-md py-2.5 tabular-nums">{s.unjustified}</td>
                     <td data-label="Sin registro" className="px-space-md py-2.5 tabular-nums">{s.missing > 0 ? <span className="font-semibold text-error">{s.missing}</span> : 0}</td>
                     <td data-label="Sin tardanzas ni faltas" className="px-space-md py-2.5">{s.workingDays === 0 ? "—" : s.perfect ? <Chip tone="ok">Sí</Chip> : <Chip tone="muted">No</Chip>}</td>
+                    {perks ? (
+                      <>
+                        <td data-label="Pierde presentismo" className="px-space-md py-2.5">{perks.presentism.lost ? <span title={perks.presentism.reasons.join("; ")}><Chip tone="bad">Sí</Chip><span className="mt-0.5 block max-w-52 font-body-sm text-body-sm text-on-surface-variant">{perks.presentism.reasons.join("; ")}</span></span> : <Chip tone="ok">No</Chip>}</td>
+                        <td data-label="Pierde premio" className="px-space-md py-2.5">{perks.prize.lost ? <span title={perks.prize.reasons.join("; ")}><Chip tone="bad">Sí</Chip><span className="mt-0.5 block max-w-52 font-body-sm text-body-sm text-on-surface-variant">{perks.prize.reasons.join("; ")}</span></span> : <Chip tone="ok">No</Chip>}</td>
+                      </>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>

@@ -1,5 +1,6 @@
 import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, where, writeBatch, type Query } from "firebase/firestore";
 import type { LeaveRequest, LeaveRequestDoc, LeaveType, TeamAbsence } from "@/domain/model";
+import type { LeaveFlags } from "@/domain/presentism";
 import type { SessionUser } from "@/domain/types";
 import { getFirebase } from "./firebase";
 
@@ -82,7 +83,7 @@ export async function listTeamAbsences(): Promise<TeamAbsence[]> {
 }
 
 /** Aprobar o rechazar. Al aprobar, la ausencia pasa al calendario del equipo en el mismo paso. */
-export async function decideLeave(leave: LeaveRequest, reviewer: SessionUser, approve: boolean, note: string): Promise<void> {
+export async function decideLeave(leave: LeaveRequest, reviewer: SessionUser, approve: boolean, note: string, flags?: LeaveFlags): Promise<void> {
   const { db } = getFirebase();
   const batch = writeBatch(db);
   const reviewerNote = note.trim();
@@ -94,9 +95,12 @@ export async function decideLeave(leave: LeaveRequest, reviewer: SessionUser, ap
   });
   if (approve) {
     batch.set(doc(db, "team_absences", leave.id), { userId: leave.userId, startDate: leave.startDate, endDate: leave.endDate, leaveId: leave.id });
+    // Premio y presentismo (si la empresa lo usa): se guardan en el mismo paso que la aprobación.
+    if (flags) batch.set(doc(db, "leave_flags", leave.id), { userId: leave.userId, losesPresentism: flags.losesPresentism, losesPrize: flags.losesPrize, updatedBy: reviewer.uid, updatedAt: serverTimestamp() });
   }
   await batch.commit();
   announceChange();
+  if (approve && flags) window.dispatchEvent(new Event("horus:leave-flags-changed"));
 }
 
 export interface NewLeaveFor {
@@ -113,7 +117,7 @@ export interface NewLeaveFor {
  * (por ejemplo si la persona no puede cargarla). Sirve para cualquier tipo, también la ausencia injustificada,
  * que solo se registra así. La ausencia queda también en el calendario del equipo.
  */
-export async function registerLeaveFor(reviewer: SessionUser, input: NewLeaveFor): Promise<string> {
+export async function registerLeaveFor(reviewer: SessionUser, input: NewLeaveFor, flags?: LeaveFlags): Promise<string> {
   const { db } = getFirebase();
   const ref = doc(collection(db, "leave_requests"));
   const batch = writeBatch(db);
@@ -131,8 +135,10 @@ export async function registerLeaveFor(reviewer: SessionUser, input: NewLeaveFor
     createdAt: serverTimestamp(),
   });
   batch.set(doc(db, "team_absences", ref.id), { userId: input.userId, startDate: input.startDate, endDate: input.endDate, leaveId: ref.id });
+  if (flags) batch.set(doc(db, "leave_flags", ref.id), { userId: input.userId, losesPresentism: flags.losesPresentism, losesPrize: flags.losesPrize, updatedBy: reviewer.uid, updatedAt: serverTimestamp() });
   await batch.commit();
   announceChange();
+  if (flags) window.dispatchEvent(new Event("horus:leave-flags-changed"));
   return ref.id;
 }
 

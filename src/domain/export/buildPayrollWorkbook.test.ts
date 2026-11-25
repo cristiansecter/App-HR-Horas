@@ -82,3 +82,28 @@ describe("CSV: fórmulas neutralizadas", () => {
     expect(csv).not.toMatch(/(^|,)=HYPERLINK/m);
   });
 });
+
+describe("premio y presentismo en la planilla", () => {
+  const baseInput = {
+    companyName: "Empresa", periodLabel: "Noviembre 2026", generatedOn: "25/11/2026", tiers: [], detail: [],
+    absences: [{ employee: "Emi", type: "unjustified" as const, from: "2026-11-12", to: "2026-11-12", totalDays: 1, daysInPeriod: 1, status: "Aprobada", registeredBy: "Sofía" }],
+    summary: [{ employeeNumber: 1, fullName: "Emi", cuil: "", area: "", daysWorked: 0, normalHours: 0, tierHours: {}, onCallHours: 0, holidayHours: 0, leaveDays: { vacation: 0, sick: 0, study: 0, personal: 0, unjustified: 1 }, notes: "" }],
+  };
+  it("sin la función no agrega columnas", () => {
+    const wb = buildPayrollWorkbook(baseInput);
+    expect((wb.getWorksheet("Resumen")!.getRow(5).values as unknown[]).some((v) => String(v).includes("presentismo"))).toBe(false);
+    expect((wb.getWorksheet("Ausencias")!.getRow(5).values as unknown[]).some((v) => String(v).includes("presentismo"))).toBe(false);
+  });
+  it("con la función agrega en el resumen y en las ausencias las marcas y el motivo", () => {
+    const wb = buildPayrollWorkbook({
+      ...baseInput,
+      summary: [{ ...baseInput.summary[0]!, perks: { presentism: { lost: true, reasons: ["ausencia injustificada (12/11)"] }, prize: { lost: false, reasons: [] } } }],
+      absences: [{ ...baseInput.absences[0]!, losesPresentism: true, losesPrize: false }],
+    });
+    const head = wb.getWorksheet("Resumen")!.getRow(5).values as unknown[];
+    expect(head.slice(-5, -1)).toEqual(["Pierde presentismo", "Motivo (presentismo)", "Pierde premio", "Motivo (premio)"]);
+    expect(head[head.length - 1]).toBe("Observaciones");
+    expect((wb.getWorksheet("Resumen")!.getRow(6).values as unknown[]).slice(-5, -1)).toEqual(["Sí", "ausencia injustificada (12/11)", "No", ""]);
+    expect((wb.getWorksheet("Ausencias")!.getRow(6).values as unknown[]).slice(-2)).toEqual(["Sí", "No"]);
+  });
+});

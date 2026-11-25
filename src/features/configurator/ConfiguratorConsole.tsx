@@ -191,6 +191,28 @@ export default function ConfiguratorConsole({ configurator }: { configurator: Co
               </ul>
             </section>
 
+            <section className={card} aria-label="Premio y presentismo">
+              <h2 className="text-sm font-bold tracking-wide text-horus-cyan uppercase">Premio y presentismo</h2>
+              <p className="mt-1 text-xs text-navy-300">Para empresas que pagan un adicional por presentismo o un premio por asistencia. Se activa solo si el cliente lo usa: no todas las empresas tienen estas prácticas.</p>
+              <div className="mt-4 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white">Marcar si una licencia hace perder presentismo o premio</p>
+                  <p className="mt-1 text-xs leading-relaxed text-navy-300">Al aprobar o registrar una licencia o ausencia aparecen dos casillas, “pierde presentismo” y “pierde premio”, con un valor por defecto según el tipo (lo define el administrador de la empresa) que se puede cambiar en cada caso. Salen en el resumen y en la planilla para el contador. Solo registra: no calcula importes ni descuentos.</p>
+                </div>
+                <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs font-semibold text-navy-200">
+                  {draft.presentism ? "Activo" : "Apagado"}
+                  <input type="checkbox" role="switch" aria-label="Premio y presentismo" checked={draft.presentism} onChange={(e) => setDraft({ ...draft, presentism: e.target.checked, presentismLateLimit: e.target.checked ? draft.presentismLateLimit : 0 })} className="size-5 accent-[var(--hz-primary)]" />
+                </label>
+              </div>
+              {draft.presentism && draft.workMode === "attendance" ? (
+                <label className="mt-4 block text-sm font-bold text-white">
+                  Tardanzas en el mes que hacen perder el presentismo
+                  <input type="number" min={0} max={31} aria-label="Tardanzas para perder el presentismo" value={draft.presentismLateLimit} onChange={(e) => setDraft({ ...draft, presentismLateLimit: Math.max(0, Math.min(31, Math.trunc(Number(e.target.value) || 0))) })} className="mt-1.5 block w-28 rounded-lg border border-navy-600 bg-navy-850/70 px-3 py-2 text-sm text-white focus:border-horus-cyan focus:outline-hidden" />
+                  <span className="mt-1 block text-xs font-normal leading-relaxed text-navy-300">Con 3, quien llega tarde 3 veces o más en el mes figura como que pierde el presentismo. Con 0 esta regla no se aplica. Se define con cada cliente.</span>
+                </label>
+              ) : null}
+            </section>
+
             <section className={card} aria-label="Permisos">
               <h2 className="text-sm font-bold tracking-wide text-horus-cyan uppercase">Permisos</h2>
               <p className="mt-1 text-xs text-navy-300">Por defecto solo el administrador ve los sueldos. Acá se puede ampliar ese acceso.</p>

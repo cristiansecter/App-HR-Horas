@@ -151,6 +151,9 @@ Los activa el Configurador (consola, pestaña **Configurador**). Todo lo que gua
 | Modo de trabajo (por proyectos o por asistencia) | `settings/features.workMode` | — (Configurador) |
 | Marca de presencia de cada persona y día | `attendance/{persona}_{AAAA-MM-DD}` | Modo por asistencia |
 | Vencimientos (seguro, prueba, pasantía...) | `expirations/{id}` | — |
+| Marcas de premio y presentismo de cada licencia | `leave_flags/{id de la licencia}` | Premio y presentismo |
+| Valores por defecto por tipo de licencia | `settings/main.presentismDefaults` | Premio y presentismo |
+| Activar premio y presentismo y regla de tardanzas | `settings/features.presentism`, `presentismLateLimit` | — (Configurador) |
 | % de superposición de vacaciones que avisa | `settings/main.vacationOverlapPct` | — |
 | Tolerancia de llegada en minutos | `settings/main.lateToleranceMin` | Modo por asistencia |
 | Cómo se factura cada proyecto: por hora (tarifa general + tarifas por persona), precio cerrado (valor total + horas estimadas) o interno | `project_rates/{código}` | Facturación por proyecto |
@@ -185,6 +188,18 @@ Cada detalle guarda una copia de los datos de la persona (nombre, CUIL, legajo, 
 ### Recibo en PDF
 
 El detalle se imprime con el botón "Imprimir / guardar como PDF" del navegador (se oculta todo lo demás y sale en blanco y negro). No hay un generador de PDF propio: es una decisión para no mantener otro motor de documentos.
+
+## Premio y presentismo (activable)
+
+No todas las empresas pagan un adicional por presentismo o un premio por asistencia, así que está **apagado por defecto**. Se activa en la consola del Configurador, sección **Premio y presentismo**, cuando el cliente lo usa.
+
+- **Qué hace:** al aprobar una licencia, o al registrarla por una persona, aparecen dos casillas: **pierde el presentismo** y **pierde el premio**. Vienen tildadas según el tipo de licencia (por defecto, solo la ausencia injustificada pierde las dos) y **se pueden cambiar en cada caso**: muchas empresas tienen prácticas propias y la herramienta se adapta a ellas.
+- **Valores por defecto por tipo:** los define el administrador de la empresa en *Configuración → Jornada* (sección *Premio y presentismo por licencia*).
+- **Corregir después:** en Aprobaciones, la tabla *Licencias aprobadas (últimos 120 días)* permite cambiar las marcas de una licencia ya aprobada.
+- **Regla de tardanzas** (solo en el modo por asistencia): se define con cada cliente en el Configurador. Con 3, quien llega tarde 3 veces o más en el mes figura como que pierde el presentismo. Con 0 no se aplica. Las tardanzas hacen perder el presentismo, no el premio.
+- **Dónde sale:** en el resumen mensual de *Asistencia del equipo* (modo asistencia) y en la planilla del contador de *Reportes* (modo proyectos), con el motivo de cada pérdida, en pantalla y en Excel/CSV.
+- **No calcula plata:** solo registra y reporta las marcas. Si se pierde o no el adicional, y cuánto, lo decide el contador.
+- **Privacidad:** las marcas se guardan aparte de la licencia (`leave_flags`) y solo las leen el administrador y el supervisor de la persona. La propia persona no las ve.
 
 ## Avisos y vencimientos
 

@@ -1,12 +1,14 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useCompany } from "@/company/CompanyContext";
 import { dateInBuenosAires } from "@/domain/dates";
 import { countLeaveDays, InvalidLeaveError, formatLeaveDays, rangesOverlap } from "@/domain/leave/days";
 import { LEAVE_STATUS_LABELS, LEAVE_TYPE_LABELS, type LeaveRequest, type LeaveType } from "@/domain/model";
 import { withCode } from "@/services/errors";
+import { flagsOf, type FlagDefaults, type LeaveFlags } from "@/domain/presentism";
 import { listDocumentsForReview, DOCUMENTS_CHANGED } from "@/services/documents";
+import { LEAVE_FLAGS_CHANGED, listFlagsForReview, setLeaveFlags } from "@/services/leaveFlags";
 import { FileError, prepareFile, type PreparedFile } from "@/services/files";
-import { decideLeave, LEAVES_CHANGED, listMyLeaves, registerLeaveFor } from "@/services/leaves";
+import { decideLeave, LEAVES_CHANGED, listApprovedLeavesForReview, listMyLeaves, registerLeaveFor } from "@/services/leaves";
 import { attachCertificate, openDocumentInTab } from "@/services/openDocument";
 import { useUser } from "@/session/SessionContext";
 import { Chip } from "@/ui/Page";
@@ -28,6 +30,10 @@ export default function LeaveReviewSection() {
   const [rejecting, setRejecting] = useState<LeaveRequest | null>(null);
   const [note, setNote] = useState("");
   const [registering, setRegistering] = useState(false);
+  // Premio y presentismo: si la empresa lo usa, al aprobar se piden las dos marcas.
+  const presentism = company.features.presentism;
+  const defaults = company.presentismDefaults;
+  const [approving, setApproving] = useState<LeaveRequest | null>(null);
 
   const nameOf = (uid: string) => data?.users.get(uid)?.fullName ?? "Persona";
   const leaves = data?.leaves ?? [];
@@ -39,11 +45,11 @@ export default function LeaveReviewSection() {
   );
   const certOf = (leaveId: string) => (certs.data ?? []).find((d) => d.kind === "certificate" && d.leaveId === leaveId);
 
-  const resolve = async (leave: LeaveRequest, approve: boolean, why = "") => {
+  const resolve = async (leave: LeaveRequest, approve: boolean, why = "", flags?: LeaveFlags) => {
     setFailure(null);
     setBusy(leave.id);
     try {
-      await decideLeave(leave, reviewer, approve, why);
+      await decideLeave(leave, reviewer, approve, why, flags);
       notify(approve ? `Aprobaste la licencia de ${nameOf(leave.userId)}.` : `Rechazaste la licencia de ${nameOf(leave.userId)}.`);
     } catch (e) {
       console.error("No se pudo resolver la licencia", e);
@@ -51,6 +57,7 @@ export default function LeaveReviewSection() {
     } finally {
       setBusy(null);
       setRejecting(null);
+      setApproving(null);
       setNote("");
     }
   };
@@ -98,7 +105,7 @@ export default function LeaveReviewSection() {
                   </td>
                   <td className="px-space-md py-3 text-right">
                     <div className="inline-flex gap-2">
-                      <button type="button" disabled={busy === l.id} onClick={() => void resolve(l, true)} className="rounded-lg bg-primary-container/20 px-3 py-1.5 font-label-md text-label-md font-semibold text-primary hover:bg-primary-container/30 disabled:opacity-40">Aprobar</button>
+                      <button type="button" disabled={busy === l.id} onClick={() => (presentism ? setApproving(l) : void resolve(l, true))} className="rounded-lg bg-primary-container/20 px-3 py-1.5 font-label-md text-label-md font-semibold text-primary hover:bg-primary-container/30 disabled:opacity-40">Aprobar</button>
                       <button type="button" disabled={busy === l.id} onClick={() => { setRejecting(l); setNote(""); }} className="rounded-lg bg-surface-container-high px-3 py-1.5 font-label-md text-label-md font-semibold text-on-surface hover:bg-surface-container-highest disabled:opacity-40">Rechazar</button>
                     </div>
                   </td>
@@ -115,6 +122,10 @@ export default function LeaveReviewSection() {
           </table>
         </div>
       </div>
+
+      {presentism ? <ApprovedFlagsSection defaults={defaults} reviewable={data?.reviewable ?? []} /> : null}
+
+      {approving ? <ApproveDialog leave={approving} name={nameOf(approving.userId)} defaults={defaults} onClose={() => setApproving(null)} onConfirm={(flags) => void resolve(approving, true, "", flags)} /> : null}
 
       {rejecting ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
@@ -183,6 +194,15 @@ export function RegisterLeaveDialog({
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const person = people.find((p) => p.uid === uid);
+  // Premio y presentismo (si la empresa lo usa): arrancan con el valor por defecto del tipo y se pueden cambiar.
+  const { features, presentismDefaults } = useCompany();
+  const usePerks = features.presentism;
+  const [flags, setFlags] = useState<LeaveFlags>(presentismDefaults[initial?.type ?? "vacation"]);
+  const [flagsTouched, setFlagsTouched] = useState(false);
+  const changeType = (t: LeaveType) => {
+    setType(t);
+    if (!flagsTouched) setFlags(presentismDefaults[t]);
+  };
   // Licencias que esa persona ya tiene, para no registrar dos veces el mismo período.
   const theirs = useAsync(() => (uid ? listMyLeaves(uid) : Promise.resolve([] as LeaveRequest[])), [uid], [LEAVES_CHANGED]);
   const clash = useMemo(() => (theirs.data ?? []).find((l) => l.status !== "rejected" && rangesOverlap(from, to, l.startDate, l.endDate)), [theirs.data, from, to]);
@@ -213,7 +233,7 @@ export function RegisterLeaveDialog({
       }
     }
     try {
-      const leaveId = await registerLeaveFor(reviewer, { userId: person.uid, type, startDate: from, endDate: to, daysCount: preview.days, reason });
+      const leaveId = await registerLeaveFor(reviewer, { userId: person.uid, type, startDate: from, endDate: to, daysCount: preview.days, reason }, usePerks ? flags : undefined);
       if (prepared) await attachCertificate({ by: reviewer, userId: person.uid, leaveId, title: `Certificado de ${LEAVE_TYPE_LABELS[type].toLowerCase()}`, prepared });
     } catch (err) {
       console.error("No se pudo registrar la licencia", err);
@@ -239,7 +259,7 @@ export function RegisterLeaveDialog({
         </label>
         <label className="block font-label-lg text-label-lg text-on-surface">
           Tipo
-          <select aria-label="Tipo de licencia" value={type} onChange={(e) => setType(e.target.value as LeaveType)} className={`mt-1.5 ${field}`}>
+          <select aria-label="Tipo de licencia" value={type} onChange={(e) => changeType(e.target.value as LeaveType)} className={`mt-1.5 ${field}`}>
             {REGISTERABLE.map((t) => <option key={t} value={t}>{LEAVE_TYPE_LABELS[t]}</option>)}
           </select>
         </label>
@@ -270,6 +290,7 @@ export function RegisterLeaveDialog({
           Certificado <span className="font-label-xs-mono text-label-xs-mono text-on-surface-variant uppercase">Opcional</span>
           <input type="file" aria-label="Certificado" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(e) => setCertificate(e.target.files?.[0] ?? null)} className={`mt-1.5 ${field} file:mr-3 file:rounded-md file:border-0 file:bg-surface-container-high file:px-3 file:py-1.5 file:font-label-md file:text-on-surface`} />
         </label>
+        {usePerks ? <FlagsFields flags={flags} onChange={(f) => { setFlags(f); setFlagsTouched(true); }} /> : null}
         {clash ? <p role="note" className="font-body-sm text-body-sm text-amber-200">{person?.fullName} ya tiene una licencia {LEAVE_STATUS_LABELS[clash.status].toLowerCase()} del {dmy(clash.startDate)} al {dmy(clash.endDate)}.</p> : null}
         <p className="font-body-sm text-body-sm text-on-surface-variant">Queda aprobada desde el registro y la persona la ve en sus licencias, anotada como cargada por vos.</p>
         {formError ? <p role="alert" className="font-body-sm text-body-sm text-error">{formError}</p> : null}
@@ -279,5 +300,116 @@ export function RegisterLeaveDialog({
         </div>
       </form>
     </div>
+  );
+}
+
+/** Las dos casillas de premio y presentismo. */
+function FlagsFields({ flags, onChange }: { flags: LeaveFlags; onChange: (f: LeaveFlags) => void }) {
+  return (
+    <fieldset className="space-y-2 rounded-lg bg-surface-container px-3 py-3">
+      <legend className="px-1 font-label-md text-label-md font-semibold text-on-surface-variant">Premio y presentismo</legend>
+      <label className="flex cursor-pointer items-center justify-between gap-3 font-label-lg text-label-lg text-on-surface">Pierde el presentismo
+        <input type="checkbox" role="switch" aria-label="Pierde presentismo" checked={flags.losesPresentism} onChange={(e) => onChange({ ...flags, losesPresentism: e.target.checked })} className="size-5 accent-[var(--hz-primary)]" />
+      </label>
+      <label className="flex cursor-pointer items-center justify-between gap-3 font-label-lg text-label-lg text-on-surface">Pierde el premio
+        <input type="checkbox" role="switch" aria-label="Pierde premio" checked={flags.losesPrize} onChange={(e) => onChange({ ...flags, losesPrize: e.target.checked })} className="size-5 accent-[var(--hz-primary)]" />
+      </label>
+      <p className="font-body-sm text-body-sm text-on-surface-variant">Viene tildado según el tipo de licencia; cambialo si en este caso corresponde otra cosa. Solo queda registrado: no calcula descuentos.</p>
+    </fieldset>
+  );
+}
+
+/** Al aprobar una licencia (si la empresa usa premio y presentismo) se confirman las dos marcas. */
+function ApproveDialog({ leave, name, defaults, onClose, onConfirm }: { leave: LeaveRequest; name: string; defaults: FlagDefaults; onClose: () => void; onConfirm: (flags: LeaveFlags) => void }) {
+  const [flags, setFlags] = useState<LeaveFlags>(defaults[leave.type]);
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <button type="button" aria-label="Cerrar" className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
+      <form role="dialog" aria-label="Aprobar licencia" onSubmit={(e) => { e.preventDefault(); onConfirm(flags); }} className="relative flex w-full max-w-md flex-col gap-4 rounded-xl bg-surface-container-low p-space-lg shadow-2xl">
+        <div>
+          <h2 className="font-headline-md text-headline-md text-on-surface">Aprobar licencia</h2>
+          <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">{name} · {LEAVE_TYPE_LABELS[leave.type]} · {dmy(leave.startDate)} al {dmy(leave.endDate)}</p>
+        </div>
+        <FlagsFields flags={flags} onChange={setFlags} />
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={onClose} className="px-4 py-2 font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface">Cancelar</button>
+          <button type="submit" className="rounded-lg bg-primary-container px-5 py-2 font-label-lg text-label-lg font-bold text-on-primary hover:brightness-110">Aprobar</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/** Licencias aprobadas de los últimos meses, para corregir las marcas de premio y presentismo cuando hizo falta. */
+function ApprovedFlagsSection({ defaults, reviewable }: { defaults: FlagDefaults; reviewable: { uid: string; fullName: string }[] }) {
+  const reviewer = useUser();
+  const { notify } = useToast();
+  const today = dateInBuenosAires(new Date());
+  const since = (() => { const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 120); return d.toISOString().slice(0, 10); })();
+  const ids = reviewable.map((u) => u.uid);
+  const { data, error } = useAsync(
+    async () => {
+      if (ids.length === 0) return { leaves: [] as LeaveRequest[], flags: new Map<string, LeaveFlags>() };
+      const [leaves, flags] = await Promise.all([listApprovedLeavesForReview(reviewer, ids), listFlagsForReview(reviewer, ids)]);
+      return { leaves: leaves.filter((l) => l.endDate >= since), flags };
+    },
+    [reviewer.uid, reviewer.role, ids.join(",")],
+    [LEAVES_CHANGED, LEAVE_FLAGS_CHANGED],
+  );
+  const [busy, setBusy] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  // Cambios que se ven al instante mientras se guardan; se descartan cuando llegan los datos reales.
+  const [pending, setPending] = useState<Map<string, LeaveFlags>>(new Map());
+  useEffect(() => setPending(new Map()), [data]);
+  const nameOf = (uid: string) => reviewable.find((u) => u.uid === uid)?.fullName ?? "Persona";
+  const rows = data?.leaves ?? [];
+  const currentFlags = (l: LeaveRequest) => pending.get(l.id) ?? flagsOf(l.type, data?.flags.get(l.id), defaults);
+
+  const change = async (l: LeaveRequest, patch: Partial<LeaveFlags>) => {
+    setFailure(null);
+    setBusy(l.id);
+    const next = { ...currentFlags(l), ...patch };
+    setPending((m) => new Map(m).set(l.id, next));
+    try {
+      await setLeaveFlags(reviewer, l.id, l.userId, next);
+      notify(`Actualizaste las marcas de ${nameOf(l.userId)}.`);
+    } catch (e) {
+      console.error("No se pudo cambiar la marca", e);
+      setPending((m) => { const n = new Map(m); n.delete(l.id); return n; });
+      setFailure(withCode("No se pudo guardar el cambio. Probá de nuevo.", e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <section aria-label="Licencias aprobadas" className="flex flex-col gap-space-md rounded-xl bg-surface-container-low p-space-md shadow-sm">
+      <div className="px-space-md pt-space-sm">
+        <h2 className="font-headline-sm text-headline-sm font-semibold text-on-surface">Licencias aprobadas (últimos 120 días)</h2>
+        <p className="font-body-sm text-body-sm text-on-surface-variant">Acá podés corregir si cada una hace perder el presentismo o el premio. Si nunca se tocó, se muestra el valor por defecto del tipo.</p>
+      </div>
+      {error || failure ? <p role="alert" className="rounded-lg bg-error/10 px-3 py-2 font-body-sm text-body-sm text-error">{failure ?? error}</p> : null}
+      <div className="overflow-x-auto">
+        <table className="stack-table w-full border-collapse text-left" aria-label="Marcas de licencias aprobadas">
+          <thead><tr className="bg-surface-container-lowest/80 font-label-xs-mono text-label-xs-mono tracking-wider text-on-surface-variant uppercase">{["Persona", "Tipo", "Desde", "Hasta", "Pierde presentismo", "Pierde premio"].map((h) => <th key={h} className="px-space-md py-3 font-semibold">{h}</th>)}</tr></thead>
+          <tbody className="font-body-md text-body-md text-on-surface">
+            {rows.map((l) => {
+              const f = currentFlags(l);
+              return (
+                <tr key={l.id} className="align-middle hover:bg-surface-container">
+                  <td className="px-space-md py-2.5 font-semibold">{nameOf(l.userId)}</td>
+                  <td data-label="Tipo" className="px-space-md py-2.5"><Chip tone="info">{LEAVE_TYPE_LABELS[l.type]}</Chip></td>
+                  <td data-label="Desde" className="px-space-md py-2.5 tabular-nums">{dmy(l.startDate)}</td>
+                  <td data-label="Hasta" className="px-space-md py-2.5 tabular-nums">{dmy(l.endDate)}</td>
+                  <td data-label="Pierde presentismo" className="px-space-md py-2.5"><input type="checkbox" aria-label={`${nameOf(l.userId)} ${dmy(l.startDate)}: pierde presentismo`} checked={f.losesPresentism} disabled={busy === l.id} onChange={(e) => void change(l, { losesPresentism: e.target.checked })} className="size-5 accent-[var(--hz-primary)]" /></td>
+                  <td data-label="Pierde premio" className="px-space-md py-2.5"><input type="checkbox" aria-label={`${nameOf(l.userId)} ${dmy(l.startDate)}: pierde premio`} checked={f.losesPrize} disabled={busy === l.id} onChange={(e) => void change(l, { losesPrize: e.target.checked })} className="size-5 accent-[var(--hz-primary)]" /></td>
+                </tr>
+              );
+            })}
+            {rows.length === 0 ? <tr><td colSpan={6} className="px-space-md py-6 text-center text-on-surface-variant">No hay licencias aprobadas en este período.</td></tr> : null}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }

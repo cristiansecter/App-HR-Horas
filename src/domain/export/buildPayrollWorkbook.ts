@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import type { Tier } from "../overtime/types";
+import type { MonthPerks } from "../presentism";
 
 export type LeaveKind = "vacation" | "sick" | "study" | "personal" | "unjustified";
 
@@ -25,6 +26,8 @@ export interface SummaryRow {
   holidayHours: number;
   leaveDays: Record<LeaveKind, number>;
   notes: string;
+  /** Premio y presentismo del período. Solo si la empresa usa esa función; si no se omite y no salen las columnas. */
+  perks?: MonthPerks;
 }
 
 export interface DetailRow {
@@ -52,6 +55,9 @@ export interface AbsenceRow {
   daysInPeriod: number;
   status: string;
   registeredBy: string;
+  /** Marcas de premio y presentismo de esta licencia (solo si la empresa usa esa función). */
+  losesPresentism?: boolean;
+  losesPrize?: boolean;
 }
 
 export interface PayrollInput {
@@ -100,11 +106,14 @@ export const buildPayrollWorkbook = (input: PayrollInput): ExcelJS.Workbook => {
   // ---- Resumen: una fila por empleado
   const resumen = wb.addWorksheet("Resumen");
   const leaveKinds = Object.keys(LEAVE_LABELS) as LeaveKind[];
+  const withPerks = input.summary.some((r) => r.perks);
+  const perkHeaders = withPerks ? ["Pierde presentismo", "Motivo (presentismo)", "Pierde premio", "Motivo (premio)"] : [];
   const headers = [
     "Legajo", "Apellido y nombre", "CUIL", "Área", "Días trabajados", "Hs normales",
     ...input.tiers.map((t) => `Hs ${t.label}`),
     "Hs de guardia", "Hs en feriado",
     ...leaveKinds.map((k) => `${LEAVE_LABELS[k]} (días)`),
+    ...perkHeaders,
     "Observaciones",
   ];
   titleBlock(resumen, input, "Resumen por empleado", headers.length);
@@ -116,6 +125,7 @@ export const buildPayrollWorkbook = (input: PayrollInput): ExcelJS.Workbook => {
       ...input.tiers.map((t) => r.tierHours[t.id] ?? 0),
       r.onCallHours, r.holidayHours,
       ...leaveKinds.map((k) => r.leaveDays[k]),
+      ...(withPerks ? [r.perks?.presentism.lost ? "Sí" : "No", r.perks?.presentism.reasons.join("; ") ?? "", r.perks?.prize.lost ? "Sí" : "No", r.perks?.prize.reasons.join("; ") ?? ""] : []),
       r.notes,
     ];
   });
@@ -128,6 +138,7 @@ export const buildPayrollWorkbook = (input: PayrollInput): ExcelJS.Workbook => {
     sum(input.summary.map((r) => r.onCallHours)),
     sum(input.summary.map((r) => r.holidayHours)),
     ...leaveKinds.map((k) => sum(input.summary.map((r) => r.leaveDays[k]))),
+    ...perkHeaders.map(() => ""),
     "",
   ];
   resumen.getRow(totalRow).eachCell({ includeEmpty: true }, (cell) => {
@@ -157,15 +168,16 @@ export const buildPayrollWorkbook = (input: PayrollInput): ExcelJS.Workbook => {
 
   // ---- Ausencias: una fila por licencia
   const ausencias = wb.addWorksheet("Ausencias");
-  const aHeaders = ["Empleado", "Tipo", "Desde", "Hasta", "Días totales", "Días en el período", "Estado", "Registrada por"];
+  const absPerks = input.absences.some((a) => a.losesPresentism !== undefined);
+  const aHeaders = ["Empleado", "Tipo", "Desde", "Hasta", "Días totales", "Días en el período", "Estado", "Registrada por", ...(absPerks ? ["Pierde presentismo", "Pierde premio"] : [])];
   titleBlock(ausencias, input, "Ausencias", aHeaders.length);
   ausencias.getRow(5).values = aHeaders;
   styleHeader(ausencias, 5);
   input.absences.forEach((r, i) => {
-    ausencias.getRow(6 + i).values = [r.employee, LEAVE_LABELS[r.type], r.from, r.to, r.totalDays, r.daysInPeriod, r.status, r.registeredBy];
+    ausencias.getRow(6 + i).values = [r.employee, LEAVE_LABELS[r.type], r.from, r.to, r.totalDays, r.daysInPeriod, r.status, r.registeredBy, ...(absPerks ? [r.losesPresentism ? "Sí" : "No", r.losesPrize ? "Sí" : "No"] : [])];
   });
   ausencias.columns.forEach((col, i) => {
-    col.width = [24, 18, 12, 12, 13, 18, 12, 20][i] ?? 12;
+    col.width = [24, 18, 12, 12, 13, 18, 12, 20, 18, 14][i] ?? 12;
   });
 
   return wb;

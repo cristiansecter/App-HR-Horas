@@ -2,6 +2,7 @@ import { leaveDaysInRange } from "../leave/days";
 import type { LeaveRequest, TimeEntry, UserSummary } from "../model";
 import { dayTypeOf } from "../overtime/dayType";
 import type { Holiday, Tier, WorkSchedule } from "../overtime/types";
+import { flagsOf, monthPerks, type FlagDefaults, type LeaveFlags } from "../presentism";
 import type { AbsenceRow, DetailRow, LeaveKind, SummaryRow } from "./buildPayrollWorkbook";
 
 export interface PayrollSources {
@@ -21,6 +22,8 @@ export interface PayrollSources {
   range: { from: string; to: string };
   /** Jornada de cada persona (la propia o la de la empresa): define qué días hábiles cuentan en una licencia. */
   scheduleFor: (uid: string) => WorkSchedule;
+  /** Si la empresa usa premio y presentismo: las marcas guardadas por licencia y los valores por defecto por tipo. */
+  perks?: { flags: ReadonlyMap<string, LeaveFlags>; defaults: FlagDefaults };
 }
 
 export interface PayrollData {
@@ -92,6 +95,7 @@ export function buildPayrollData(src: PayrollSources): PayrollData {
       holidayHours: round2(entries.filter((e) => dayTypeOf(e.date, src.holidays) === "holiday").reduce((s, e) => s + (e.hours ?? 0), 0)),
       leaveDays: leaveDaysOf(uid),
       notes: notes.join(". "),
+      ...(src.perks ? { perks: monthPerks({ leaves: leavesByUser.get(uid) ?? [], flags: src.perks.flags, defaults: src.perks.defaults, lateCount: 0, lateLimit: 0 }) } : {}),
     };
   });
 
@@ -148,6 +152,7 @@ export function buildPayrollData(src: PayrollSources): PayrollData {
       daysInPeriod: daysInPeriod(l),
       status: "Aprobada",
       registeredBy: l.createdBy === l.userId ? `${nameOf(l.userId)} (solicitud)` : nameOf(l.createdBy),
+      ...(src.perks ? (() => { const f = flagsOf(l.type, src.perks!.flags.get(l.id), src.perks!.defaults); return { losesPresentism: f.losesPresentism, losesPrize: f.losesPrize }; })() : {}),
     }));
 
   return { summary, detail, absences, warnings, totals };

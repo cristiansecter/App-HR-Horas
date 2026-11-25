@@ -37,7 +37,7 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/settings/features).data.get('modules', {}).get(name, false) == true;
     }
     function validFeatures(d) {
-      return d.keys().hasOnly(['modules', 'payModel', 'supervisorsSeePay', 'workMode', 'updatedAt', 'updatedBy'])
+      return d.keys().hasOnly(['modules', 'payModel', 'supervisorsSeePay', 'workMode', 'presentism', 'presentismLateLimit', 'updatedAt', 'updatedBy'])
         && d.modules is map
         && d.modules.keys().hasOnly(['compensation', 'performance', 'payroll', 'projectBilling', 'allocation'])
         && d.modules.get('compensation', false) is bool
@@ -51,6 +51,10 @@ service cloud.firestore {
         && (d.get('workMode', 'projects') == 'projects'
             || (d.modules.get('performance', false) == false && d.modules.get('projectBilling', false) == false
                 && d.modules.get('allocation', false) == false && d.payModel == 'salary'))
+        && d.get('presentism', false) is bool
+        && d.get('presentismLateLimit', 0) is int && d.get('presentismLateLimit', 0) >= 0 && d.get('presentismLateLimit', 0) <= 31
+        // La regla de tardanzas necesita el presentismo activo y el modo por asistencia.
+        && (d.get('presentismLateLimit', 0) == 0 || (d.get('presentism', false) == true && d.get('workMode', 'projects') == 'attendance'))
         && d.get('supervisorsSeePay', false) is bool
         // El permiso de sueldos para supervisores necesita el módulo de sueldos.
         && (d.get('supervisorsSeePay', false) == false || d.modules.get('compensation', false) == true)
@@ -64,6 +68,10 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/settings/features)
         ? get(/databases/$(database)/documents/settings/features).data.get('workMode', 'projects') == mode
         : mode == 'projects';
+    }
+    function presentismOn() {
+      return exists(/databases/$(database)/documents/settings/features)
+        && get(/databases/$(database)/documents/settings/features).data.get('presentism', false) == true;
     }
     // Permiso que da el Configurador: los supervisores ven (solo lectura) el sueldo de su equipo.
     function supervisorsSeePay() {
@@ -371,6 +379,21 @@ service cloud.firestore {
         && onlyChanges(['status', 'approvedBy', 'decidedAt', 'reviewerNote']);
 
       allow delete: if hasRole() && resource.data.userId == me() && resource.data.status == 'pending';
+    }
+
+    // ------------------------------------------------------------ premio y presentismo (marcas por licencia)
+    // Si la licencia hace perder presentismo y/o premio. Va en una colección aparte (no en la licencia) para que la propia
+    // persona no lo lea: lo ven y lo cambian el administrador y el supervisor de la persona, solo con la función activa.
+    match /leave_flags/{leaveId} {
+      allow read: if hasRole() && (isAdmin() || supervises(resource.data.userId));
+      allow create, update: if hasRole() && presentismOn()
+        && request.resource.data.keys().hasOnly(['userId', 'losesPresentism', 'losesPrize', 'updatedBy', 'updatedAt'])
+        && request.resource.data.userId is string
+        && request.resource.data.losesPresentism is bool && request.resource.data.losesPrize is bool
+        && request.resource.data.updatedBy == me()
+        && isApproverOf(request.resource.data.userId) && request.resource.data.userId != me()
+        && getAfter(/databases/$(database)/documents/leave_requests/$(leaveId)).data.userId == request.resource.data.userId;
+      allow delete: if hasRole() && isApproverOf(resource.data.userId);
     }
 
     // ------------------------------------------------------------ vencimientos de cada persona

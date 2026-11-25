@@ -1297,3 +1297,77 @@ describe("vencimientos de cada persona", () => {
     await assertFails(setDoc(doc(ana(), "expirations/e1"), exp("emi", { extra: 1 })));
   });
 });
+
+describe("premio y presentismo", () => {
+  const setFeat = (presentism: boolean) => env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "settings/features"), { modules: { compensation: false, performance: false, payroll: false }, payModel: "salary", presentism }); });
+  const seedLeave = (id: string, userId: string) => env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), `leave_requests/${id}`), { userId, type: "unjustified", startDate: "2026-12-14", endDate: "2026-12-14", daysCount: 1, status: "approved", createdBy: "sofia", approvedBy: "sofia" }); });
+  const flags = (userId: string, by: string, over: Record<string, unknown> = {}) => ({ userId, losesPresentism: true, losesPrize: false, updatedBy: by, updatedAt: serverTimestamp(), ...over });
+  const sofia = () => asRole("sofia", "supervisor");
+  const ana = () => asRole("ana", "admin");
+
+  describe("configuración del Configurador", () => {
+    const f = (extra: Record<string, unknown>) => ({ modules: { compensation: true }, payModel: "salary", ...extra, updatedAt: serverTimestamp(), updatedBy: CONFIGURATOR });
+    it("el Configurador la activa; con la regla de tardanzas solo por asistencia", async () => {
+      await assertSucceeds(setDoc(doc(configuratorDb(), "settings/features"), f({ presentism: true })));
+      await assertSucceeds(setDoc(doc(configuratorDb(), "settings/features"), f({ presentism: true, workMode: "attendance", presentismLateLimit: 3 })));
+      await assertFails(setDoc(doc(configuratorDb(), "settings/features"), f({ presentism: true, presentismLateLimit: 3 })));
+      await assertFails(setDoc(doc(configuratorDb(), "settings/features"), f({ presentism: false, workMode: "attendance", presentismLateLimit: 3 })));
+    });
+    it("valida tipos y rangos, y el admin de la pyme no la cambia", async () => {
+      await assertFails(setDoc(doc(configuratorDb(), "settings/features"), f({ presentism: "si" })));
+      await assertFails(setDoc(doc(configuratorDb(), "settings/features"), f({ presentism: true, workMode: "attendance", presentismLateLimit: 32 })));
+      await assertFails(setDoc(doc(configuratorDb(), "settings/features"), f({ presentism: true, workMode: "attendance", presentismLateLimit: 2.5 })));
+      await assertFails(setDoc(doc(ana(), "settings/features"), f({ presentism: true })));
+    });
+  });
+
+  describe("marcas de una licencia", () => {
+    it("el supervisor (de la persona) y el admin las ponen, con la función activa", async () => {
+      await setFeat(true); await seedLeave("l1", "emi"); await seedLeave("l2", "olga");
+      await assertSucceeds(setDoc(doc(sofia(), "leave_flags/l1"), flags("emi", "sofia")));
+      await assertSucceeds(setDoc(doc(ana(), "leave_flags/l2"), flags("olga", "ana", { losesPrize: true })));
+      await assertSucceeds(setDoc(doc(sofia(), "leave_flags/l1"), flags("emi", "sofia", { losesPresentism: false })));
+    });
+    it("con la función apagada no se escriben", async () => {
+      await setFeat(false); await seedLeave("l1", "emi");
+      await assertFails(setDoc(doc(sofia(), "leave_flags/l1"), flags("emi", "sofia")));
+    });
+    it("no vale para otro equipo, para uno mismo, ni para un empleado", async () => {
+      await setFeat(true); await seedLeave("l1", "olga"); await seedLeave("l3", "emi"); await seedLeave("l4", "sofia");
+      await assertFails(setDoc(doc(sofia(), "leave_flags/l1"), flags("olga", "sofia")));
+      await assertFails(setDoc(doc(sofia(), "leave_flags/l4"), flags("sofia", "sofia")));
+      await assertFails(setDoc(doc(asRole("emi", "employee"), "leave_flags/l3"), flags("emi", "emi")));
+    });
+    it("la marca tiene que ser de la persona dueña de esa licencia y de un booleano", async () => {
+      await setFeat(true); await seedLeave("l1", "emi");
+      await assertFails(setDoc(doc(sofia(), "leave_flags/l1"), flags("eze", "sofia")));
+      await assertFails(setDoc(doc(sofia(), "leave_flags/l1"), flags("emi", "sofia", { losesPrize: "si" })));
+      await assertFails(setDoc(doc(sofia(), "leave_flags/l1"), flags("emi", "ana")));
+      await assertFails(setDoc(doc(sofia(), "leave_flags/l1"), flags("emi", "sofia", { extra: 1 })));
+      await assertFails(setDoc(doc(sofia(), "leave_flags/no-existe"), flags("emi", "sofia")));
+    });
+    it("se crean junto con la licencia en un mismo lote", async () => {
+      await setFeat(true);
+      const db = sofia();
+      const b = writeBatch(db);
+      b.set(doc(db, "leave_requests/n1"), { userId: "emi", type: "unjustified", startDate: "2026-12-14", endDate: "2026-12-14", daysCount: 1, reason: "", status: "approved", createdBy: "sofia", approvedBy: "sofia", decidedAt: serverTimestamp(), createdAt: serverTimestamp() });
+      b.set(doc(db, "leave_flags/n1"), flags("emi", "sofia"));
+      await assertSucceeds(b.commit());
+    });
+    it("las lee el admin y el supervisor de la persona, pero NO la propia persona ni otros", async () => {
+      await setFeat(true); await seedLeave("l1", "emi");
+      await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "leave_flags/l1"), { userId: "emi", losesPresentism: true, losesPrize: true, updatedBy: "sofia" }); });
+      await assertSucceeds(getDoc(doc(sofia(), "leave_flags/l1")));
+      await assertSucceeds(getDoc(doc(ana(), "leave_flags/l1")));
+      await assertFails(getDoc(doc(asRole("emi", "employee"), "leave_flags/l1")));
+      await assertFails(getDoc(doc(asRole("eze", "employee"), "leave_flags/l1")));
+      await assertFails(getDoc(doc(asRole("sofia2", "supervisor"), "leave_flags/l1")));
+    });
+    it("las consultas del supervisor tienen que ir acotadas a su equipo", async () => {
+      await setFeat(true);
+      await assertSucceeds(getDocs(query(collection(sofia(), "leave_flags"), where("userId", "in", ["emi", "eze"]))));
+      await assertFails(getDocs(collection(sofia(), "leave_flags")));
+      await assertSucceeds(getDocs(collection(ana(), "leave_flags")));
+    });
+  });
+});

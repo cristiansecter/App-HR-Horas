@@ -1,5 +1,6 @@
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
 import { DEFAULT_OVERLAP_PCT } from "@/domain/alerts";
+import { normalizeFlagDefaults, type FlagDefaults } from "@/domain/presentism";
 import { DEFAULT_LATE_TOLERANCE_MIN, isValidTolerance } from "@/domain/attendance";
 import { normalizeFeatures, type Features } from "@/domain/features";
 import type { HolidayRecord, Project, UserProfile, UserSummary } from "@/domain/model";
@@ -19,6 +20,8 @@ export interface CompanyData {
   lateToleranceMin: number;
   /** % del equipo de vacaciones a la vez a partir del cual se avisa la superposición. */
   vacationOverlapPct: number;
+  /** Valor por defecto de "pierde presentismo / premio" para cada tipo de licencia (si la función está activa). */
+  presentismDefaults: FlagDefaults;
   features: Features;
   companyName?: string;
   logoUrl?: string;
@@ -39,6 +42,7 @@ interface SettingsDoc {
   projectAccess?: "open" | "assigned";
   lateToleranceMin?: number;
   vacationOverlapPct?: number;
+  presentismDefaults?: unknown;
 }
 
 export async function loadCompany(): Promise<CompanyData> {
@@ -65,6 +69,7 @@ export async function loadCompany(): Promise<CompanyData> {
     defaultSchedule: settings.defaultSchedule ?? defaultWorkSchedule(),
     editWindowDays: settings.editWindowDays ?? 7,
     projectAccess: settings.projectAccess === "open" ? "open" : "assigned",
+    presentismDefaults: normalizeFlagDefaults(settings.presentismDefaults),
     vacationOverlapPct: Number.isInteger(settings.vacationOverlapPct) && (settings.vacationOverlapPct as number) >= 10 && (settings.vacationOverlapPct as number) <= 100 ? (settings.vacationOverlapPct as number) : DEFAULT_OVERLAP_PCT,
     lateToleranceMin: isValidTolerance(settings.lateToleranceMin as number) ? (settings.lateToleranceMin as number) : DEFAULT_LATE_TOLERANCE_MIN,
     features: normalizeFeatures(featuresSnap.exists() ? featuresSnap.data() : undefined),

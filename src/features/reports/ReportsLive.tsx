@@ -2,7 +2,9 @@ import { useMemo, useState } from "react";
 import { useCompany } from "@/company/CompanyContext";
 import { dateInBuenosAires } from "@/domain/dates";
 import { buildPayrollData, monthRange } from "@/domain/export/payrollFromEntries";
+import { LEAVE_FLAGS_CHANGED, listFlagsForReview } from "@/services/leaveFlags";
 import { loadPayrollRaw } from "@/services/payroll";
+import { useUser } from "@/session/SessionContext";
 import { ENTRIES_CHANGED } from "@/services/timeEntries";
 import { Page, PageHeader } from "@/ui/Page";
 import { useAsync } from "@/ui/useAsync";
@@ -30,6 +32,10 @@ export default function ReportsLive() {
   const [exportError, setExportError] = useState<string | null>(null);
   const range = useMemo(() => monthRange(month), [month]);
   const { data: raw, loading, error } = useAsync(() => loadPayrollRaw(range.from, range.to), [range.from, range.to], [ENTRIES_CHANGED]);
+  // Premio y presentismo (si la empresa lo usa): las marcas de las licencias, para sumarlas a la planilla.
+  const actor = useUser();
+  const perksOn = company.features.presentism;
+  const { data: flags } = useAsync(() => (perksOn ? listFlagsForReview(actor, []) : Promise.resolve(null)), [perksOn, actor.uid, actor.role], [LEAVE_FLAGS_CHANGED]);
 
   const payroll = useMemo(
     () =>
@@ -45,9 +51,10 @@ export default function ReportsLive() {
             leaves: raw.leaves,
             range,
             scheduleFor: (uid) => raw.users.find((u) => u.uid === uid)?.workSchedule ?? company.defaultSchedule,
+            ...(perksOn && flags ? { perks: { flags, defaults: company.presentismDefaults } } : {}),
           })
         : null,
-    [raw, range, company.holidays, company.overtime.tiers, company.projects, company.defaultSchedule],
+    [raw, range, company.holidays, company.overtime.tiers, company.projects, company.defaultSchedule, perksOn, flags, company.presentismDefaults],
   );
 
   const monthTitle = `${MONTHS[Number(month.slice(5, 7)) - 1]} de ${month.slice(0, 4)}`;

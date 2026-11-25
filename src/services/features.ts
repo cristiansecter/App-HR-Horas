@@ -30,6 +30,8 @@ export async function saveFeatures(features: Features, configuratorEmail: string
     payModel: features.payModel,
     supervisorsSeePay: features.supervisorsSeePay,
     workMode: features.workMode,
+    presentism: features.presentism,
+    presentismLateLimit: features.presentismLateLimit,
     updatedAt: serverTimestamp(),
     updatedBy: configuratorEmail,
   });

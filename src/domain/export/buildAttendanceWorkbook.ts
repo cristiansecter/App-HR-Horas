@@ -1,11 +1,14 @@
 import ExcelJS from "exceljs";
 import { DAY_KIND_LABELS, minutesToClock, type DayStatus, type MonthSummary } from "../attendance";
 import type { LeaveType } from "../model";
+import type { MonthPerks } from "../presentism";
 
 /** Una persona en el resumen del mes. */
 export interface AttendanceSummaryRow {
   fullName: string;
   summary: MonthSummary;
+  /** Premio y presentismo del mes. Solo si la empresa usa esa función; si no, se omite y no salen las columnas. */
+  perks?: MonthPerks;
 }
 
 /** Un día de una persona (para la hoja de detalle). */
@@ -43,13 +46,14 @@ export function buildAttendanceWorkbook(input: AttendanceWorkbookInput): ExcelJS
 
   const ws = wb.addWorksheet("Asistencia");
   ws.addRow([`${input.companyName} · Asistencia · ${input.periodLabel}`]).font = { bold: true, size: 13 };
-  ws.addRow([`Generado el ${input.generatedOn}. Tolerancia de llegada: ${input.toleranceMin} min. Solo informa la asistencia: no calcula descuentos.`]);
+  ws.addRow([`Generado el ${input.generatedOn}. Tolerancia de llegada: ${input.toleranceMin} min. Solo informa la asistencia y las marcas de premio y presentismo: no calcula descuentos.`]);
   ws.addRow([]);
-  const head = ws.addRow(["Persona", "Días laborables", "Presentes", "Tardanzas", "Minutos tarde", ...LEAVE_COLUMNS.map((c) => `${c.label} (días)`), "Ausencias injustificadas", "Días sin registro", "Sin tardanzas ni faltas"]);
+  const withPerks = input.summary.some((r) => r.perks);
+  const head = ws.addRow(["Persona", "Días laborables", "Presentes", "Tardanzas", "Minutos tarde", ...LEAVE_COLUMNS.map((c) => `${c.label} (días)`), "Ausencias injustificadas", "Días sin registro", "Sin tardanzas ni faltas", ...(withPerks ? ["Pierde presentismo", "Motivo (presentismo)", "Pierde premio", "Motivo (premio)"] : [])]);
   head.font = { bold: true };
   for (const r of input.summary) {
     const s = r.summary;
-    ws.addRow([r.fullName, s.workingDays, s.present, s.late, s.lateMinutes, ...LEAVE_COLUMNS.map((c) => s.leaves[c.type] ?? 0), s.unjustified, s.missing, s.perfect ? "Sí" : "No"]);
+    ws.addRow([r.fullName, s.workingDays, s.present, s.late, s.lateMinutes, ...LEAVE_COLUMNS.map((c) => s.leaves[c.type] ?? 0), s.unjustified, s.missing, s.perfect ? "Sí" : "No", ...(withPerks ? [r.perks?.presentism.lost ? "Sí" : "No", r.perks?.presentism.reasons.join("; ") ?? "", r.perks?.prize.lost ? "Sí" : "No", r.perks?.prize.reasons.join("; ") ?? ""] : [])]);
   }
   ws.columns.forEach((c, i) => { c.width = i === 0 ? 28 : 16; });
 

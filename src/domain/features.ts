@@ -34,6 +34,13 @@ export interface Features {
   supervisorsSeePay: boolean;
   /** Por proyectos (por defecto) o por asistencia. Lo define el Configurador. */
   workMode: WorkMode;
+  /**
+   * Premio y presentismo: en cada licencia o ausencia se marca si la persona pierde el presentismo y/o el premio.
+   * Solo registra y reporta (no calcula importes). Apagado por defecto: muchas empresas no lo usan.
+   */
+  presentism: boolean;
+  /** Tardanzas en un mes que hacen perder el presentismo (solo por asistencia). 0 = esa regla no se aplica. */
+  presentismLateLimit: number;
 }
 
 export const MODULE_IDS: readonly ModuleId[] = ["compensation", "performance", "payroll", "projectBilling", "allocation"];
@@ -102,11 +109,13 @@ export const DEFAULT_FEATURES: Features = {
   payModel: "salary",
   supervisorsSeePay: false,
   workMode: "projects",
+  presentism: false,
+  presentismLateLimit: 0,
 };
 
 /** Lee lo guardado (que puede faltar o venir incompleto) y devuelve siempre un objeto completo y coherente. */
 export const normalizeFeatures = (raw: unknown): Features => {
-  const data = (raw ?? {}) as { modules?: Partial<Record<ModuleId, unknown>>; payModel?: unknown; supervisorsSeePay?: unknown; workMode?: unknown };
+  const data = (raw ?? {}) as { modules?: Partial<Record<ModuleId, unknown>>; payModel?: unknown; supervisorsSeePay?: unknown; workMode?: unknown; presentism?: unknown; presentismLateLimit?: unknown };
   const modules = { ...DEFAULT_FEATURES.modules };
   for (const id of MODULE_IDS) modules[id] = data.modules?.[id] === true;
   // Un módulo sin sus requisitos no se considera activo, aunque figure prendido en la base.
@@ -118,7 +127,10 @@ export const normalizeFeatures = (raw: unknown): Features => {
   if (workMode === "attendance") for (const id of PROJECT_MODULES) modules[id] = false;
   const payModel: PayModel = workMode === "attendance" ? "salary" : data.payModel === "hourly" ? "hourly" : "salary";
   // El permiso de los supervisores no vale sin el módulo de sueldos, aunque figure prendido en la base.
-  return { modules, payModel, supervisorsSeePay: data.supervisorsSeePay === true && modules.compensation, workMode };
+  const presentism = data.presentism === true;
+  // La regla de tardanzas solo existe por asistencia y con el presentismo activo.
+  const limit = Number.isInteger(data.presentismLateLimit) && (data.presentismLateLimit as number) >= 0 && (data.presentismLateLimit as number) <= 31 ? (data.presentismLateLimit as number) : 0;
+  return { modules, payModel, supervisorsSeePay: data.supervisorsSeePay === true && modules.compensation, workMode, presentism, presentismLateLimit: presentism && workMode === "attendance" ? limit : 0 };
 };
 
 /** Problemas de dependencias de una configuración (para mostrar antes de guardar). */
@@ -129,6 +141,8 @@ export const featureProblems = (features: Features): string[] => [
       : [],
   ),
   ...(features.supervisorsSeePay && !features.modules.compensation ? ["El permiso de sueldos para supervisores necesita “Sueldos en el legajo”."] : []),
+  ...(features.presentismLateLimit > 0 && !features.presentism ? ["La regla de tardanzas necesita que premio y presentismo esté activo."] : []),
+  ...(features.presentismLateLimit > 0 && features.workMode !== "attendance" ? ["La regla de tardanzas solo existe en el modo por asistencia."] : []),
   ...(features.workMode === "attendance"
     ? [
         ...PROJECT_MODULES.filter((id) => features.modules[id]).map((id) => `“${MODULE_INFO[id].label}” no se puede usar en el modo por asistencia (no hay proyectos).`),
@@ -162,7 +176,7 @@ export const toggleModule = (features: Features, id: ModuleId, on: boolean): Fea
 
 /** Cambia el modo de trabajo. Pasar a asistencia apaga los módulos de proyectos y deja el sueldo mensual; volver a proyectos no los vuelve a prender. */
 export const setWorkMode = (features: Features, mode: WorkMode): Features => {
-  if (mode === "projects") return { ...features, workMode: "projects" };
+  if (mode === "projects") return { ...features, workMode: "projects", presentismLateLimit: 0 };
   const modules = { ...features.modules };
   for (const id of PROJECT_MODULES) modules[id] = false;
   return { ...features, workMode: "attendance", modules, payModel: "salary" };

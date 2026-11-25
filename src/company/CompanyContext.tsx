@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DEFAULT_OVERLAP_PCT } from "@/domain/alerts";
+import { DEFAULT_FLAG_DEFAULTS, type FlagDefaults } from "@/domain/presentism";
 import { readCachedWorkMode, writeCachedWorkMode } from "./workModeCache";
 import { DEFAULT_LATE_TOLERANCE_MIN } from "@/domain/attendance";
 import { DEFAULT_FEATURES, type Features } from "@/domain/features";
@@ -25,6 +26,8 @@ interface CompanyValue {
   lateToleranceMin: number;
   /** % del equipo de vacaciones a la vez a partir del cual se avisa la superposición. */
   vacationOverlapPct: number;
+  /** Valor por defecto de "pierde presentismo / premio" por tipo de licencia. */
+  presentismDefaults: FlagDefaults;
   /** Módulos activos y modelo de pago (los define el Configurador). En la demo, todo apagado. */
   features: Features;
   /** false mientras se carga y no hay un modo recordado: el menú y el inicio esperan para no mostrar las pantallas del otro modo. */
@@ -47,6 +50,7 @@ const DEMO_VALUE: CompanyValue = {
   projectAccess: "open",
   lateToleranceMin: DEFAULT_LATE_TOLERANCE_MIN,
   vacationOverlapPct: DEFAULT_OVERLAP_PCT,
+  presentismDefaults: DEFAULT_FLAG_DEFAULTS,
   features: DEFAULT_FEATURES,
   workModeKnown: true,
   companyName: tenantConfig.companyName,
@@ -108,6 +112,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       projectAccess: data?.projectAccess ?? "assigned",
       lateToleranceMin: data?.lateToleranceMin ?? DEFAULT_LATE_TOLERANCE_MIN,
       vacationOverlapPct: data?.vacationOverlapPct ?? DEFAULT_OVERLAP_PCT,
+      presentismDefaults: data?.presentismDefaults ?? DEFAULT_FLAG_DEFAULTS,
       features: data?.features ?? { ...DEFAULT_FEATURES, workMode: cached ?? DEFAULT_FEATURES.workMode },
       workModeKnown: Boolean(data) || cached !== null,
       companyName: data?.companyName?.trim() || tenantConfig.companyName,

@@ -40,6 +40,14 @@ describe("planilla de asistencia", () => {
   it("aclara que no calcula descuentos", () => {
     expect(String(wb.getWorksheet("Asistencia")!.getRow(2).getCell(1).value)).toMatch(/no calcula descuentos/);
   });
+  it("con premio y presentismo activos agrega las columnas con el motivo; sin eso no salen", () => {
+    const withPerks = buildAttendanceWorkbook({ ...input, summary: [{ ...input.summary[0]!, perks: { presentism: { lost: true, reasons: ["3 tardanzas en el mes (regla: 3)"] }, prize: { lost: false, reasons: [] } } }] });
+    const ws = withPerks.getWorksheet("Asistencia")!;
+    const header = (ws.getRow(4).values as unknown[]).slice(-4);
+    expect(header).toEqual(["Pierde presentismo", "Motivo (presentismo)", "Pierde premio", "Motivo (premio)"]);
+    expect((ws.getRow(5).values as unknown[]).slice(-4)).toEqual(["Sí", "3 tardanzas en el mes (regla: 3)", "No", ""]);
+    expect((wb.getWorksheet("Asistencia")!.getRow(4).values as unknown[]).includes("Pierde presentismo")).toBe(false);
+  });
   it("el CSV neutraliza fórmulas: una nota que empieza con = no se ejecuta en Excel", async () => {
     const evil = buildAttendanceWorkbook({ ...input, detail: [{ fullName: "=HYPERLINK(\"http://x\")", status: dayStatus({ ...base, date: "2026-11-24", mark: mark("2026-11-24", "09:00", "=1+1") }) }] });
     const csv = Buffer.from(await neutralizeFormulasForCsv(evil).csv.writeBuffer({ sheetName: "Detalle" })).toString();
