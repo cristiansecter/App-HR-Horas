@@ -9,7 +9,7 @@ import { buildAutoNovelties, EMPTY_MANUAL, mergeNovelties, type AutoNovelties, t
 import { withCode } from "@/services/errors";
 import { listUsers } from "@/services/company";
 import { listEmployeePay, PAY_CHANGED } from "@/services/compensation";
-import { isPeriodClosed, listPayslips, listPayslipsBetween, loadPayrollSettings, PAYROLL_CHANGED, savePayslips, setPeriodClosed, type StoredPayslip } from "@/services/liquidation";
+import { isPeriodClosed, listPayslips, listPayslipsBetween, loadPayrollSettings, PAYROLL_CHANGED, publishPayslips, savePayslips, setPeriodClosed, type StoredPayslip } from "@/services/liquidation";
 import { loadPayrollRaw } from "@/services/payroll";
 import { ENTRIES_CHANGED } from "@/services/timeEntries";
 import { useUser } from "@/session/SessionContext";
@@ -34,6 +34,7 @@ interface Row {
   department: string;
   hireDate: string;
   convenio: boolean;
+  obraSocial: string;
   rate: number;
   auto: AutoNovelties;
   manual: ManualNovelties;
@@ -46,7 +47,7 @@ const semester = (period: string) => {
   return m <= 6 ? { from: `${y}-01`, to: `${y}-06` } : { from: `${y}-07`, to: `${y}-12` };
 };
 
-/** Liquidación de sueldos (módulo activable): cálculo del mes con las novedades de Horus, recibos y cierre de período. */
+/** Seguimiento de liquidaciones (módulo activable): anotación del mes con las novedades de Horus, detalle por persona y cierre de período. */
 export default function PayrollView() {
   const company = useCompany();
   const actor = useUser();
@@ -107,7 +108,7 @@ export default function PayrollView() {
         const without = calculatePayslip({ employee, rate, payModel: model, novelties: { ...mergeNovelties(auto, manual), sac: false }, params: data.settings.params, visibility: data.settings.visibility, tiers, periodStart: range.from });
         result = run(Math.max(bestOtherMonths, without.totalRemunerativo));
       }
-      out.push({ uid: u.uid, fullName: u.fullName, legajo: u.employeeNumber ?? "", cuil: data.raw.cuilByUid.get(u.uid) ?? "", position: u.position ?? "", department: u.department ?? "", hireDate: u.hireDate ?? "", convenio: employee.convenio, rate, auto, manual, result });
+      out.push({ uid: u.uid, fullName: u.fullName, legajo: u.employeeNumber ?? "", cuil: data.raw.cuilByUid.get(u.uid) ?? "", position: u.position ?? "", department: u.department ?? "", hireDate: u.hireDate ?? "", convenio: employee.convenio, obraSocial: employee.obraSocial, rate, auto, manual, result });
     }
     out.sort((a, b) => a.fullName.localeCompare(b.fullName, "es"));
     return { rows: out, skipped: skippedNoPay };
@@ -144,14 +145,34 @@ export default function PayrollView() {
     setSaving(true);
     setError(null);
     try {
-      await savePayslips(rows.map((r) => ({ userId: r.uid, period: month, manual: r.manual, result: r.result, rate: r.rate, payModel: model })), actor.email);
+      // Solo se guardan los recibos nuevos o con cambios; los que ya estaban iguales (y quizás publicados) no se tocan.
+      const toSave = rows.filter((r) => stateOf(r) !== "saved");
+      await savePayslips(toSave.map((r) => ({ userId: r.uid, period: month, manual: r.manual, result: r.result, rate: r.rate, payModel: model, snapshot: { fullName: r.fullName, legajo: r.legajo, cuil: r.cuil, position: r.position, department: r.department, hireDate: r.hireDate, convenio: r.convenio, obraSocial: r.obraSocial } })), actor.email);
       setEdits({});
-      notify(`Guardaste la liquidación de ${monthLabel(month)} (${rows.length === 1 ? "1 recibo" : `${rows.length} recibos`}).`);
+      notify(`Guardaste ${toSave.length === 1 ? "1 recibo" : `${toSave.length} recibos`} de ${monthLabel(month)}.`);
     } catch (e) {
       console.error("No se pudo guardar la liquidación", e);
       setError(withCode("No se pudo guardar la liquidación. Si el período está cerrado, reabrilo primero.", e));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const savedRows = rows.filter((r) => stateOf(r) === "saved");
+  const publishedCount = savedRows.filter((r) => savedFor(r.uid)?.published === true).length;
+  const publish = async (value: boolean) => {
+    const targets = savedRows.filter((r) => (savedFor(r.uid)?.published === true) !== value).map((r) => r.uid);
+    if (targets.length === 0) return;
+    const text = value
+      ? `¿Publicar ${targets.length === 1 ? "1 liquidación" : `${targets.length} liquidaciones`} de ${monthLabel(month)}? Cada persona va a poder ver la suya.`
+      : `¿Retirar la publicación de ${targets.length === 1 ? "1 liquidación" : `${targets.length} liquidaciones`}? Dejan de verse para las personas.`;
+    if (!window.confirm(text)) return;
+    try {
+      await publishPayslips(month, targets, value, actor.email);
+      notify(value ? "Publicaste las liquidaciones: cada persona ve la suya." : "Retiraste la publicación.");
+    } catch (e) {
+      console.error("No se pudo publicar", e);
+      setError(withCode("No se pudo cambiar la publicación.", e));
     }
   };
 
@@ -183,14 +204,16 @@ export default function PayrollView() {
   return (
     <Page>
       <PageHeader
-        eyebrow="Liquidación asistida"
-        title="Liquidación de sueldos"
-        subtitle={`${monthLabel(month)}. Las novedades salen de las horas y licencias aprobadas. Modelo de pago: ${model === "hourly" ? "por hora" : "por jornada (sueldo mensual)"}. Revisá el resultado con tu contador.`}
+        eyebrow="Anotación y seguimiento"
+        title="Seguimiento de liquidaciones"
+        subtitle={`${monthLabel(month)}. Para llevar y ver los números en la plataforma: no es una liquidación legal y no reemplaza el trabajo de tu contador. Las novedades salen de las horas y licencias aprobadas. Modelo de pago: ${model === "hourly" ? "por hora" : "por jornada (sueldo mensual)"}.`}
         actions={
           tab === "run" ? (
             <>
               <label className="flex items-center gap-2 font-label-md text-label-md text-on-surface-variant">Mes<input type="month" value={month} max={thisMonth} onChange={(e) => e.target.value && (setMonth(e.target.value), setEdits({}))} className="rounded-lg border border-white/10 bg-surface-container-lowest px-3 py-2 font-body-md text-body-md text-on-surface focus:border-primary-container focus:outline-hidden" /></label>
               <button type="button" onClick={exportCsv} disabled={rows.length === 0} className="rounded-xl bg-surface-container-high px-4 py-2.5 font-label-lg text-label-lg font-semibold text-on-surface hover:bg-surface-container-highest disabled:opacity-40">Exportar CSV</button>
+              {publishedCount < savedRows.length && savedRows.length > 0 ? <button type="button" onClick={() => void publish(true)} className="rounded-xl bg-surface-container-high px-4 py-2.5 font-label-lg text-label-lg font-semibold text-on-surface hover:bg-surface-container-highest">Publicar a las personas</button> : null}
+              {publishedCount > 0 ? <button type="button" onClick={() => void publish(false)} className="rounded-xl px-3 py-2.5 font-label-lg text-label-lg font-semibold text-on-surface-variant hover:text-on-surface">Retirar publicación</button> : null}
               <button type="button" onClick={() => void toggleClosed()} className="rounded-xl bg-surface-container-high px-4 py-2.5 font-label-lg text-label-lg font-semibold text-on-surface hover:bg-surface-container-highest">{closed ? "Reabrir período" : "Cerrar período"}</button>
               <button type="button" onClick={() => void save()} disabled={closed || saving || rows.length === 0 || !dirty} className="flex items-center gap-2 rounded-xl bg-primary-container px-4 py-2.5 font-label-lg text-label-lg font-bold text-on-primary hover:brightness-110 disabled:opacity-40">
                 <span className="material-symbols-outlined text-[20px]">save</span>{saving ? "Guardando…" : "Guardar liquidación"}
@@ -242,7 +265,7 @@ export default function PayrollView() {
                         <td className="px-space-md py-3 tabular-nums">{formatArs(r.result.totalNoRemunerativo, 2)}</td>
                         <td className="px-space-md py-3 tabular-nums text-error">{formatArs(r.result.totalDeducciones, 2)}</td>
                         <td className="px-space-md py-3 font-bold tabular-nums">{formatArs(r.result.neto, 2)}</td>
-                        <td className="px-space-md py-3"><Chip tone={st === "saved" ? "ok" : st === "changed" ? "warn" : "muted"}>{st === "saved" ? "Guardado" : st === "changed" ? "Con cambios" : "Sin guardar"}</Chip></td>
+                        <td className="px-space-md py-3"><div className="flex flex-wrap gap-1.5"><Chip tone={st === "saved" ? "ok" : st === "changed" ? "warn" : "muted"}>{st === "saved" ? "Guardado" : st === "changed" ? "Con cambios" : "Sin guardar"}</Chip>{savedFor(r.uid)?.published === true && st === "saved" ? <Chip tone="info">Publicado</Chip> : null}</div></td>
                         <td className="px-space-md py-3 text-right"><div className="inline-flex gap-1">
                           <button type="button" disabled={closed} onClick={() => setEditing(r)} className="rounded-lg px-3 py-1.5 font-label-md text-label-md font-semibold text-on-surface hover:bg-surface-container-high disabled:opacity-40">Novedades</button>
                           <button type="button" onClick={() => openReceipt(r)} className="rounded-lg px-3 py-1.5 font-label-md text-label-md font-semibold text-primary hover:bg-primary-container/15">Recibo</button>
@@ -250,12 +273,12 @@ export default function PayrollView() {
                       </tr>
                     );
                   })}
-                  {rows.length === 0 ? <tr><td colSpan={9} className="px-space-md py-10 text-center text-on-surface-variant">{loading && !data ? "Cargando el período…" : "No hay personas para liquidar: cargá el sueldo de cada una en su ficha."}</td></tr> : null}
+                  {rows.length === 0 ? <tr><td colSpan={9} className="px-space-md py-10 text-center text-on-surface-variant">{loading && !data ? "Cargando el período…" : "No hay personas para anotar: cargá el sueldo de cada una en su ficha."}</td></tr> : null}
                 </tbody>
               </table>
             </div>
             <p className="mt-space-md font-body-sm text-body-sm text-on-surface-variant">
-              Se usa el sueldo vigente al final del mes. Guardar la liquidación deja un recibo por persona; con el período cerrado ya no se puede cambiar.
+              Se usa el sueldo vigente al final del mes. Guardar deja un detalle por persona; con el período cerrado ya no se puede cambiar.
             </p>
           </div>
         </>

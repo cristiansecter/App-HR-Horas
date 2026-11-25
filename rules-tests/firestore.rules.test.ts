@@ -236,7 +236,7 @@ describe("liquidación (módulo): recibos, parámetros y cierre de período", ()
     await setDoc(doc(ctx.firestore(), "settings/features"), { modules: { compensation: true, performance: false, payroll }, payModel: "salary" });
   });
   const admin = () => asRole("ana", "admin");
-  const slip = (uid = "emi", period = "2026-11", extra: Record<string, unknown> = {}) => ({ userId: uid, period, manual: {}, result: { neto: 1 }, rate: 1, payModel: "salary", createdAt: serverTimestamp(), createdBy: "a@x", ...extra });
+  const slip = (uid = "emi", period = "2026-11", extra: Record<string, unknown> = {}) => ({ userId: uid, period, manual: {}, result: { neto: 1 }, rate: 1, payModel: "salary", snapshot: { fullName: "X" }, published: false, createdAt: serverTimestamp(), createdBy: "a@x", ...extra });
   const closePeriod = (period: string, closed = true) => env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), `payroll_periods/${period}`), { closed }); });
 
   it("con el módulo apagado nada de esto se lee ni se escribe", async () => {
@@ -251,14 +251,41 @@ describe("liquidación (módulo): recibos, parámetros y cierre de período", ()
     await assertSucceeds(getDoc(doc(admin(), "payslips/emi_2026-11")));
     await assertSucceeds(setDoc(doc(admin(), "settings/payroll"), { params: { a: 1 }, visibility: {}, updatedAt: serverTimestamp(), updatedBy: "a@x" }));
   });
-  it("supervisor, empleado (aunque sea su recibo) y Configurador no ven nada", async () => {
+  it("un recibo sin publicar no lo ve nadie salvo el admin; ni el dueño, ni el supervisor, ni el Configurador", async () => {
     await modules(true);
     await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "payslips/emi_2026-11"), slip("emi", "2026-11", { createdAt: new Date() })); });
-    for (const [uid, role] of [["sofia", "supervisor"], ["emi", "employee"]] as const) {
+    for (const [uid, role] of [["sofia", "supervisor"], ["emi", "employee"], ["eze", "employee"]] as const) {
       await assertFails(getDoc(doc(asRole(uid, role), "payslips/emi_2026-11")));
       await assertFails(setDoc(doc(asRole(uid, role), "payslips/emi_2026-11"), slip()));
     }
     await assertFails(getDoc(doc(configuratorDb(), "payslips/emi_2026-11")));
+  });
+  it("publicado: lo ve su dueño y nadie más (ni el supervisor ni otro empleado); el dueño no puede modificarlo", async () => {
+    await modules(true);
+    await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "payslips/emi_2026-11"), slip("emi", "2026-11", { createdAt: new Date(), published: true })); });
+    await assertSucceeds(getDoc(doc(asRole("emi", "employee"), "payslips/emi_2026-11")));
+    await assertSucceeds(getDocs(query(collection(asRole("emi", "employee"), "payslips"), where("userId", "==", "emi"), where("published", "==", true))));
+    await assertFails(getDoc(doc(asRole("eze", "employee"), "payslips/emi_2026-11")));
+    await assertFails(getDoc(doc(asRole("sofia", "supervisor"), "payslips/emi_2026-11")));
+    await assertFails(getDocs(query(collection(asRole("emi", "employee"), "payslips"), where("userId", "==", "emi")))); // sin acotar a publicados
+    await assertFails(getDocs(collection(asRole("emi", "employee"), "payslips")));
+    await assertFails(updateDoc(doc(asRole("emi", "employee"), "payslips/emi_2026-11"), { rate: 9 }));
+    await assertFails(deleteDoc(doc(asRole("emi", "employee"), "payslips/emi_2026-11")));
+  });
+  it("con el módulo apagado ni el dueño de un recibo publicado lo ve", async () => {
+    await modules(false);
+    await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "payslips/emi_2026-11"), slip("emi", "2026-11", { createdAt: new Date(), published: true })); });
+    await assertFails(getDoc(doc(asRole("emi", "employee"), "payslips/emi_2026-11")));
+  });
+  it("el admin publica y retira la publicación, incluso con el período cerrado, pero no cambia nada más", async () => {
+    await modules(true);
+    await assertSucceeds(setDoc(doc(admin(), "payslips/emi_2026-11"), slip()));
+    await closePeriod("2026-11");
+    await assertSucceeds(updateDoc(doc(admin(), "payslips/emi_2026-11"), { published: true, publishedAt: serverTimestamp(), publishedBy: "a@x" }));
+    await assertSucceeds(getDoc(doc(asRole("emi", "employee"), "payslips/emi_2026-11")));
+    await assertSucceeds(updateDoc(doc(admin(), "payslips/emi_2026-11"), { published: false, publishedAt: serverTimestamp(), publishedBy: "a@x" }));
+    await assertFails(updateDoc(doc(admin(), "payslips/emi_2026-11"), { rate: 5 })); // cerrado: no se toca el contenido
+    await assertFails(updateDoc(doc(admin(), "payslips/emi_2026-11"), { published: true, rate: 5 })); // ni a escondidas junto con la publicación
   });
   it("el id del recibo tiene que ser usuario_período y el período válido", async () => {
     await modules(true);

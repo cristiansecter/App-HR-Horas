@@ -13,6 +13,7 @@ export type NavId =
   | "reports"
   | "performance"
   | "payroll"
+  | "myPayslips"
   | "settings";
 
 export interface NavItem {
@@ -43,7 +44,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: "projects", label: "Proyectos", path: "/proyectos", roles: ["admin"], icon: "work", group: "management" },
   { id: "reports", label: "Reportes", path: "/reportes", roles: ["admin"], icon: "analytics", group: "management" },
   { id: "performance", label: "Rendimiento", path: "/rendimiento", roles: ["admin"], icon: "trending_up", group: "management", module: "performance" },
-  { id: "payroll", label: "Liquidación", path: "/liquidacion", roles: ["admin"], icon: "payments", group: "management", module: "payroll" },
+  { id: "payroll", label: "Liquidaciones", path: "/liquidacion", roles: ["admin"], icon: "payments", group: "management", module: "payroll" },
+  { id: "myPayslips", label: "Mis liquidaciones", path: "/mis-liquidaciones", roles: ["supervisor", "employee"], icon: "receipt_long", group: "main", module: "payroll" },
   { id: "settings", label: "Configuración", path: "/configuracion", roles: ["admin"], icon: "settings", group: "management" },
 ];
 

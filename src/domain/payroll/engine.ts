@@ -6,7 +6,7 @@ import type { PayModel } from "../features";
  * Portado de LiquiSu y corregido en tres puntos: el SAC usa el 50% de la mejor remuneración del semestre, el
  * divisor de las inasistencias es un parámetro, y se agregan el modelo de pago por hora y las contribuciones patronales.
  *
- * ⚠ Es una herramienta de liquidación ASISTIDA: el Impuesto a las Ganancias es una versión simplificada (alícuota única,
+ * ⚠ Es una herramienta de ANOTACIÓN Y SEGUIMIENTO, no de liquidación legal: el Impuesto a las Ganancias es una versión simplificada (alícuota única,
  * no la escala progresiva anual) y cada convenio puede pedir reglas propias. Revisá el resultado con tu contador.
  */
 

@@ -143,15 +143,26 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/payroll_periods/$(period))
         && get(/databases/$(database)/documents/payroll_periods/$(period)).data.get('closed', false) == true;
     }
+    // Un recibo lo ve el administrador y, cuando el administrador lo PUBLICA, la propia persona (solo el suyo).
+    // Publicar o retirar la publicación se puede hacer aunque el período esté cerrado; cualquier otro cambio, no.
+    function payslipShape(d, id) {
+      return d.keys().hasOnly(['userId', 'period', 'manual', 'result', 'rate', 'payModel', 'snapshot', 'published', 'publishedAt', 'publishedBy', 'createdAt', 'createdBy', 'updatedAt'])
+        && d.userId is string && d.period is string
+        && d.period.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
+        && id == d.userId + '_' + d.period
+        && d.result is map && d.manual is map && d.snapshot is map
+        && d.get('published', false) is bool;
+    }
     match /payslips/{id} {
-      allow read: if isAdmin() && moduleOn('payroll');
-      allow create, update: if isAdmin() && moduleOn('payroll')
-        && request.resource.data.keys().hasOnly(['userId', 'period', 'manual', 'result', 'rate', 'payModel', 'createdAt', 'createdBy', 'updatedAt'])
-        && request.resource.data.userId is string && request.resource.data.period is string
-        && request.resource.data.period.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
-        && id == request.resource.data.userId + '_' + request.resource.data.period
-        && request.resource.data.result is map && request.resource.data.manual is map
+      allow read: if moduleOn('payroll')
+        && (isAdmin() || (hasRole() && resource.data.userId == me() && resource.data.get('published', false) == true));
+      allow create: if isAdmin() && moduleOn('payroll')
+        && payslipShape(request.resource.data, id)
         && !periodClosed(request.resource.data.period);
+      allow update: if isAdmin() && moduleOn('payroll')
+        && payslipShape(request.resource.data, id)
+        && (!periodClosed(request.resource.data.period)
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['published', 'publishedAt', 'publishedBy']));
       allow delete: if isAdmin() && moduleOn('payroll') && !periodClosed(resource.data.period);
     }
     match /payroll_periods/{period} {

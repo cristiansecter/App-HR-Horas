@@ -34,8 +34,8 @@ export const MODULE_INFO: Record<ModuleId, ModuleInfo> = {
     requires: ["compensation"],
   },
   payroll: {
-    label: "Liquidación de sueldos",
-    description: "Liquidación asistida del mes con las novedades cargadas desde las horas aprobadas, recibos para imprimir, parámetros editables y cierre de período.",
+    label: "Seguimiento de liquidaciones",
+    description: "Anotación y seguimiento digital de las liquidaciones del mes, con las novedades cargadas desde las horas aprobadas, detalle para imprimir, parámetros editables, cierre de período y vista propia para cada persona. No es una herramienta de liquidación legal ni reemplaza el trabajo del contador.",
     requires: ["compensation"],
   },
 };

@@ -44,7 +44,7 @@ function Block({ title, lines, total, sign }: { title: string; lines: readonly P
 }
 
 /**
- * Recibo de sueldo para ver e imprimir. Siempre en colores claros (aunque la app esté en modo oscuro), porque se imprime
+ * Detalle de liquidación para ver e imprimir (constancia de seguimiento, no un recibo legal). Siempre en colores claros (aunque la app esté en modo oscuro), porque se imprime
  * o se guarda como PDF con el botón de imprimir del navegador. Los descuentos van con signo menos; el neto, en tinta.
  */
 export default function ReceiptDialog({ data, onClose }: { data: ReceiptData; onClose: () => void }) {
@@ -71,9 +71,9 @@ export default function ReceiptDialog({ data, onClose }: { data: ReceiptData; on
           <header className="flex items-start justify-between gap-4 border-b-2 border-slate-800 pb-3">
             <div>
               <h2 className="text-lg font-extrabold">{data.companyName}</h2>
-              <p className="text-xs text-slate-600">Recibo de sueldo · {data.periodLabel}</p>
+              <p className="text-xs text-slate-600">Detalle de liquidación · {data.periodLabel}</p>
             </div>
-            <p className="rounded border border-slate-400 px-2 py-1 text-[10px] font-bold tracking-wider text-slate-600 uppercase">Liquidación asistida</p>
+            <p className="rounded border border-slate-400 px-2 py-1 text-[10px] font-bold tracking-wider text-slate-600 uppercase">Seguimiento · no legal</p>
           </header>
 
           <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
@@ -98,7 +98,7 @@ export default function ReceiptDialog({ data, onClose }: { data: ReceiptData; on
             <p className="border-t border-slate-400 pt-1">Firma del empleador</p>
             <p className="border-t border-slate-400 pt-1">Firma del empleado</p>
           </footer>
-          <p className="mt-4 text-[10px] leading-snug text-slate-500">Liquidación asistida: el Impuesto a las Ganancias es una versión simplificada y cada convenio puede requerir reglas propias. Revisá este recibo con tu contador antes de emitirlo.</p>
+          <p className="mt-4 text-[10px] leading-snug text-slate-500">Constancia de seguimiento: sirve para llevar y consultar los números en la plataforma. No es un recibo de sueldo legal ni reemplaza la liquidación del contador. El Impuesto a las Ganancias es una versión simplificada y cada convenio puede requerir reglas propias.</p>
         </article>
       </div>
     </div>,
