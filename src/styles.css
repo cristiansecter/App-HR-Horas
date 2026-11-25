@@ -138,6 +138,59 @@
   --hz-on-primary: #0b1020;
 }
 
+/*
+ * Modo claro: redefine los mismos colores del diseño, así ninguna pantalla cambia de clases.
+ * El oscuro es el de arriba (@theme). Los recibos se imprimen siempre en claro (ver @media print más abajo).
+ */
+html[data-theme="light"] {
+  color-scheme: light;
+  --color-background: #f1f4f9;
+  --color-surface: #f1f4f9;
+  --color-surface-dim: #e4e8f0;
+  --color-surface-bright: #ffffff;
+  --color-surface-container-lowest: #f6f8fc;
+  --color-surface-container-low: #ffffff;
+  --color-surface-container: #eef1f7;
+  --color-surface-container-high: #e5e9f1;
+  --color-surface-container-highest: #dae0ea;
+  --color-surface-variant: #dae0ea;
+  --color-on-background: #151a24;
+  --color-on-surface: #151a24;
+  --color-on-surface-variant: #4b5565;
+  --color-outline: #6b7686;
+  --color-outline-variant: #c3cad6;
+  --color-primary: color-mix(in srgb, var(--hz-primary) 50%, black);
+  --color-primary-fixed: color-mix(in srgb, var(--hz-primary) 70%, black);
+  --color-error: #b3261e;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #410002;
+  --color-secondary: #5a3bb0;
+  --color-tertiary: #1e3a8a;
+  --color-inverse-surface: #2c303a;
+  --color-inverse-on-surface: #eef1f7;
+  /* Tonos de estado (avisos, errores, éxito): más oscuros para que el texto se lea sobre fondo claro. */
+  --color-amber-100: #78350f;
+  --color-amber-200: #854d0e;
+  --color-amber-300: #a16207;
+  --color-amber-400: #b45309;
+  --color-emerald-200: #065f46;
+  --color-emerald-300: #047857;
+  --color-emerald-400: #047857;
+  --color-rose-200: #9f1239;
+  --color-rose-300: #be123c;
+  --color-rose-400: #be123c;
+  --color-blue-200: #1e40af;
+  --color-blue-300: #1d4ed8;
+  --org-line: #aab4c5;
+}
+/* Los bordes y divisores "blanco translúcido" del diseño oscuro pasan a gris translúcido. */
+html[data-theme="light"] .border-white\/5,
+html[data-theme="light"] .divide-white\/5 > :not(:last-child) { border-color: rgb(15 23 42 / 0.08); }
+html[data-theme="light"] .border-white\/10 { border-color: rgb(15 23 42 / 0.14); }
+html[data-theme="light"] .border-white\/15 { border-color: rgb(15 23 42 / 0.2); }
+html[data-theme="light"] .ring-white\/80 { --tw-ring-color: rgb(15 23 42 / 0.7); }
+
 html,
 body,
 #root {

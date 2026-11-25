@@ -1,5 +1,5 @@
 <!doctype html>
-<html class="dark" lang="es-AR">
+<html data-theme="dark" lang="es-AR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,6 +16,16 @@
       rel="stylesheet"
     />
     <title>Horus</title>
+    <script>
+      // Pinta el modo elegido antes de que cargue la app, para que no haya un destello del otro modo.
+      (function () {
+        try {
+          var p = localStorage.getItem("horus:color-mode");
+          var dark = p === "dark" || (p !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.dataset.theme = dark ? "dark" : "light";
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

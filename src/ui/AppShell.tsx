@@ -5,6 +5,7 @@ import { useCompany } from "@/company/CompanyContext";
 import { BUENOS_AIRES_TZ } from "@/domain/dates";
 import { useLoadHours } from "@/features/hours/LoadHoursDrawer";
 import { useUser } from "@/session/SessionContext";
+import { ColorModeButton } from "./ColorModeButton";
 import { CompanyMark } from "./CompanyMark";
 import { SidebarContent } from "./Sidebar";
 
@@ -72,6 +73,7 @@ export function AppShell() {
             </div>
             <div className="flex items-center gap-space-md">
               <div className="flex items-center gap-1">
+                <ColorModeButton />
                 <button type="button" title="Notificaciones" aria-label="Notificaciones" className="relative flex size-9 items-center justify-center rounded-lg text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface">
                   <span className="material-symbols-outlined text-[20px]">notifications</span>
                 </button>
@@ -90,6 +92,7 @@ export function AppShell() {
           </button>
           <CompanyMark className="size-8" />
           <span className="min-w-0 flex-1 truncate font-headline-sm text-[15px] font-semibold">{companyName}</span>
+          <ColorModeButton />
           {canLoadHours ? (
             <button type="button" onClick={openDrawer} aria-label="Cargar horas" className="flex size-9 items-center justify-center rounded-lg bg-primary-container text-on-primary">
               <span className="material-symbols-outlined text-[20px]">add</span>

@@ -5,6 +5,7 @@ import { LoadHoursProvider } from "@/features/hours/LoadHoursDrawer";
 import { LoginScreen } from "@/features/login/LoginScreen";
 import { CompanyProvider, useCompany } from "@/company/CompanyContext";
 import ConfiguratorConsole from "@/features/configurator/ConfiguratorConsole";
+import { useForcedDark } from "@/ui/colorMode";
 import AssignmentsView from "@/features/assignments/AssignmentsView";
 import ProjectionView from "@/features/projection/ProjectionView";
 import TeamPayView from "@/features/teampay/TeamPayView";
@@ -109,6 +110,8 @@ function Guard({ path, render }: { path: string; render: (role: Role) => ReactEl
 
 function AuthGate() {
   const { user, configurator, loading } = useSession();
+  // La entrada y la consola del Configurador son de la marca y se ven siempre oscuras; el modo elegido rige dentro de la app.
+  useForcedDark(loading || Boolean(configurator) || !user);
   if (loading) {
     return (
       <div className="bg-horus-mesh flex min-h-screen items-center justify-center text-sm text-navy-300" role="status">
