@@ -85,7 +85,7 @@ Todas las pantallas leen y escriben en Firestore con una cuenta real. Solo la en
 | Directorio y ficha del empleado: puesto, área, legajo, supervisor, estado, CUIL/DNI/teléfono/modalidad (solo admin) y jornada propia | Real. Las altas siguen por script hasta tener el plan Blaze. El CUIL se valida (11 dígitos; si el dígito verificador no coincide es solo un aviso) |
 | Configuración: nombre, logo y colores; jornada general; tramos y franjas de horas extra (validadas: cada tipo de día cubierto las 24 h); guardia; ventana de edición; calendario de feriados | Real. Los cambios rigen hacia adelante: lo ya aprobado conserva sus horas |
 | Sueldos en el legajo (módulo activable) | Real: sueldo mensual o valor hora según el modelo de pago, con historial de vigencias (quién y cuándo). Solo lo lee el administrador y solo con el módulo activo; ni el supervisor, ni la propia persona, ni el Configurador lo ven |
-| Rendimiento (módulo activable): costos contra facturación por proyecto, por persona y por mes | Real: tarifa de cobro por hora y marca "facturable" en cada proyecto (los internos tienen costo sin ingreso); costo con el sueldo vigente en la fecha de cada registro, el recargo de las horas extra y un % de cargas configurable. Solo administrador y con el módulo activo |
+| Rendimiento (módulo activable): costos contra facturación por proyecto, por persona y por mes | Real: costos por proyecto, persona y mes; costo con el sueldo vigente en la fecha de cada registro, el recargo de las horas extra y un % de cargas configurable. Solo administrador y con el módulo activo. La facturación (ingresos y margen) es otro módulo: *Facturación por proyecto* |
 | Seguimiento de liquidaciones (módulo activable): anotación del mes, detalle para imprimir o guardar como PDF, publicación para que cada persona vea el suyo, parámetros y conceptos editables, exportación CSV y cierre de período | Real: las novedades (horas normales y extra por tramo, inasistencias injustificadas, vacaciones) salen solas de las horas y licencias aprobadas; el resto se carga a mano. Solo administrador y con el módulo activo |
 | Asignar proyectos: el administrador (a cualquiera) y el supervisor (a su equipo) deciden en qué proyectos carga horas cada persona | Real: grilla personas × proyectos, "asignar a todos" y filtro de la carga de horas; las reglas lo exigen aunque se intente saltear la pantalla |
 | Organigrama (Configuración): árbol vertical administrador → supervisores → empleados, con arrastrar y soltar y panel "reporta a" | Real: cambia el supervisor de cada persona (solo el administrador). Los roles siguen siendo del Configurador |
@@ -118,12 +118,18 @@ El Configurador entra por la pestaña **Configurador** de la pantalla de entrada
 
 Qué hace la consola:
 
-- **Módulos activables**: Sueldos en el legajo, Rendimiento y Seguimiento de liquidaciones. Rendimiento y Seguimiento necesitan Sueldos en el legajo (al prender uno se prende la base; al apagar la base se apagan los que dependen).
+- **Módulos activables**: Sueldos en el legajo, Rendimiento, Seguimiento de liquidaciones, Facturación por proyecto y Dedicación y proyección. Rendimiento y Seguimiento necesitan Sueldos en el legajo; Facturación por proyecto necesita Rendimiento; Dedicación y proyección no necesita ninguno. Al prender uno se prende su base y al apagar la base se apagan los que dependen. Los atajos "Consultoría" y "Fábrica o producción por jornada" prenden o apagan el conjunto típico de cada rubro.
 - **Modelo de pago** de la pyme: *por jornada* (sueldo mensual) o *por hora*.
 
 Lo que se guarda va en `settings/features`. **Solo lo escribe el Configurador**: el administrador de la pyme tiene prohibido escribirlo, aunque lo intente desde la consola del navegador. Un módulo apagado no tiene pantallas y sus datos quedan bloqueados en la base. El administrador de la pyme no ve esta consola ni la lista de módulos: solo ve las pantallas de los que están activos.
 
 **No uses el correo del Configurador como usuario de una empresa.** Al entrar con Google, Firebase puede vincular las dos cuentas y descartar la contraseña de la cuenta común. Los scripts de alta lo rechazan.
+
+### Facturación por proyecto
+- **Por hora**: tarifa general del proyecto y, si hace falta, una tarifa distinta para algunas personas (por ejemplo un consultor senior). La tarifa de la persona reemplaza a la general solo para ella.
+- **Precio cerrado**: valor total y horas estimadas. Cada mes se reconoce ingreso proporcional a las horas aprobadas (valor total ÷ horas estimadas por hora) y **nunca más que el valor total**: pasadas las horas estimadas, lo que se siga trabajando es costo sin ingreso y la pantalla lo avisa.
+- **Interno**: tiene costo y no genera ingreso.
+- Con el módulo apagado, Rendimiento muestra solo costos (sin ingresos, margen ni tarifas). Los documentos viejos con `billable`/`hourlyRate` se leen como "por hora" o "interno".
 
 ## Módulos: Sueldos, Rendimiento y Seguimiento de liquidaciones
 
@@ -132,7 +138,7 @@ Los activa el Configurador (consola, pestaña **Configurador**). Todo lo que gua
 | Dato | Dónde | Módulo |
 |---|---|---|
 | Sueldo o valor hora de cada persona, con historial de vigencias, y convenio / obra social / hijos | `employee_pay/{uid}` | Sueldos en el legajo |
-| Tarifa de cobro por hora y marca "facturable" de cada proyecto | `project_rates/{código}` | Rendimiento |
+| Cómo se factura cada proyecto: por hora (tarifa general + tarifas por persona), precio cerrado (valor total + horas estimadas) o interno | `project_rates/{código}` | Facturación por proyecto |
 | Cargas patronales y horas del mes | `settings/costing` | Rendimiento |
 | Parámetros y conceptos del seguimiento | `settings/payroll` | Seguimiento de liquidaciones |
 | Un detalle por persona y mes (con datos congelados y estado de publicación) | `payslips/{uid}_{AAAA-MM}` | Seguimiento de liquidaciones |

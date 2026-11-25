@@ -279,23 +279,31 @@ describe("rendimiento (módulo): tarifas de proyecto y parámetros de costos", (
   });
   const admin = () => asRole("ana", "admin");
 
+  const rate = (over: Record<string, unknown> = {}) => ({ billing: "hourly", hourlyRate: 10000, totalValue: 0, estimatedHours: 0, personRates: {}, ...over });
   it("con el módulo apagado el admin no lee ni escribe tarifas ni parámetros de costos", async () => {
     await modules({ performance: false });
-    await assertFails(setDoc(doc(admin(), "project_rates/p1"), { hourlyRate: 10000, billable: true }));
+    await assertFails(setDoc(doc(admin(), "project_rates/p1"), rate()));
     await assertFails(setDoc(doc(admin(), "settings/costing"), { employerContributionsPct: 20, monthlyHours: 160 }));
     await assertFails(getDoc(doc(admin(), "settings/costing")));
   });
-  it("con el módulo activo el admin las lee y escribe", async () => {
-    await modules({ performance: true });
-    await assertSucceeds(setDoc(doc(admin(), "project_rates/p1"), { hourlyRate: 10000, billable: true }));
+  it("las tarifas por proyecto piden también el módulo de facturación, no solo Rendimiento", async () => {
+    await modules({ performance: true, projectBilling: false });
+    await assertFails(setDoc(doc(admin(), "project_rates/p1"), rate()));
+    await assertSucceeds(setDoc(doc(admin(), "settings/costing"), { employerContributionsPct: 24, monthlyHours: 160 }));
+  });
+  it("con los módulos activos el admin las lee y escribe", async () => {
+    await modules({ performance: true, projectBilling: true });
+    await assertSucceeds(setDoc(doc(admin(), "project_rates/p1"), rate({ personRates: { emi: 12000 } })));
+    await assertSucceeds(setDoc(doc(admin(), "project_rates/p2"), rate({ billing: "fixed", hourlyRate: 0, totalValue: 5000000, estimatedHours: 400 })));
+    await assertSucceeds(setDoc(doc(admin(), "project_rates/p3"), rate({ billing: "none", hourlyRate: 0 })));
     await assertSucceeds(getDoc(doc(admin(), "project_rates/p1")));
     await assertSucceeds(setDoc(doc(admin(), "settings/costing"), { employerContributionsPct: 24, monthlyHours: 160 }));
     await assertSucceeds(getDoc(doc(admin(), "settings/costing")));
   });
   it("el resto del equipo no ve las tarifas ni los parámetros, aunque el módulo esté activo", async () => {
-    await modules({ performance: true });
+    await modules({ performance: true, projectBilling: true });
     await env.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), "project_rates/p1"), { hourlyRate: 10000, billable: true });
+      await setDoc(doc(ctx.firestore(), "project_rates/p1"), rate());
       await setDoc(doc(ctx.firestore(), "settings/costing"), { employerContributionsPct: 24, monthlyHours: 160 });
     });
     for (const [uid, role] of [["sofia", "supervisor"], ["emi", "employee"]] as const) {
@@ -305,10 +313,14 @@ describe("rendimiento (módulo): tarifas de proyecto y parámetros de costos", (
     await assertFails(getDoc(doc(configuratorDb(), "settings/costing")));
   });
   it("valida la forma de la tarifa y de los parámetros", async () => {
-    await modules({ performance: true });
-    await assertFails(setDoc(doc(admin(), "project_rates/p1"), { hourlyRate: -1, billable: true }));
-    await assertFails(setDoc(doc(admin(), "project_rates/p1"), { hourlyRate: 1, billable: "si" }));
-    await assertFails(setDoc(doc(admin(), "project_rates/p1"), { hourlyRate: 1, billable: true, extra: 1 }));
+    await modules({ performance: true, projectBilling: true });
+    await assertFails(setDoc(doc(admin(), "project_rates/p1"), rate({ hourlyRate: -1 })));
+    await assertFails(setDoc(doc(admin(), "project_rates/p1"), rate({ billing: "gratis" })));
+    await assertFails(setDoc(doc(admin(), "project_rates/p1"), rate({ billing: "fixed", totalValue: -5 })));
+    await assertFails(setDoc(doc(admin(), "project_rates/p1"), rate({ estimatedHours: "muchas" })));
+    await assertFails(setDoc(doc(admin(), "project_rates/p1"), rate({ personRates: "emi" })));
+    await assertFails(setDoc(doc(admin(), "project_rates/p1"), rate({ extra: 1 })));
+    await assertFails(setDoc(doc(admin(), "project_rates/p1"), { billing: "hourly", hourlyRate: 1 }));
     await assertFails(setDoc(doc(admin(), "settings/costing"), { employerContributionsPct: 500, monthlyHours: 160 }));
     await assertFails(setDoc(doc(admin(), "settings/costing"), { employerContributionsPct: 10, monthlyHours: 0 }));
   });

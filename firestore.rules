@@ -148,12 +148,18 @@ service cloud.firestore {
 
     // Tarifa de cobro por hora de cada proyecto (módulo "Rendimiento"): solo el administrador. Va aparte de `projects`
     // porque ese documento lo lee todo el equipo y la tarifa no.
+    // Facturación por proyecto (módulo "Facturación por proyecto", que necesita Rendimiento): solo el administrador.
+    // billing: por hora ("hourly", con una tarifa general y tarifas por persona), precio cerrado ("fixed") o interno ("none").
+    function billingActive() { return moduleOn('performance') && moduleOn('projectBilling'); }
     match /project_rates/{code} {
-      allow read, delete: if isAdmin() && moduleOn('performance');
-      allow create, update: if isAdmin() && moduleOn('performance')
-        && request.resource.data.keys().hasOnly(['hourlyRate', 'billable', 'updatedAt', 'updatedBy'])
+      allow read, delete: if isAdmin() && billingActive();
+      allow create, update: if isAdmin() && billingActive()
+        && request.resource.data.keys().hasOnly(['billing', 'hourlyRate', 'totalValue', 'estimatedHours', 'personRates', 'updatedAt', 'updatedBy'])
+        && request.resource.data.billing in ['hourly', 'fixed', 'none']
         && request.resource.data.hourlyRate is number && request.resource.data.hourlyRate >= 0 && request.resource.data.hourlyRate <= 1000000000
-        && request.resource.data.billable is bool;
+        && request.resource.data.totalValue is number && request.resource.data.totalValue >= 0 && request.resource.data.totalValue <= 1000000000000
+        && request.resource.data.estimatedHours is number && request.resource.data.estimatedHours >= 0 && request.resource.data.estimatedHours <= 1000000
+        && request.resource.data.personRates is map && request.resource.data.personRates.size() <= 500;
     }
 
     // Liquidación de sueldos (módulo "Liquidación"): solo el administrador y solo con el módulo activo.

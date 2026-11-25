@@ -67,7 +67,7 @@ npx firebase-tools deploy --only hosting --project CLIENTE
 ## 6. Activar los módulos (solo vos)
 
 1. Entrá al sitio, pestaña **Configurador** (o el enlace "Acceso del Configurador" debajo del formulario), y elegí **Continuar con Google** con tu cuenta.
-2. Elegí el **modelo de pago** de la pyme (por jornada o por hora) y prendé los módulos que contrató: *Sueldos en el legajo*, *Rendimiento*, *Seguimiento de liquidaciones*. Guardá.
+2. Elegí el **modelo de pago** de la pyme (por jornada o por hora) y prendé los módulos que contrató: *Sueldos en el legajo*, *Rendimiento*, *Seguimiento de liquidaciones*, *Facturación por proyecto*. Para una consultora usá el atajo "Consultoría". Guardá.
 3. El administrador del cliente solo ve las pantallas de los módulos activos; no ve esta consola.
 
 ## 7. Que el cliente complete

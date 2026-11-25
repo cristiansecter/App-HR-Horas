@@ -3,11 +3,28 @@ import type { PayModel } from "./features";
 import type { TimeEntry } from "./model";
 import type { Tier } from "./overtime/types";
 
-/** Tarifa de cobro de un proyecto. Un proyecto no facturable (interno) tiene costo pero no ingreso. */
+/**
+ * Cómo se factura un proyecto:
+ * - hourly: horas × tarifa (una general y, si hace falta, una distinta por persona).
+ * - fixed: precio cerrado. Valor total y horas estimadas; el ingreso de cada mes es proporcional a las horas
+ *   trabajadas y NUNCA pasa del valor total (si se pasan las horas estimadas, lo de más es costo sin ingreso).
+ * - none: proyecto interno, sin facturación.
+ */
+export type Billing = "hourly" | "fixed" | "none";
+
 export interface ProjectRate {
+  billing: Billing;
+  /** Tarifa general por hora (modelo hourly). */
   hourlyRate: number;
-  billable: boolean;
+  /** Tarifas por persona que reemplazan a la general (uid → tarifa por hora). */
+  personRates: Record<string, number>;
+  /** Valor total del proyecto (modelo fixed). */
+  totalValue: number;
+  /** Horas estimadas del proyecto (modelo fixed). */
+  estimatedHours: number;
 }
+
+export const DEFAULT_PROJECT_RATE: ProjectRate = { billing: "hourly", hourlyRate: 0, personRates: {}, totalValue: 0, estimatedHours: 0 };
 
 export interface CostingParams {
   /** Cargas patronales y demás costo laboral sobre lo que se le paga a la persona, en %. */
@@ -19,9 +36,16 @@ export interface CostingParams {
 export const DEFAULT_COSTING: CostingParams = { employerContributionsPct: 0, monthlyHours: 160 };
 
 export interface PerformanceInput {
-  /** Registros aprobados del período (con `hours` y `breakdown` congelados). */
+  /**
+   * Registros aprobados. Si hay proyectos a precio cerrado conviene incluir también los anteriores al período
+   * (para saber cuántas horas del proyecto ya se trabajaron); solo cuentan para costos y tarifas por hora los del período.
+   */
   entries: readonly TimeEntry[];
+  /** Período mostrado (AAAA-MM-DD, ambos incluidos). Sin él, cuentan todos los registros. */
+  range?: { from: string; to: string };
   payModel: PayModel;
+  /** false = la empresa no factura por proyecto (módulo apagado): solo costos, sin ingreso ni margen. */
+  billingEnabled?: boolean;
   /** Historial de remuneración por persona. */
   ratesByUser: ReadonlyMap<string, readonly RateEntry[]>;
   projectRates: ReadonlyMap<string, ProjectRate>;
@@ -29,7 +53,7 @@ export interface PerformanceInput {
   costing: CostingParams;
   userNames: ReadonlyMap<string, string>;
   projectNames: ReadonlyMap<string, { name: string; client: string }>;
-  /** Proyectos que tienen que figurar aunque no tengan horas (para poder cargarles la tarifa antes de trabajar en ellos). */
+  /** Proyectos que tienen que figurar aunque no tengan horas (para poder cargarles la facturación antes de trabajar en ellos). */
   seedProjects?: readonly string[];
 }
 
@@ -43,11 +67,14 @@ export interface ProjectResult {
   margin: number;
   /** Margen sobre la facturación. `null` si no hubo facturación. */
   marginPct: number | null;
+  billing: Billing;
+  /** Comodidad para la pantalla: el proyecto genera ingreso. */
   billable: boolean;
-  /** Tarifa de cobro cargada (0 si falta). */
-  hourlyRate: number;
-  /** true si es facturable y no tiene tarifa: la facturación quedó en 0 por falta del dato. */
+  rate: ProjectRate;
+  /** true si genera ingreso y le falta el dato para calcularlo (tarifa, o valor y horas del precio cerrado). */
   missingRate: boolean;
+  /** Solo precio cerrado: horas trabajadas en total hasta el fin del período y cuánto ingreso corresponde a lo acumulado. */
+  fixed?: { cumulativeHours: number; estimatedHours: number; recognizedToDate: number; overrunHours: number };
 }
 
 export interface PersonResult {
@@ -99,34 +126,61 @@ export const entryCost = (
   return wage * (1 + costing.employerContributionsPct / 100);
 };
 
+/** Ingreso de un precio cerrado entre dos acumulados de horas: proporcional, con tope en el valor total. */
+export const fixedRevenue = (totalValue: number, estimatedHours: number, hoursBefore: number, hoursAfter: number): number => {
+  if (totalValue <= 0 || estimatedHours <= 0) return 0;
+  const recognized = (h: number) => (Math.min(Math.max(h, 0), estimatedHours) / estimatedHours) * totalValue;
+  return recognized(hoursAfter) - recognized(hoursBefore);
+};
+
 /** Costos contra facturación por proyecto, persona y mes. Solo cuenta lo aprobado. */
 export function buildPerformance(input: PerformanceInput): PerformanceResult {
+  const billingOn = input.billingEnabled !== false;
+  const inRange = (date: string) => !input.range || (date >= input.range.from && date <= input.range.to);
+  const afterRange = (date: string) => Boolean(input.range) && date > input.range!.to;
+
   const projects = new Map<string, ProjectResult>();
   const people = new Map<string, PersonResult>();
   const months = new Map<string, MonthResult>();
+  /** Horas aprobadas por proyecto y mes (todas las del historial recibido), para repartir los precios cerrados. */
+  const hoursByProjectMonth = new Map<string, Map<string, number>>();
 
   const projectOf = (code: string): ProjectResult => {
     let p = projects.get(code);
     if (!p) {
-      const rate = input.projectRates.get(code);
+      const rate = input.projectRates.get(code) ?? DEFAULT_PROJECT_RATE;
       const info = input.projectNames.get(code);
-      p = { code, name: info?.name ?? code, client: info?.client ?? "", hours: 0, revenue: 0, cost: 0, margin: 0, marginPct: null, billable: rate?.billable ?? true, hourlyRate: rate?.hourlyRate ?? 0, missingRate: false };
+      p = { code, name: info?.name ?? code, client: info?.client ?? "", hours: 0, revenue: 0, cost: 0, margin: 0, marginPct: null, billing: rate.billing, billable: rate.billing !== "none", rate, missingRate: false };
       projects.set(code, p);
     }
     return p;
+  };
+  const monthOf = (m: string): MonthResult => {
+    let r = months.get(m);
+    if (!r) {
+      r = { month: m, hours: 0, revenue: 0, cost: 0, margin: 0 };
+      months.set(m, r);
+    }
+    return r;
   };
 
   for (const code of input.seedProjects ?? []) projectOf(code);
 
   for (const e of input.entries) {
-    if (e.status !== "approved" || e.hours === undefined) continue;
+    if (e.status !== "approved" || e.hours === undefined || afterRange(e.date)) continue;
+    const byMonth = hoursByProjectMonth.get(e.projectId) ?? new Map<string, number>();
+    byMonth.set(e.date.slice(0, 7), (byMonth.get(e.date.slice(0, 7)) ?? 0) + e.hours);
+    hoursByProjectMonth.set(e.projectId, byMonth);
+    if (!inRange(e.date)) continue;
+
     const proj = projectOf(e.projectId);
     const person = people.get(e.userId) ?? { userId: e.userId, name: input.userNames.get(e.userId) ?? "Persona dada de baja", hours: 0, cost: 0, missingPay: false };
-    const month = months.get(e.date.slice(0, 7)) ?? { month: e.date.slice(0, 7), hours: 0, revenue: 0, cost: 0, margin: 0 };
+    const month = monthOf(e.date.slice(0, 7));
 
     const cost = entryCost(e, input.ratesByUser.get(e.userId) ?? [], input.payModel, input.tiers, input.costing);
     if (cost === null) person.missingPay = true;
-    const revenue = proj.billable ? e.hours * proj.hourlyRate : 0;
+    // Por hora: tarifa de la persona si la tiene, o la general. El precio cerrado se reparte más abajo.
+    const revenue = billingOn && proj.billing === "hourly" ? e.hours * (proj.rate.personRates[e.userId] ?? proj.rate.hourlyRate) : 0;
 
     proj.hours += e.hours;
     proj.revenue += revenue;
@@ -136,9 +190,32 @@ export function buildPerformance(input: PerformanceInput): PerformanceResult {
     month.hours += e.hours;
     month.revenue += revenue;
     month.cost += cost ?? 0;
-    projects.set(e.projectId, proj);
     people.set(e.userId, person);
-    months.set(month.month, month);
+  }
+
+  // Precio cerrado: ingreso proporcional a las horas trabajadas, con tope en el valor total.
+  if (billingOn) {
+    for (const proj of projects.values()) {
+      if (proj.billing !== "fixed") continue;
+      const { totalValue, estimatedHours } = proj.rate;
+      const byMonth = [...(hoursByProjectMonth.get(proj.code) ?? new Map<string, number>()).entries()].sort(([a], [b]) => a.localeCompare(b));
+      let cumulative = 0;
+      for (const [m, h] of byMonth) {
+        const before = cumulative;
+        cumulative += h;
+        // Solo suma el ingreso de los meses del período mostrado (el resto sirve para saber cuánto se trabajó antes).
+        if (input.range && (m < input.range.from.slice(0, 7) || m > input.range.to.slice(0, 7))) continue;
+        const revenue = fixedRevenue(totalValue, estimatedHours, before, cumulative);
+        proj.revenue += revenue;
+        monthOf(m).revenue += revenue;
+      }
+      proj.fixed = {
+        cumulativeHours: round2(cumulative),
+        estimatedHours,
+        recognizedToDate: round2(fixedRevenue(totalValue, estimatedHours, 0, cumulative)),
+        overrunHours: round2(Math.max(0, cumulative - estimatedHours)),
+      };
+    }
   }
 
   const projectList = [...projects.values()]
@@ -146,7 +223,11 @@ export function buildPerformance(input: PerformanceInput): PerformanceResult {
       const revenue = round2(p.revenue);
       const cost = round2(p.cost);
       const margin = round2(revenue - cost);
-      return { ...p, hours: round2(p.hours), revenue, cost, margin, marginPct: pct(margin, revenue), missingRate: p.billable && p.hourlyRate <= 0 };
+      const missingRate =
+        billingOn &&
+        ((p.billing === "hourly" && p.rate.hourlyRate <= 0 && Object.values(p.rate.personRates).every((r) => r <= 0)) ||
+          (p.billing === "fixed" && (p.rate.totalValue <= 0 || p.rate.estimatedHours <= 0)));
+      return { ...p, hours: round2(p.hours), revenue, cost, margin, marginPct: pct(margin, revenue), missingRate };
     })
     .sort((a, b) => b.hours - a.hours || a.code.localeCompare(b.code));
   const peopleList = [...people.values()].map((p) => ({ ...p, hours: round2(p.hours), cost: round2(p.cost) })).sort((a, b) => b.cost - a.cost);
@@ -159,7 +240,9 @@ export function buildPerformance(input: PerformanceInput): PerformanceResult {
   const noPay = peopleList.filter((p) => p.missingPay);
   if (noPay.length) warnings.push(`Sin sueldo cargado para esas fechas (su costo figura en 0): ${noPay.map((p) => p.name).join(", ")}.`);
   const noRate = projectList.filter((p) => p.missingRate && p.hours > 0);
-  if (noRate.length) warnings.push(`Proyectos facturables sin tarifa de cobro (su facturación figura en 0): ${noRate.map((p) => p.code).join(", ")}.`);
+  if (noRate.length) warnings.push(`Proyectos que facturan y no tienen el dato de cobro completo (su ingreso figura en 0): ${noRate.map((p) => p.code).join(", ")}.`);
+  const over = projectList.filter((p) => p.fixed && p.fixed.overrunHours > 0);
+  if (over.length) warnings.push(`Proyectos a precio cerrado que ya pasaron las horas estimadas (lo de más es costo sin ingreso): ${over.map((p) => `${p.code} (+${p.fixed!.overrunHours} h)`).join(", ")}.`);
 
   return { projects: projectList, people: peopleList, months: monthList, totals: { hours: round2(projectList.reduce((s, p) => s + p.hours, 0)), revenue, cost, margin, marginPct: pct(margin, revenue) }, warnings };
 }
