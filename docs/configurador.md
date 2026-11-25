@@ -68,7 +68,9 @@ npm run set-role -- --email persona@empresa.com --role supervisor --key ruta/cla
 - Los scripts también corren contra los emuladores: con `FIRESTORE_EMULATOR_HOST` y `FIREBASE_AUTH_EMULATOR_HOST` definidos no piden clave y escriben en el emulador.
 - Para probar la app contra los emuladores: build con `VITE_USE_EMULATORS=true`.
 
-## Qué es real y qué es de muestra hoy
+## Qué es real hoy
+
+Todas las pantallas leen y escriben en Firestore con una cuenta real. Solo la entrada "Entrá a la demo" (build de demostración) usa datos de ejemplo.
 
 | Pieza | Estado |
 |---|---|
@@ -85,7 +87,7 @@ npm run set-role -- --email persona@empresa.com --role supervisor --key ruta/cla
 | Reportes: planilla del mes con horas aprobadas, avisos de lo que falta y descarga en Excel/CSV | Real: el resumen y el detalle suman lo mismo; lo no aprobado no entra y se avisa.  |
 | Reglas de seguridad de Firestore | Reales y probadas (69 pruebas de reglas y 119 de lógica) |
 | Alta de usuarios, cambio de rol, configuración inicial y feriados | Real, por script |
-| Mi semana: grilla de lunes a domingo con feriados y licencias, carga por día, corrección y envío de borradores | Real | Datos de ejemplo (con una cuenta real se muestra un aviso arriba) |
+| Mi semana: grilla de lunes a domingo con feriados y licencias, carga por día, corrección y envío de borradores | Real |
 
 Quién aprueba qué: el supervisor aprueba a quienes lo tienen como `supervisorId`; el administrador aprueba a todos, incluidos los supervisores y sus propias horas.
 
