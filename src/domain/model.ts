@@ -1,5 +1,5 @@
 import type { Role } from "./types";
-import type { WorkSchedule } from "./overtime/types";
+import type { Holiday, WorkSchedule } from "./overtime/types";
 
 /** Estado de un registro de horas. */
 export type EntryStatus = "draft" | "submitted" | "approved" | "observed";
@@ -127,4 +127,9 @@ export interface EmployeePrivate {
   dni: string;
   phone: string;
   workMode?: WorkMode;
+}
+
+/** Feriado tal como se guarda en `holidays/{AAAA-MM-DD}`. `to_confirm`: fecha calculada, falta la confirmación oficial. */
+export interface HolidayRecord extends Holiday {
+  confirmation?: "confirmed" | "to_confirm";
 }

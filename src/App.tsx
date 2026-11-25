@@ -21,6 +21,7 @@ import Projects from "@/features/screens/Projects";
 import TeamCalendar from "@/features/screens/TeamCalendar";
 import ReportsLive from "@/features/reports/ReportsLive";
 import Reports from "@/features/screens/Reports";
+import SettingsLive from "@/features/settings/SettingsLive";
 import Settings from "@/features/screens/Settings";
 import WeekGrid from "@/features/screens/WeekGrid";
 import type { Role } from "@/domain/types";
@@ -41,7 +42,7 @@ function ApprovalsRoute() {
 }
 
 /** Pantallas que ya leen y escriben en Firestore. Las demás todavía muestran datos de ejemplo. */
-const LIVE_IDS: ReadonlySet<string> = new Set(["home", "hours", "approvals", "projects", "reports", "leave", "team", "directory", "file"]);
+const LIVE_IDS: ReadonlySet<string> = new Set(["home", "hours", "approvals", "projects", "reports", "leave", "team", "directory", "file", "settings"]);
 
 function DirectoryRoute() {
   const { isReal } = useSession();
@@ -51,6 +52,11 @@ function DirectoryRoute() {
 function EmployeeFileRoute() {
   const { isReal } = useSession();
   return isReal ? <EmployeeFileLive /> : <EmployeeFile />;
+}
+
+function SettingsRoute() {
+  const { isReal } = useSession();
+  return isReal ? <SettingsLive /> : <Settings />;
 }
 
 function LeaveRoute() {
@@ -93,7 +99,7 @@ const PAGES: Partial<Record<NavId, () => ReactElement>> = {
   approvals: () => <ApprovalsRoute />,
   directory: () => <DirectoryRoute />,
   reports: () => <ReportsRoute />,
-  settings: () => <Settings />,
+  settings: () => <SettingsRoute />,
 };
 
 /** Si el rol no puede ver la ruta, vuelve al inicio. Las reglas de Firestore son la barrera real. */

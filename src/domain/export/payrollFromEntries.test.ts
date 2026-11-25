@@ -67,6 +67,10 @@ describe("buildPayrollData", () => {
     const broken = buildPayrollData({ ...base, approved: [entry("x", "u1", "2026-11-16", "approved")], open: [] });
     expect(broken.warnings.join(" ")).toMatch(/sin horas congeladas/);
   });
+  it("avisa si hay horas en un tramo que ya no existe en la configuración", () => {
+    const data = buildPayrollData({ ...base, approved: [entry("z", "u1", "2026-11-16", "approved", { hours: 2, breakdown: { ot75: 2 } })], open: [] });
+    expect(data.warnings.join(" ")).toMatch(/tramos que ya no existen.*ot75/);
+  });
   it("ordena por nombre y no revienta con un período vacío", () => {
     expect(data.summary.map((r) => r.fullName)).toEqual(["Camila Romero", "Diego Acosta"]);
     const empty = buildPayrollData({ ...base, approved: [], open: [] });

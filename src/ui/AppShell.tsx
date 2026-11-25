@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { NAV_ITEMS } from "@/config/navigation";
-import { tenantConfig } from "@/config/tenant.config";
+import { useCompany } from "@/company/CompanyContext";
 import { BUENOS_AIRES_TZ } from "@/domain/dates";
 import { useLoadHours } from "@/features/hours/LoadHoursDrawer";
 import { useUser } from "@/session/SessionContext";
@@ -23,6 +23,7 @@ export function AppShell() {
   const user = useUser();
   const { pathname } = useLocation();
   const { openDrawer } = useLoadHours();
+  const { companyName } = useCompany();
   const [menuOpen, setMenuOpen] = useState(false);
   const canLoadHours = user.role !== "admin";
 
@@ -57,7 +58,7 @@ export function AppShell() {
           <div className="flex h-16 w-full items-center justify-between px-space-lg">
             <div className="flex items-center gap-space-md">
               <div className="flex items-center gap-2 font-body-sm text-body-sm">
-                <span className="text-on-surface-variant">{tenantConfig.companyName}</span>
+                <span className="text-on-surface-variant">{companyName}</span>
                 <span className="material-symbols-outlined text-[16px] text-on-surface-variant">chevron_right</span>
                 <span className="font-semibold text-on-surface">{pageLabel(pathname)}</span>
               </div>
@@ -88,7 +89,7 @@ export function AppShell() {
             <span className="material-symbols-outlined">menu</span>
           </button>
           <CompanyMark className="size-8" />
-          <span className="min-w-0 flex-1 truncate font-headline-sm text-[15px] font-semibold">{tenantConfig.companyName}</span>
+          <span className="min-w-0 flex-1 truncate font-headline-sm text-[15px] font-semibold">{companyName}</span>
           {canLoadHours ? (
             <button type="button" onClick={openDrawer} aria-label="Cargar horas" className="flex size-9 items-center justify-center rounded-lg bg-primary-container text-on-primary">
               <span className="material-symbols-outlined text-[20px]">add</span>

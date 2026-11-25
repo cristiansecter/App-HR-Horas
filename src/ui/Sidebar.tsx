@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { navigationFor } from "@/config/navigation";
 import { horusBrand } from "@/config/horus.brand";
-import { tenantConfig } from "@/config/tenant.config";
+import { useCompany } from "@/company/CompanyContext";
 import { usePending } from "@/features/approvals/usePending";
 import { usePendingLeaves } from "@/features/approvals/usePendingLeaves";
 import { DEMO_PENDING_APPROVALS, DEMO_SUPERVISOR_OF } from "@/demo/demoUsers";
@@ -34,6 +34,7 @@ function PendingBadge() {
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const user = useUser();
   const { signOut, isReal } = useSession();
+  const { companyName } = useCompany();
   const [query, setQuery] = useState("");
 
   const items = useMemo(() => {
@@ -73,7 +74,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <div className="flex items-center gap-space-sm p-space-lg">
         <CompanyMark />
         <div className="flex min-w-0 flex-col">
-          <span className="truncate font-headline-sm text-headline-sm font-semibold text-on-surface">{tenantConfig.companyName}</span>
+          <span className="truncate font-headline-sm text-headline-sm font-semibold text-on-surface">{companyName}</span>
           <span className="flex items-center gap-1.5 font-label-md text-label-md text-on-surface-variant">
             <span className="size-1.5 animate-pulse rounded-full bg-primary-container" />
             {ROLE_LABELS[user.role]}

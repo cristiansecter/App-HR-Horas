@@ -1,20 +1,28 @@
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
-import type { Project, UserProfile, UserSummary } from "@/domain/model";
-import { defaultOvertimeConfig, defaultWorkSchedule, type Holiday, type OvertimeConfig, type WorkSchedule } from "@/domain/overtime";
+import type { HolidayRecord, Project, UserProfile, UserSummary } from "@/domain/model";
+import { defaultOvertimeConfig, defaultWorkSchedule, type OvertimeConfig, type WorkSchedule } from "@/domain/overtime";
 import { getFirebase } from "./firebase";
 
 /** Configuración de la empresa que hace falta para clasificar horas: jornada, reglas de extras y feriados. */
 export interface CompanyData {
   projects: Project[];
-  holidays: Map<string, Holiday>;
+  holidays: Map<string, HolidayRecord>;
   overtime: OvertimeConfig;
   defaultSchedule: WorkSchedule;
   editWindowDays: number;
   companyName?: string;
+  logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
 }
 
 interface SettingsDoc {
   companyName?: string;
+  logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  accentColor?: string;
   overtime?: OvertimeConfig;
   defaultSchedule?: WorkSchedule;
   editWindowDays?: number;
@@ -28,10 +36,10 @@ export async function loadCompany(): Promise<CompanyData> {
     getDocs(collection(db, "projects")),
   ]);
   const settings = (settingsSnap.exists() ? settingsSnap.data() : {}) as SettingsDoc;
-  const holidays = new Map<string, Holiday>();
+  const holidays = new Map<string, HolidayRecord>();
   holidaysSnap.forEach((d) => {
-    const h = d.data() as Partial<Holiday>;
-    holidays.set(d.id, { date: d.id, name: h.name ?? d.id, type: h.type ?? "national", countsAsHoliday: h.countsAsHoliday ?? true });
+    const h = d.data() as Partial<HolidayRecord>;
+    holidays.set(d.id, { date: d.id, name: h.name ?? d.id, type: h.type ?? "national", countsAsHoliday: h.countsAsHoliday ?? true, ...(h.confirmation ? { confirmation: h.confirmation } : {}) });
   });
   const projects = projectsSnap.docs
     .map((d) => ({ ...(d.data() as Omit<Project, "code">), code: d.id }) satisfies Project)
@@ -43,6 +51,10 @@ export async function loadCompany(): Promise<CompanyData> {
     defaultSchedule: settings.defaultSchedule ?? defaultWorkSchedule(),
     editWindowDays: settings.editWindowDays ?? 7,
     companyName: settings.companyName,
+    logoUrl: settings.logoUrl,
+    primaryColor: settings.primaryColor,
+    secondaryColor: settings.secondaryColor,
+    accentColor: settings.accentColor,
   };
 }
 

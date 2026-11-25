@@ -131,6 +131,9 @@ export function buildPayrollData(src: PayrollSources): PayrollData {
   if (pendingCount) warnings.push(`${pendingCount} registro${pendingCount === 1 ? "" : "s"} enviado${pendingCount === 1 ? "" : "s"} esperando aprobación: no ${pendingCount === 1 ? "está incluido" : "están incluidos"} en la planilla.`);
   if (observedCount) warnings.push(`${observedCount} registro${observedCount === 1 ? "" : "s"} observado${observedCount === 1 ? "" : "s"} sin corregir: no ${observedCount === 1 ? "está incluido" : "están incluidos"} en la planilla.`);
   if (src.approved.some((e) => e.hours === undefined || !e.breakdown)) warnings.push("Hay registros aprobados sin horas congeladas: revisalos antes de exportar.");
+  const knownTiers = new Set(["normal", ...src.tiers.map((t) => t.id)]);
+  const orphan = new Set(src.approved.flatMap((e) => Object.keys(e.breakdown ?? {}).filter((c) => !knownTiers.has(c))));
+  if (orphan.size) warnings.push(`Hay horas en tramos que ya no existen en la configuración (${[...orphan].join(", ")}): no figuran en las columnas del resumen. Volvé a crear el tramo con el mismo id o revisá esos registros.`);
   const noCuil = summary.filter((r) => !r.cuil && r.fullName !== "Persona dada de baja").length;
   if (noCuil) warnings.push(`${noCuil} persona${noCuil === 1 ? "" : "s"} sin CUIL cargado.`);
 

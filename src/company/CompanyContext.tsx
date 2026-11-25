@@ -1,20 +1,24 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { tenantConfig } from "@/config/tenant.config";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { tenantConfig, type TenantColors } from "@/config/tenant.config";
+import { applyTenantTheme, isHexColor } from "@/config/theme";
 import { DEMO_HOLIDAYS, DEMO_OVERTIME_CONFIG, DEMO_PROJECTS, DEMO_SCHEDULE } from "@/demo/demoData";
-import type { Project } from "@/domain/model";
-import type { Holiday, OvertimeConfig, WorkSchedule } from "@/domain/overtime";
+import type { HolidayRecord, Project } from "@/domain/model";
+import type { OvertimeConfig, WorkSchedule } from "@/domain/overtime";
 import { withCode } from "@/services/errors";
 import { loadCompany } from "@/services/company";
 import { useSession } from "@/session/SessionContext";
 
 interface CompanyValue {
   projects: Project[];
-  holidays: ReadonlyMap<string, Holiday>;
+  holidays: ReadonlyMap<string, HolidayRecord>;
   overtime: OvertimeConfig;
   /** Jornada de la empresa. Si la persona tiene una propia, se usa esa. */
   defaultSchedule: WorkSchedule;
   editWindowDays: number;
   companyName: string;
+  /** Logo de la empresa (URL https) o null para mostrar el monograma. */
+  logoUrl: string | null;
+  colors: TenantColors;
   loading: boolean;
   error: string | null;
   reload: () => void;
@@ -27,6 +31,8 @@ const DEMO_VALUE: CompanyValue = {
   defaultSchedule: DEMO_SCHEDULE,
   editWindowDays: 7,
   companyName: tenantConfig.companyName,
+  logoUrl: tenantConfig.logoUrl,
+  colors: tenantConfig.colors,
   loading: false,
   error: null,
   reload: () => undefined,
@@ -41,15 +47,18 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(isReal);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  const loadedOnce = useRef(false);
   const reload = useCallback(() => setVersion((v) => v + 1), []);
 
   useEffect(() => {
     if (!isReal) return;
     let cancelled = false;
-    setLoading(true);
+    // Solo la primera carga muestra "cargando": al recargar tras un cambio, las pantallas abiertas conservan su estado.
+    if (!loadedOnce.current) setLoading(true);
     loadCompany()
       .then((d) => {
         if (cancelled) return;
+        loadedOnce.current = true;
         setData(d);
         setError(null);
       })
@@ -71,12 +80,23 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       overtime: data?.overtime ?? DEMO_OVERTIME_CONFIG,
       defaultSchedule: data?.defaultSchedule ?? DEMO_SCHEDULE,
       editWindowDays: data?.editWindowDays ?? 7,
-      companyName: data?.companyName ?? tenantConfig.companyName,
+      companyName: data?.companyName?.trim() || tenantConfig.companyName,
+      logoUrl: data?.logoUrl?.trim() || tenantConfig.logoUrl,
+      colors: {
+        primary: data?.primaryColor && isHexColor(data.primaryColor) ? data.primaryColor : tenantConfig.colors.primary,
+        secondary: data?.secondaryColor && isHexColor(data.secondaryColor) ? data.secondaryColor : tenantConfig.colors.secondary,
+        accent: data?.accentColor && isHexColor(data.accentColor) ? data.accentColor : tenantConfig.colors.accent,
+      },
       loading,
       error,
       reload,
     };
   }, [isReal, data, loading, error, reload]);
+
+  // La marca que el administrador guardó en Configuración reemplaza a la de tenant.config.ts una vez dentro.
+  useEffect(() => {
+    applyTenantTheme({ ...tenantConfig, colors: value.colors });
+  }, [value.colors]);
 
   return <CompanyContext.Provider value={value}>{children}</CompanyContext.Provider>;
 }
