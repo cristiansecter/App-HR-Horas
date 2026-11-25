@@ -92,6 +92,7 @@ export default function PerformanceView() {
       costing: data.costing,
       userNames: new Map(data.users.map((u) => [u.uid, u.fullName])),
       projectNames: new Map(company.projects.map((p) => [p.code, { name: p.name, client: p.client }])),
+      seedProjects: company.projects.filter((p) => p.active).map((p) => p.code),
     });
   }, [data, model, company.overtime.tiers, company.projects]);
 
@@ -130,6 +131,8 @@ export default function PerformanceView() {
   };
 
   const t = result?.totals;
+  // Sin ninguna tarifa de cobro cargada no hay facturación ni margen que mostrar: se explica en vez de mostrar ceros engañosos.
+  const hasBilling = (result?.projects ?? []).some((p) => p.billable && p.hourlyRate > 0);
   const periodLabel = start === end ? monthLabel(start) : `${monthLabel(start)} a ${monthLabel(end)}`;
 
   return (
@@ -157,10 +160,10 @@ export default function PerformanceView() {
       ) : null}
 
       <div className="grid grid-cols-2 gap-gutter lg:grid-cols-4">
-        <Kpi label="Facturación" value={formatArs(t?.revenue ?? 0)} hint={`${fmtH(t?.hours ?? 0)} h aprobadas`} />
+        <Kpi label="Facturación" value={hasBilling ? formatArs(t?.revenue ?? 0) : "Sin cargar"} hint={hasBilling ? `${fmtH(t?.hours ?? 0)} h aprobadas` : `${fmtH(t?.hours ?? 0)} h aprobadas · cargá la tarifa de cobro de un proyecto`} />
         <Kpi label="Costo" value={formatArs(t?.cost ?? 0)} hint={data && data.costing.employerContributionsPct > 0 ? `Incluye ${data.costing.employerContributionsPct}% de cargas` : "Sin cargas adicionales"} />
-        <Kpi label="Margen" value={formatArs(t?.margin ?? 0)} color={tone(t?.margin ?? 0)} />
-        <Kpi label="Margen sobre facturación" value={t?.marginPct === null || t === undefined ? "—" : `${t.marginPct.toLocaleString("es-AR")} %`} color={tone(t?.margin ?? 0)} />
+        <Kpi label="Margen" value={hasBilling ? formatArs(t?.margin ?? 0) : "—"} color={hasBilling ? tone(t?.margin ?? 0) : "text-on-surface-variant"} hint={hasBilling ? undefined : "Hace falta la facturación para calcularlo"} />
+        <Kpi label="Margen sobre facturación" value={!hasBilling || t?.marginPct === null || t === undefined ? "—" : `${t.marginPct.toLocaleString("es-AR")} %`} color={hasBilling ? tone(t?.margin ?? 0) : "text-on-surface-variant"} />
       </div>
 
       <div role="tablist" aria-label="Vistas" className="flex flex-wrap gap-2 rounded-xl bg-surface-container-low p-2">

@@ -29,6 +29,8 @@ export interface PerformanceInput {
   costing: CostingParams;
   userNames: ReadonlyMap<string, string>;
   projectNames: ReadonlyMap<string, { name: string; client: string }>;
+  /** Proyectos que tienen que figurar aunque no tengan horas (para poder cargarles la tarifa antes de trabajar en ellos). */
+  seedProjects?: readonly string[];
 }
 
 export interface ProjectResult {
@@ -114,6 +116,8 @@ export function buildPerformance(input: PerformanceInput): PerformanceResult {
     return p;
   };
 
+  for (const code of input.seedProjects ?? []) projectOf(code);
+
   for (const e of input.entries) {
     if (e.status !== "approved" || e.hours === undefined) continue;
     const proj = projectOf(e.projectId);
@@ -144,7 +148,7 @@ export function buildPerformance(input: PerformanceInput): PerformanceResult {
       const margin = round2(revenue - cost);
       return { ...p, hours: round2(p.hours), revenue, cost, margin, marginPct: pct(margin, revenue), missingRate: p.billable && p.hourlyRate <= 0 };
     })
-    .sort((a, b) => b.hours - a.hours);
+    .sort((a, b) => b.hours - a.hours || a.code.localeCompare(b.code));
   const peopleList = [...people.values()].map((p) => ({ ...p, hours: round2(p.hours), cost: round2(p.cost) })).sort((a, b) => b.cost - a.cost);
   const monthList = [...months.values()].map((m) => ({ month: m.month, hours: round2(m.hours), revenue: round2(m.revenue), cost: round2(m.cost), margin: round2(m.revenue - m.cost) })).sort((a, b) => a.month.localeCompare(b.month));
 
@@ -154,7 +158,7 @@ export function buildPerformance(input: PerformanceInput): PerformanceResult {
   const warnings: string[] = [];
   const noPay = peopleList.filter((p) => p.missingPay);
   if (noPay.length) warnings.push(`Sin sueldo cargado para esas fechas (su costo figura en 0): ${noPay.map((p) => p.name).join(", ")}.`);
-  const noRate = projectList.filter((p) => p.missingRate);
+  const noRate = projectList.filter((p) => p.missingRate && p.hours > 0);
   if (noRate.length) warnings.push(`Proyectos facturables sin tarifa de cobro (su facturación figura en 0): ${noRate.map((p) => p.code).join(", ")}.`);
 
   return { projects: projectList, people: peopleList, months: monthList, totals: { hours: round2(projectList.reduce((s, p) => s + p.hours, 0)), revenue, cost, margin, marginPct: pct(margin, revenue) }, warnings };

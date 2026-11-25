@@ -74,6 +74,12 @@ describe("buildPerformance", () => {
     expect(w.warnings.join(" ")).toMatch(/sin tarifa de cobro.*P1/);
     expect(w.projects.find((p) => p.code === "P1")!.missingRate).toBe(true);
   });
+  it("los proyectos sembrados figuran aunque no tengan horas, y no generan aviso de tarifa", () => {
+    const r2 = buildPerformance(base({ entries: [], seedProjects: ["P1", "P2", "P3"], projectRates: new Map() }));
+    expect(r2.projects.map((p) => p.code)).toEqual(["P1", "P2", "P3"]);
+    expect(r2.projects.every((p) => p.hours === 0 && p.cost === 0 && p.revenue === 0)).toBe(true);
+    expect(r2.warnings).toEqual([]);
+  });
   it("solo cuenta lo aprobado y no revienta sin datos", () => {
     const pending = { ...entry("9", "emi", "P1", "2026-11-05", 8, { normal: 8 }), status: "submitted" as const };
     expect(buildPerformance(base({ entries: [pending] })).totals.hours).toBe(0);

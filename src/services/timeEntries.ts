@@ -122,13 +122,20 @@ export async function listPendingForReview(reviewer: SessionUser, teamIds: strin
   return withIds(snaps.flatMap((s) => s.docs)).sort(byDateDesc);
 }
 
+/**
+ * Todos los registros de un rango de fechas, sin importar el estado (solo administrador). Se pide solo por rango de fecha
+ * y el estado se filtra acá: así no hace falta un índice compuesto en Firestore (que puede tardar en construirse o no
+ * estar publicado) y la consulta queda acotada al mes.
+ */
+export async function listEntriesBetween(from: string, to: string): Promise<TimeEntry[]> {
+  const { db } = getFirebase();
+  const snap = await getDocs(query(collection(db, "time_entries"), where("date", ">=", from), where("date", "<=", to)));
+  return withIds(snap.docs);
+}
+
 /** Horas aprobadas de todo el equipo en un rango de fechas (solo administrador). */
 export async function listApprovedBetween(from: string, to: string): Promise<TimeEntry[]> {
-  const { db } = getFirebase();
-  const snap = await getDocs(
-    query(collection(db, "time_entries"), where("status", "==", "approved"), where("date", ">=", from), where("date", "<=", to)),
-  );
-  return withIds(snap.docs);
+  return (await listEntriesBetween(from, to)).filter((e) => e.status === "approved");
 }
 
 /** Horas aprobadas de un proyecto (solo administrador). */

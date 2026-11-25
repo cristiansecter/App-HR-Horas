@@ -64,11 +64,14 @@ async function listByStatus(reviewer: SessionUser, teamIds: string[], status: "p
 export const listPendingLeavesForReview = (reviewer: SessionUser, teamIds: string[]) => listByStatus(reviewer, teamIds, "pending");
 export const listApprovedLeavesForReview = (reviewer: SessionUser, teamIds: string[]) => listByStatus(reviewer, teamIds, "approved");
 
-/** Licencias aprobadas que tocan un período (solo administrador). Para la planilla. */
+/**
+ * Licencias aprobadas que tocan un período (solo administrador). Para la planilla.
+ * Se pide por fecha de fin (que no esté antes del período) y lo demás se filtra acá, sin índice compuesto.
+ */
 export async function listApprovedLeavesOverlapping(from: string, to: string): Promise<LeaveRequest[]> {
   const { db } = getFirebase();
-  const snap = await getDocs(query(collection(db, "leave_requests"), where("status", "==", "approved"), where("startDate", "<=", to)));
-  return withIds(snap.docs).filter((l) => l.endDate >= from);
+  const snap = await getDocs(query(collection(db, "leave_requests"), where("endDate", ">=", from)));
+  return withIds(snap.docs).filter((l) => l.status === "approved" && l.startDate <= to);
 }
 
 /** Calendario del equipo: lo puede leer cualquier usuario con rol. No trae el tipo de licencia. */
