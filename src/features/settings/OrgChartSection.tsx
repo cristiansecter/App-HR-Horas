@@ -46,10 +46,10 @@ function PersonCard({ person, reports, selected, dragging, onSelect, onDragStart
       onClick={() => onSelect(person.uid)}
       aria-label={`${person.fullName}, ${ROLE_LABELS[person.role]}`}
       aria-pressed={selected}
-      className={`min-w-36 max-w-52 rounded-xl px-4 py-2.5 text-center shadow-md transition ${ROLE_STYLE[person.role]} ${selected ? "ring-2 ring-white/80" : ""} ${over ? "scale-105 ring-2 ring-emerald-300" : ""} ${draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
+      className={`org-card flex h-[3.75rem] w-52 flex-col items-center justify-center rounded-xl px-3 text-center shadow-md transition ${ROLE_STYLE[person.role]} ${selected ? "ring-2 ring-white/80" : ""} ${over ? "scale-105 ring-2 ring-emerald-300" : ""} ${draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
     >
       <span className="block truncate font-label-lg text-label-lg font-bold">{person.fullName}</span>
-      <span className="block font-label-xs-mono text-label-xs-mono tracking-wider uppercase opacity-80">
+      <span className="block max-w-full truncate font-label-xs-mono text-[10px] tracking-wide uppercase opacity-80" title={`${ROLE_LABELS[person.role]}${droppable ? ` · ${reports} ${reports === 1 ? "persona" : "personas"}` : ""}`}>
         {ROLE_LABELS[person.role]}{droppable ? ` · ${reports} ${reports === 1 ? "persona" : "personas"}` : ""}
       </span>
     </button>
@@ -58,19 +58,28 @@ function PersonCard({ person, reports, selected, dragging, onSelect, onDragStart
 
 const countReports = (n: OrgNode): number => n.children.length;
 
-/** Una persona y, debajo, quienes dependen de ella. Está fuera del componente principal para no volver a crearse en cada render (cortaría el arrastre). */
-function TreeNode({ node, cardProps }: { node: OrgNode; cardProps: (p: OrgPerson, reports: number) => CardProps }) {
-  const leavesOnly = node.children.length > 0 && node.children.every((c) => c.children.length === 0 && c.person.role === "employee");
+/** Nivel de cada rol en el dibujo: administradores arriba, supervisores en el medio y empleados abajo. */
+const LEVEL: Record<Role, number> = { admin: 0, supervisor: 1, employee: 2 };
+
+/**
+ * Una persona y, debajo, quienes dependen de ella. Cada rol tiene su propia fila: si alguien reporta a una persona de
+ * más de un nivel arriba (por ejemplo un empleado sin supervisor que cuelga del administrador), se intercala un tramo
+ * de línea vacío para que baje hasta su fila y quede alineado con el resto de su rol.
+ * Está fuera del componente principal para no volver a crearse en cada render (cortaría el arrastre).
+ */
+function TreeNode({ node, depth, cardProps }: { node: OrgNode; depth: number; cardProps: (p: OrgPerson, reports: number) => CardProps }) {
+  if (depth < LEVEL[node.person.role]) {
+    return (
+      <li className="org-ghost">
+        <span className="org-ghost-line" aria-hidden="true" />
+        <ul><TreeNode node={node} depth={depth + 1} cardProps={cardProps} /></ul>
+      </li>
+    );
+  }
   return (
     <li>
       <PersonCard {...cardProps(node.person, countReports(node))} />
-      {node.children.length > 0 ? (
-        leavesOnly ? (
-          <ul className="org-leaves">{node.children.map((c) => <li key={c.person.uid}><PersonCard {...cardProps(c.person, 0)} /></li>)}</ul>
-        ) : (
-          <ul>{node.children.map((c) => <TreeNode key={c.person.uid} node={c} cardProps={cardProps} />)}</ul>
-        )
-      ) : null}
+      {node.children.length > 0 ? <ul>{node.children.map((c) => <TreeNode key={c.person.uid} node={c} depth={depth + 1} cardProps={cardProps} />)}</ul> : null}
     </li>
   );
 }
@@ -148,8 +157,8 @@ export default function OrgChartSection() {
           {chart.roots.length === 0 && chart.unassigned.length === 0 ? (
             <p className="py-8 text-center text-on-surface-variant">{loading && !data ? "Cargando el equipo…" : "No hay personas activas."}</p>
           ) : (
-            <ul className="org-tree mx-auto w-max min-w-full" aria-label="Organigrama">
-              {chart.roots.map((r) => <TreeNode key={r.person.uid} node={r} cardProps={cardProps} />)}
+            <ul className="org-tree" aria-label="Organigrama">
+              {chart.roots.map((r) => <TreeNode key={r.person.uid} node={r} depth={0} cardProps={cardProps} />)}
             </ul>
           )}
         </div>
