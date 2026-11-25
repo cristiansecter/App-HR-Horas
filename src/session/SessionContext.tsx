@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { isFirebaseConfigured } from "@/services/firebase";
-import { signInWithPassword, signOutFromFirebase, subscribeToSession, type ConfiguratorSession, type SessionKind } from "@/services/auth";
+import { signInConfiguratorWithGoogle, signInWithPassword, signOutFromFirebase, subscribeToSession, type ConfiguratorSession, type SessionKind } from "@/services/auth";
 import type { SessionUser } from "@/domain/types";
 
 interface SessionValue {
@@ -15,6 +15,8 @@ interface SessionValue {
   signIn: (user: SessionUser) => void;
   /** Entrada real con email y contraseña (Firebase Auth). Lanza un error con mensaje legible. */
   signInWithPassword: (email: string, password: string, as?: SessionKind) => Promise<void>;
+  /** Entrada del Configurador: solo con Google. */
+  signInConfigurator: () => Promise<void>;
   signOut: () => void;
   /** true si la sesión es de una cuenta real y no de la demo. */
   isReal: boolean;
@@ -59,6 +61,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       authNotice,
       signIn,
       signInWithPassword,
+      signInConfigurator: signInConfiguratorWithGoogle,
       signOut,
       isReal: realUser !== null,
     }),

@@ -22,6 +22,10 @@ afterAll(async () => env.cleanup());
 
 const asRole = (uid: string, role?: string) => env.authenticatedContext(uid, role ? { role } : {}).firestore();
 
+const CONFIGURATOR = "cristiansecter@gmail.com";
+/** Sesión del Configurador: su correo exacto, verificado, iniciada con Google. */
+const configuratorDb = () => env.authenticatedContext("prov", { email: CONFIGURATOR, email_verified: true, firebase: { sign_in_provider: "google.com" } }).firestore();
+
 /** Datos base: admin (ana), supervisor (sofia), empleados de sofia (emi, eze) y un empleado de otro equipo (olga). */
 beforeEach(async () => {
   await env.clearFirestore();
@@ -68,7 +72,7 @@ describe("acceso sin rol", () => {
 });
 
 describe("módulos activables (solo el Configurador)", () => {
-  const cfg = () => env.authenticatedContext("prov", { configurator: true }).firestore();
+  const cfg = () => configuratorDb();
   const features = (over: Record<string, unknown> = {}) => ({ modules: { compensation: true, performance: false, payroll: false }, payModel: "salary", ...over });
 
   it("el Configurador escribe y lee los módulos", async () => {
@@ -111,8 +115,31 @@ describe("módulos activables (solo el Configurador)", () => {
     await assertFails(getDoc(doc(c, "employee_private/emi")));
     await assertSucceeds(getDoc(doc(c, "settings/main"))); // solo para ver el nombre de la empresa
   });
-  it("un usuario con rol no puede darse el claim de Configurador: sin el claim no escribe", async () => {
+  it("un usuario con rol no escribe módulos", async () => {
     await assertFails(setDoc(doc(asRole("ana", "admin"), "settings/features"), features()));
+  });
+  it("solo vale el correo exacto, verificado y con Google: cualquier otra cosa es rechazada", async () => {
+    const as = (token: Record<string, unknown>) => env.authenticatedContext("x", token).firestore();
+    const write = (db: ReturnType<typeof as>) => setDoc(doc(db, "settings/features"), features());
+    // otra cuenta de Google
+    await assertFails(write(as({ email: "otra.persona@gmail.com", email_verified: true, firebase: { sign_in_provider: "google.com" } })));
+    // el mismo correo pero con contraseña (no con Google)
+    await assertFails(write(as({ email: CONFIGURATOR, email_verified: true, firebase: { sign_in_provider: "password" } })));
+    // el mismo correo sin verificar
+    await assertFails(write(as({ email: CONFIGURATOR, email_verified: false, firebase: { sign_in_provider: "google.com" } })));
+    // variantes del correo
+    await assertFails(write(as({ email: CONFIGURATOR.toUpperCase(), email_verified: true, firebase: { sign_in_provider: "google.com" } })));
+    await assertFails(write(as({ email: "x" + CONFIGURATOR, email_verified: true, firebase: { sign_in_provider: "google.com" } })));
+    // un claim "configurator" ya no sirve de nada
+    await assertFails(write(as({ configurator: true })));
+    // sin sesión
+    await assertFails(write(env.unauthenticatedContext().firestore()));
+    // el correcto sí
+    await assertSucceeds(write(as({ email: CONFIGURATOR, email_verified: true, firebase: { sign_in_provider: "google.com" } })));
+  });
+  it("una sesión por contraseña del mismo correo, aunque sea admin de la pyme, no activa módulos", async () => {
+    const adminByPassword = env.authenticatedContext("ana", { role: "admin", email: CONFIGURATOR, email_verified: true, firebase: { sign_in_provider: "password" } }).firestore();
+    await assertFails(setDoc(doc(adminByPassword, "settings/features"), features()));
   });
 });
 
@@ -143,7 +170,7 @@ describe("sueldos en el legajo (módulo Sueldos)", () => {
     await turnOn(true); await seedPay();
     await assertFails(getDoc(doc(asRole("sofia", "supervisor"), "employee_pay/emi")));
     await assertFails(getDoc(doc(asRole("emi", "employee"), "employee_pay/emi")));
-    await assertFails(getDoc(doc(env.authenticatedContext("prov", { configurator: true }).firestore(), "employee_pay/emi")));
+    await assertFails(getDoc(doc(configuratorDb(), "employee_pay/emi")));
     await assertFails(setDoc(doc(asRole("emi", "employee"), "employee_pay/emi"), pay()));
   });
   it("valida la forma: userId debe ser el del documento, hijos sin valores absurdos, sin campos de más", async () => {
@@ -186,7 +213,7 @@ describe("rendimiento (módulo): tarifas de proyecto y parámetros de costos", (
       await assertFails(getDoc(doc(asRole(uid, role), "project_rates/p1")));
       await assertFails(getDoc(doc(asRole(uid, role), "settings/costing")));
     }
-    await assertFails(getDoc(doc(env.authenticatedContext("prov", { configurator: true }).firestore(), "settings/costing")));
+    await assertFails(getDoc(doc(configuratorDb(), "settings/costing")));
   });
   it("valida la forma de la tarifa y de los parámetros", async () => {
     await modules({ performance: true });
@@ -231,7 +258,7 @@ describe("liquidación (módulo): recibos, parámetros y cierre de período", ()
       await assertFails(getDoc(doc(asRole(uid, role), "payslips/emi_2026-11")));
       await assertFails(setDoc(doc(asRole(uid, role), "payslips/emi_2026-11"), slip()));
     }
-    await assertFails(getDoc(doc(env.authenticatedContext("prov", { configurator: true }).firestore(), "payslips/emi_2026-11")));
+    await assertFails(getDoc(doc(configuratorDb(), "payslips/emi_2026-11")));
   });
   it("el id del recibo tiene que ser usuario_período y el período válido", async () => {
     await modules(true);

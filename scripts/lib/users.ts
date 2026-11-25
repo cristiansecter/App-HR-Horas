@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 import type { Auth } from "firebase-admin/auth";
 import type { Firestore } from "firebase-admin/firestore";
 import { FieldValue } from "firebase-admin/firestore";
+import { CONFIGURATOR_EMAIL } from "../../src/config/configurator";
 import { ROLES, type Role } from "../../src/domain/types";
 
 export interface NewUser {
@@ -34,6 +35,11 @@ export const generatePassword = (): string => {
  */
 export async function upsertUser(auth: Auth, db: Firestore, input: NewUser): Promise<{ uid: string; password?: string; created: boolean }> {
   const email = input.email.trim().toLowerCase();
+  // El correo del Configurador entra solo con Google. Si además existiera como usuario con contraseña, al iniciar con Google
+  // Firebase puede descartar esa contraseña (vincula las dos cuentas): por eso no se permite darlo de alta en una pyme.
+  if (email === CONFIGURATOR_EMAIL) {
+    throw new Error(`${CONFIGURATOR_EMAIL} es el correo del Configurador y entra solo con Google: no se puede dar de alta como usuario de una empresa. Usá otro correo para esa persona.`);
+  }
   let supervisorId: string | undefined;
   if (input.supervisorEmail) {
     supervisorId = (await auth.getUserByEmail(input.supervisorEmail.trim().toLowerCase())).uid;

@@ -1,6 +1,7 @@
 import { FirebaseError } from "firebase/app";
 import { doc, getDoc } from "firebase/firestore";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from "firebase/auth";
+import { GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut, type User } from "firebase/auth";
+import { CONFIGURATOR_EMAIL, isConfiguratorToken } from "@/config/configurator";
 import { ROLES, type Role, type SessionUser } from "@/domain/types";
 import type { UserProfile } from "@/domain/model";
 import { getFirebase } from "./firebase";
@@ -8,7 +9,7 @@ import { getFirebase } from "./firebase";
 /** Lo que pasa cuando hay una cuenta de Firebase pero no se puede armar una sesión de Horus. */
 export class SessionError extends Error {}
 
-/** Cuenta del Configurador (proveedor del sistema): tiene el claim `configurator` y ningún rol de la pyme. */
+/** Cuenta del Configurador (proveedor del sistema): entra solo con Google y solo con el correo de `CONFIGURATOR_EMAIL`. */
 export interface ConfiguratorSession {
   uid: string;
   email: string;
@@ -69,9 +70,9 @@ export function subscribeToSession(onChange: (result: SessionResult | null, erro
     expectedKind = null;
     (async (): Promise<SessionResult> => {
       const token = await user.getIdTokenResult();
-      const isConfigurator = token.claims.configurator === true;
-      if (expected === "app" && isConfigurator) throw new SessionError("Esta es una cuenta de Configurador. Entrá desde la pestaña “Configurador”.");
-      if (expected === "configurator" && !isConfigurator) throw new SessionError("Esta cuenta no es de Configurador.");
+      // Configurador = el correo exacto, verificado, en una sesión iniciada con Google (lo mismo que exigen las reglas).
+      const isConfigurator = isConfiguratorToken({ signInProvider: token.signInProvider, email: token.claims.email, emailVerified: token.claims.email_verified });
+      if (expected === "configurator" && !isConfigurator) throw new SessionError("Esa cuenta de Google no tiene acceso de Configurador.");
       if (isConfigurator) return { kind: "configurator", configurator: { uid: user.uid, email: user.email ?? "" } };
       return { kind: "app", user: await toSessionUser(user) };
     })()
@@ -92,6 +93,26 @@ export async function signInWithPassword(email: string, password: string, as: Se
     await signInWithEmailAndPassword(auth, email.trim(), password);
   } catch (e) {
     expectedKind = null;
+    throw new SessionError(translateAuthError(e));
+  }
+}
+
+/** Entrada del Configurador: solo con Google. Si la cuenta elegida no es la autorizada, se cierra la sesión y se avisa. */
+export async function signInConfiguratorWithGoogle(): Promise<void> {
+  const { auth } = getFirebase();
+  expectedKind = "configurator";
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account", login_hint: CONFIGURATOR_EMAIL });
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (e) {
+    expectedKind = null;
+    if (e instanceof FirebaseError && (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request")) {
+      throw new SessionError("Cerraste la ventana de Google antes de terminar.");
+    }
+    if (e instanceof FirebaseError && e.code === "auth/popup-blocked") {
+      throw new SessionError("El navegador bloqueó la ventana de Google. Permití las ventanas emergentes para este sitio y probá de nuevo.");
+    }
     throw new SessionError(translateAuthError(e));
   }
 }

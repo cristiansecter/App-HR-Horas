@@ -21,10 +21,15 @@ service cloud.firestore {
     function hasRole() {
       return signedIn() && role() in ['admin', 'supervisor', 'employee'] && isActiveAccount();
     }
-    // El Configurador es el proveedor del sistema, no un rol de la pyme: tiene un claim propio y ningún `role`,
-    // así que no puede leer ni escribir los datos de la empresa. Solo administra los módulos y el modelo de pago.
+    // El Configurador es el proveedor del sistema, no un rol de la pyme. Entra SOLO con su cuenta de Google: se exige el
+    // correo exacto, verificado, y que ESTA sesión haya iniciado con Google (una sesión por contraseña con el mismo correo
+    // no alcanza). No tiene rol, así que no puede leer ni escribir datos de la empresa: solo administra los módulos y el
+    // modelo de pago. Si el proveedor cambia, se cambia el correo acá y en src/config/configurator.ts.
     function isConfigurator() {
-      return signedIn() && request.auth.token.get('configurator', false) == true;
+      return signedIn()
+        && request.auth.token.get('email', '') == 'cristiansecter@gmail.com'
+        && request.auth.token.get('email_verified', false) == true
+        && request.auth.token.firebase.get('sign_in_provider', '') == 'google.com';
     }
     // Módulo activo en esta instancia (settings/features). Si el documento no existe, todo está apagado.
     function moduleOn(name) {
