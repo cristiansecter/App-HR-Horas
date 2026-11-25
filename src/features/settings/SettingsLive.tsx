@@ -19,16 +19,17 @@ type Tab = (typeof TABS)[number][0];
 export default function SettingsLive() {
   const company = useCompany();
   const [tab, setTab] = useState<Tab>("company");
+  const attendance = company.features.workMode === "attendance";
 
   return (
     <Page>
-      <PageHeader eyebrow="Administrador" title="Configuración" subtitle="Marca, jornada, reglas de horas extra y feriados de tu empresa." />
+      <PageHeader eyebrow="Administrador" title="Configuración" subtitle={attendance ? "Marca, jornada, asistencia y feriados de tu empresa." : "Marca, jornada, reglas de horas extra y feriados de tu empresa."} />
 
       <div role="tablist" aria-label="Secciones de configuración" className="flex flex-wrap gap-2 rounded-xl bg-surface-container-low p-2">
         {TABS.map(([id, label, icon]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`flex items-center gap-2 rounded-lg px-4 py-2 font-label-lg text-label-lg transition-colors ${tab === id ? "bg-surface-container-high font-semibold text-primary" : "text-on-surface-variant hover:text-on-surface"}`}>
             <span className="material-symbols-outlined text-[18px]">{icon}</span>
-            {label}
+            {id === "rules" && attendance ? "Jornada y asistencia" : label}
           </button>
         ))}
       </div>

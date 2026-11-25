@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { NAV_ITEMS, canAccess, navigationFor } from "./navigation";
 import { ROLES } from "@/domain/types";
-import { DEFAULT_FEATURES, toggleModule } from "@/domain/features";
+import { DEFAULT_FEATURES, setWorkMode, toggleModule } from "@/domain/features";
 
 const ids = (role: Parameters<typeof navigationFor>[0]) => navigationFor(role).map((i) => i.id);
 
@@ -57,5 +57,46 @@ describe("Sueldos del equipo (permiso del Configurador)", () => {
     expect(canAccess("admin", "/sueldos-equipo", withPay)).toBe(false);
     expect(canAccess("supervisor", "/sueldos-equipo", withPay)).toBe(true);
     expect(canAccess("supervisor", "/sueldos-equipo", moduleOnly)).toBe(false);
+  });
+});
+
+describe("modo de trabajo", () => {
+  const att = setWorkMode(DEFAULT_FEATURES, "attendance");
+  const idsOf = (role: Parameters<typeof navigationFor>[0], f = att) => navigationFor(role, f).map((i) => i.id);
+  it("por asistencia el empleado ve su asistencia y no la carga de horas", () => {
+    const ids = idsOf("employee");
+    expect(ids).toContain("myAttendance");
+    for (const hidden of ["week", "hours"]) expect(ids).not.toContain(hidden);
+    expect(ids).toEqual(expect.arrayContaining(["home", "leave", "team", "documents"]));
+  });
+  it("por asistencia el supervisor ve la asistencia del equipo y no asignar proyectos", () => {
+    const ids = idsOf("supervisor");
+    expect(ids).toEqual(expect.arrayContaining(["myAttendance", "teamAttendance", "approvals"]));
+    expect(ids).not.toContain("assignments");
+  });
+  it("por asistencia el admin no ve proyectos, reportes de horas ni asignaciones, y sí la asistencia del equipo", () => {
+    const ids = idsOf("admin");
+    expect(ids).toContain("teamAttendance");
+    for (const hidden of ["projects", "reports", "assignments", "performance", "projection"]) expect(ids).not.toContain(hidden);
+    expect(ids).toEqual(expect.arrayContaining(["directory", "settings", "approvals", "documents"]));
+  });
+  it("por proyectos (o sin configurar) no aparece nada de asistencia", () => {
+    for (const role of ROLES) {
+      for (const f of [DEFAULT_FEATURES, undefined]) {
+        const ids = navigationFor(role, f).map((i) => i.id);
+        expect(ids).not.toContain("myAttendance");
+        expect(ids).not.toContain("teamAttendance");
+      }
+    }
+  });
+  it("las rutas de asistencia solo se abren en ese modo y para el rol que corresponde", () => {
+    expect(canAccess("employee", "/asistencia", att)).toBe(true);
+    expect(canAccess("employee", "/asistencia", DEFAULT_FEATURES)).toBe(false);
+    expect(canAccess("employee", "/asistencia-equipo", att)).toBe(false);
+    expect(canAccess("supervisor", "/asistencia-equipo", att)).toBe(true);
+    expect(canAccess("admin", "/asistencia-equipo", att)).toBe(true);
+    expect(canAccess("admin", "/asistencia", att)).toBe(false);
+    expect(canAccess("employee", "/horas", att)).toBe(false);
+    expect(canAccess("supervisor", "/asignaciones", att)).toBe(false);
   });
 });

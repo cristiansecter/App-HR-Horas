@@ -34,13 +34,14 @@ function PendingBadge() {
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const user = useUser();
   const { signOut, isReal } = useSession();
-  const { companyName, features } = useCompany();
+  const { companyName, features, workModeKnown } = useCompany();
   const [query, setQuery] = useState("");
 
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return navigationFor(user.role, features).filter((i) => !q || i.label.toLowerCase().includes(q));
-  }, [user.role, features, query]);
+    // Hasta saber el modo de trabajo no se muestran las pantallas que dependen de él (evita un parpadeo del otro modo).
+    return navigationFor(user.role, features).filter((i) => (workModeKnown || !i.workMode) && (!q || i.label.toLowerCase().includes(q)));
+  }, [user.role, features, query, workModeKnown]);
 
   const main = items.filter((i) => i.group === "main");
   const management = items.filter((i) => i.group === "management");

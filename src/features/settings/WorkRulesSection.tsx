@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useCompany } from "@/company/CompanyContext";
+import { isValidTolerance } from "@/domain/attendance";
 import { isValidClock, nextTierId, normalizeClock } from "@/domain/overtime/editing";
 import {
   DAY_TYPES,
@@ -36,6 +37,9 @@ export default function WorkRulesSection() {
   const [windowDays, setWindowDays] = useState(String(company.editWindowDays));
   const [assignedOnly, setAssignedOnly] = useState(company.projectAccess === "assigned");
   const [schedule, setSchedule] = useState<WorkSchedule>(company.defaultSchedule);
+  // Por asistencia no hay horas extra ni proyectos: solo se configura la jornada y la tolerancia de llegada.
+  const attendance = company.features.workMode === "attendance";
+  const [tolerance, setTolerance] = useState(String(company.lateToleranceMin));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,8 +56,9 @@ export default function WorkRulesSection() {
     const days = Number(windowDays);
     if (!Number.isInteger(days) || days < 1 || days > 60) out.push("La ventana de edición va de 1 a 60 días.");
     out.push(...scheduleProblems(schedule));
+    if (attendance && !isValidTolerance(Number(tolerance))) out.push("La tolerancia de llegada va de 0 a 120 minutos.");
     return out;
-  }, [tiers, rules, onCall, windowDays, schedule]);
+  }, [tiers, rules, onCall, windowDays, schedule, attendance, tolerance]);
 
   const setTier = (id: string, patch: Partial<Tier>) => setTiers((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   const setRule = (index: number, patch: Partial<OvertimeRule>) => setRules((rs) => rs.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -88,6 +93,7 @@ export default function WorkRulesSection() {
         defaultSchedule: schedule,
         editWindowDays: Number(windowDays),
         projectAccess: assignedOnly ? "assigned" : "open",
+        lateToleranceMin: attendance ? Number(tolerance) : company.lateToleranceMin,
       });
       company.reload();
       notify("Guardaste las reglas. Se aplican a lo que se apruebe de ahora en más.");
@@ -111,6 +117,18 @@ export default function WorkRulesSection() {
         <ScheduleEditor value={schedule} onChange={setSchedule} />
       </section>
 
+      {attendance ? (
+        <section className={card}>
+          <h2 className={h2}>Asistencia</h2>
+          <p className={hint}>Una persona llega “tarde” cuando marca después del inicio de su jornada más esta tolerancia. Por ejemplo, con 10 minutos y una jornada que empieza a las 09:00, llegar a las 09:10 es a horario y a las 09:11 es tarde.</p>
+          <label className="block font-label-lg text-label-lg text-on-surface">
+            Tolerancia de llegada (minutos)
+            <input type="number" min={0} max={120} aria-label="Tolerancia de llegada" value={tolerance} onChange={(e) => setTolerance(e.target.value)} className={`mt-1.5 max-w-40 ${field}`} />
+          </label>
+        </section>
+      ) : null}
+
+      {attendance ? null : <>
       <section className={card}>
         <h2 className={h2}>Tramos de hora extra</h2>
         <p className={hint}>Cada tramo es una forma de pagar la hora extra. El identificador no se cambia: lo usan las horas ya aprobadas. No se pueden borrar tramos; si ya no querés usar uno, sacalo de las franjas de abajo.</p>
@@ -196,8 +214,10 @@ export default function WorkRulesSection() {
         </div>
       </section>
 
+      </>}
+
       <p className="rounded-lg bg-surface-container px-4 py-3 font-body-sm text-body-sm text-on-surface-variant">
-        Los cambios se aplican a las horas que se aprueben de ahora en más. Lo que ya está aprobado conserva sus horas y su desglose.
+        {attendance ? "Los cambios se aplican desde ahora; las tardanzas ya registradas se vuelven a calcular con la tolerancia nueva." : "Los cambios se aplican a las horas que se aprueben de ahora en más. Lo que ya está aprobado conserva sus horas y su desglose."}
       </p>
 
       {error || problems.length > 0 ? (

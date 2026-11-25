@@ -29,6 +29,7 @@ export async function saveFeatures(features: Features, configuratorEmail: string
     modules: features.modules,
     payModel: features.payModel,
     supervisorsSeePay: features.supervisorsSeePay,
+    workMode: features.workMode,
     updatedAt: serverTimestamp(),
     updatedBy: configuratorEmail,
   });

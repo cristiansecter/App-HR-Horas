@@ -1,4 +1,5 @@
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
+import { DEFAULT_LATE_TOLERANCE_MIN, isValidTolerance } from "@/domain/attendance";
 import { normalizeFeatures, type Features } from "@/domain/features";
 import type { HolidayRecord, Project, UserProfile, UserSummary } from "@/domain/model";
 import { defaultOvertimeConfig, defaultWorkSchedule, type OvertimeConfig, type WorkSchedule } from "@/domain/overtime";
@@ -13,6 +14,8 @@ export interface CompanyData {
   editWindowDays: number;
   /** "assigned": cada persona carga horas solo en los proyectos que le asignan. "open": en cualquiera activo. */
   projectAccess: "open" | "assigned";
+  /** Minutos de tolerancia en la hora de llegada antes de contar una tardanza (modo por asistencia). */
+  lateToleranceMin: number;
   features: Features;
   companyName?: string;
   logoUrl?: string;
@@ -31,6 +34,7 @@ interface SettingsDoc {
   defaultSchedule?: WorkSchedule;
   editWindowDays?: number;
   projectAccess?: "open" | "assigned";
+  lateToleranceMin?: number;
 }
 
 export async function loadCompany(): Promise<CompanyData> {
@@ -57,6 +61,7 @@ export async function loadCompany(): Promise<CompanyData> {
     defaultSchedule: settings.defaultSchedule ?? defaultWorkSchedule(),
     editWindowDays: settings.editWindowDays ?? 7,
     projectAccess: settings.projectAccess === "open" ? "open" : "assigned",
+    lateToleranceMin: isValidTolerance(settings.lateToleranceMin as number) ? (settings.lateToleranceMin as number) : DEFAULT_LATE_TOLERANCE_MIN,
     features: normalizeFeatures(featuresSnap.exists() ? featuresSnap.data() : undefined),
     companyName: settings.companyName,
     logoUrl: settings.logoUrl,

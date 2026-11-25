@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { readCachedWorkMode, writeCachedWorkMode } from "./workModeCache";
+import { DEFAULT_LATE_TOLERANCE_MIN } from "@/domain/attendance";
 import { DEFAULT_FEATURES, type Features } from "@/domain/features";
 import { tenantConfig, type TenantColors } from "@/config/tenant.config";
 import { applyTenantTheme, isHexColor } from "@/config/theme";
@@ -18,8 +20,12 @@ interface CompanyValue {
   editWindowDays: number;
   /** Cómo se eligen los proyectos para cargar horas (ver CompanyData). En la demo, todos abiertos. */
   projectAccess: "open" | "assigned";
+  /** Minutos de tolerancia en la llegada antes de contar una tardanza (modo por asistencia). */
+  lateToleranceMin: number;
   /** Módulos activos y modelo de pago (los define el Configurador). En la demo, todo apagado. */
   features: Features;
+  /** false mientras se carga y no hay un modo recordado: el menú y el inicio esperan para no mostrar las pantallas del otro modo. */
+  workModeKnown: boolean;
   companyName: string;
   /** Logo de la empresa (URL https) o null para mostrar el monograma. */
   logoUrl: string | null;
@@ -36,7 +42,9 @@ const DEMO_VALUE: CompanyValue = {
   defaultSchedule: DEMO_SCHEDULE,
   editWindowDays: 7,
   projectAccess: "open",
+  lateToleranceMin: DEFAULT_LATE_TOLERANCE_MIN,
   features: DEFAULT_FEATURES,
+  workModeKnown: true,
   companyName: tenantConfig.companyName,
   logoUrl: tenantConfig.logoUrl,
   colors: tenantConfig.colors,
@@ -79,8 +87,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     };
   }, [isReal, version]);
 
+  // Se recuerda el modo para la próxima vez que se abra la app en este navegador.
+  useEffect(() => {
+    if (data) writeCachedWorkMode(data.features.workMode);
+  }, [data]);
+
   const value = useMemo<CompanyValue>(() => {
     if (!isReal) return DEMO_VALUE;
+    const cached = data ? null : readCachedWorkMode();
     return {
       projects: data?.projects ?? [],
       holidays: data?.holidays ?? new Map(),
@@ -88,7 +102,9 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       defaultSchedule: data?.defaultSchedule ?? DEMO_SCHEDULE,
       editWindowDays: data?.editWindowDays ?? 7,
       projectAccess: data?.projectAccess ?? "assigned",
-      features: data?.features ?? DEFAULT_FEATURES,
+      lateToleranceMin: data?.lateToleranceMin ?? DEFAULT_LATE_TOLERANCE_MIN,
+      features: data?.features ?? { ...DEFAULT_FEATURES, workMode: cached ?? DEFAULT_FEATURES.workMode },
+      workModeKnown: Boolean(data) || cached !== null,
       companyName: data?.companyName?.trim() || tenantConfig.companyName,
       logoUrl: data?.logoUrl?.trim() || tenantConfig.logoUrl,
       colors: {

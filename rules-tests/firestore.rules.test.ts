@@ -1123,3 +1123,137 @@ describe("documentos: certificados y recibos", () => {
     await assertSucceeds(b2.commit());
   });
 });
+
+describe("modo de trabajo por asistencia", () => {
+  const setMode = (mode: "projects" | "attendance" | null) => env.withSecurityRulesDisabled(async (ctx) => {
+    if (mode === null) await deleteDoc(doc(ctx.firestore(), "settings/features"));
+    else await setDoc(doc(ctx.firestore(), "settings/features"), { modules: { compensation: false, performance: false, payroll: false }, payModel: "salary", workMode: mode });
+  });
+  const nowBA = () => {
+    const ms = Date.now();
+    const minutes = Math.floor((((ms - 3 * 3600000) % 86400000) / 60000));
+    const iso = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(ms));
+    return { minutes, date: iso, dateMs: Date.parse(`${iso}T12:00:00-03:00`) };
+  };
+  const mark = (userId: string, by: string, source: "self" | "manual" | "import", over: Record<string, unknown> = {}) => {
+    const n = nowBA();
+    return { userId, date: n.date, month: n.date.slice(0, 7), dateMs: n.dateMs, arrivalMinutes: n.minutes, source, markedBy: by, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), ...over };
+  };
+  const idOf = (uid: string, date = nowBA().date) => `attendance/${uid}_${date}`;
+  const emi = () => asRole("emi", "employee");
+  const sofia = () => asRole("sofia", "supervisor");
+  const ana = () => asRole("ana", "admin");
+
+  describe("configuración del Configurador", () => {
+    const f = (workMode: unknown, modules: Record<string, boolean>, payModel = "salary") => ({ modules: { compensation: true, ...modules }, payModel, workMode, supervisorsSeePay: false, updatedAt: serverTimestamp(), updatedBy: CONFIGURATOR });
+    it("el Configurador puede elegir cualquiera de los dos modos", async () => {
+      await assertSucceeds(setDoc(doc(configuratorDb(), "settings/features"), f("attendance", {})));
+      await assertSucceeds(setDoc(doc(configuratorDb(), "settings/features"), f("projects", { performance: true, allocation: true })));
+    });
+    it("por asistencia no admite módulos de proyectos ni pago por hora", async () => {
+      await assertFails(setDoc(doc(configuratorDb(), "settings/features"), f("attendance", { performance: true })));
+      await assertFails(setDoc(doc(configuratorDb(), "settings/features"), f("attendance", { allocation: true })));
+      await assertFails(setDoc(doc(configuratorDb(), "settings/features"), f("attendance", { projectBilling: true, performance: true })));
+      await assertFails(setDoc(doc(configuratorDb(), "settings/features"), f("attendance", {}, "hourly")));
+    });
+    it("un valor de modo inválido se rechaza y el admin de la pyme no lo cambia", async () => {
+      await assertFails(setDoc(doc(configuratorDb(), "settings/features"), f("fabrica", {})));
+      await assertFails(setDoc(doc(ana(), "settings/features"), f("attendance", {})));
+    });
+  });
+
+  describe("cargar horas según el modo", () => {
+    it("por asistencia no se crean registros de horas (ni propios ni por otro)", async () => {
+      await setMode("attendance");
+      await assertFails(setDoc(doc(emi(), "time_entries/n1"), newEntry("emi")));
+      await assertFails(setDoc(doc(sofia(), "time_entries/n2"), newEntry("emi", 0, { status: "submitted", createdBy: "sofia" })));
+    });
+    it("por proyectos (o sin configurar) siguen andando como siempre", async () => {
+      await setMode("projects");
+      await assertSucceeds(setDoc(doc(emi(), "time_entries/n1"), newEntry("emi")));
+      await setMode(null);
+      await assertSucceeds(setDoc(doc(emi(), "time_entries/n2"), newEntry("emi")));
+    });
+  });
+
+  describe("marcas de asistencia", () => {
+    beforeEach(async () => { await setMode("attendance"); });
+
+    it("la persona marca su llegada de hoy, con la hora del servidor", async () => {
+      await assertSucceeds(setDoc(doc(emi(), idOf("emi")), mark("emi", "emi", "self")));
+    });
+    it("no puede inventarse la hora (3 horas antes) ni marcar otro día", async () => {
+      await assertFails(setDoc(doc(emi(), idOf("emi")), mark("emi", "emi", "self", { arrivalMinutes: Math.max(0, nowBA().minutes - 180) })));
+      const y = new Date(Date.now() - 2 * 86400000);
+      const yIso = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(y);
+      await assertFails(setDoc(doc(emi(), idOf("emi", yIso)), mark("emi", "emi", "self", { date: yIso, month: yIso.slice(0, 7), dateMs: Date.parse(`${yIso}T12:00:00-03:00`) })));
+    });
+    it("no marca por otra persona ni se hace pasar por una marca manual", async () => {
+      await assertFails(setDoc(doc(emi(), idOf("eze")), mark("eze", "emi", "self")));
+      await assertFails(setDoc(doc(emi(), idOf("emi")), mark("emi", "emi", "manual")));
+      await assertFails(setDoc(doc(emi(), idOf("emi")), mark("emi", "sofia", "self")));
+    });
+    it("el administrador no marca asistencia propia", async () => {
+      await assertFails(setDoc(doc(ana(), idOf("ana")), mark("ana", "ana", "self")));
+    });
+    it("una vez marcada, la persona no la cambia ni la borra", async () => {
+      await assertSucceeds(setDoc(doc(emi(), idOf("emi")), mark("emi", "emi", "self")));
+      await assertFails(updateDoc(doc(emi(), idOf("emi")), { arrivalMinutes: 480, updatedAt: serverTimestamp() }));
+      await assertFails(deleteDoc(doc(emi(), idOf("emi"))));
+      await assertFails(setDoc(doc(emi(), idOf("emi")), mark("emi", "emi", "self")));
+    });
+    it("el supervisor marca la de su equipo (cualquier día pasado, con la hora que sea); el admin, la de cualquiera", async () => {
+      const y = new Date(Date.now() - 9 * 86400000);
+      const yIso = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(y);
+      await assertSucceeds(setDoc(doc(sofia(), idOf("emi", yIso)), mark("emi", "sofia", "manual", { date: yIso, month: yIso.slice(0, 7), dateMs: Date.parse(`${yIso}T12:00:00-03:00`), arrivalMinutes: 545, note: "Llegó con el tren cortado" })));
+      await assertSucceeds(setDoc(doc(ana(), idOf("olga")), mark("olga", "ana", "manual", { arrivalMinutes: 480 })));
+    });
+    it("el supervisor no marca a otro equipo, ni a sí mismo como manual, ni días futuros", async () => {
+      await assertFails(setDoc(doc(sofia(), idOf("olga")), mark("olga", "sofia", "manual")));
+      await assertFails(setDoc(doc(sofia(), idOf("sofia")), mark("sofia", "sofia", "manual")));
+      const t = new Date(Date.now() + 5 * 86400000);
+      const tIso = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(t);
+      await assertFails(setDoc(doc(sofia(), idOf("emi", tIso)), mark("emi", "sofia", "manual", { date: tIso, month: tIso.slice(0, 7), dateMs: Date.parse(`${tIso}T12:00:00-03:00`) })));
+    });
+    it("un supervisor también marca su propia llegada como cualquier persona", async () => {
+      await assertSucceeds(setDoc(doc(sofia(), idOf("sofia")), mark("sofia", "sofia", "self")));
+    });
+    it("quien supervisa corrige la hora o la nota y borra; la persona no", async () => {
+      await assertSucceeds(setDoc(doc(emi(), idOf("emi")), mark("emi", "emi", "self")));
+      await assertSucceeds(updateDoc(doc(sofia(), idOf("emi")), { arrivalMinutes: 500, note: "Corregido", markedBy: "sofia", source: "manual", updatedAt: serverTimestamp() }));
+      await assertFails(updateDoc(doc(sofia(), idOf("emi")), { userId: "eze", markedBy: "sofia", source: "manual", updatedAt: serverTimestamp() }));
+      await assertFails(updateDoc(doc(asRole("olga", "employee"), idOf("emi")), { arrivalMinutes: 1, markedBy: "olga", source: "manual", updatedAt: serverTimestamp() }));
+      await assertSucceeds(deleteDoc(doc(sofia(), idOf("emi"))));
+    });
+    it("valida la forma: id, mes, minutos, nota y campos de más", async () => {
+      await assertFails(setDoc(doc(sofia(), "attendance/cualquiera"), mark("emi", "sofia", "manual")));
+      await assertFails(setDoc(doc(sofia(), idOf("emi")), mark("emi", "sofia", "manual", { month: "2026-01" })));
+      await assertFails(setDoc(doc(sofia(), idOf("emi")), mark("emi", "sofia", "manual", { arrivalMinutes: 1440 })));
+      await assertFails(setDoc(doc(sofia(), idOf("emi")), mark("emi", "sofia", "manual", { arrivalMinutes: 480.5 })));
+      await assertFails(setDoc(doc(sofia(), idOf("emi")), mark("emi", "sofia", "manual", { note: "x".repeat(201) })));
+      await assertFails(setDoc(doc(sofia(), idOf("emi")), mark("emi", "sofia", "manual", { extra: 1 })));
+      await assertFails(setDoc(doc(sofia(), idOf("emi")), mark("emi", "sofia", "import")));
+    });
+    it("por proyectos no se puede marcar asistencia", async () => {
+      await setMode("projects");
+      await assertFails(setDoc(doc(emi(), idOf("emi")), mark("emi", "emi", "self")));
+      await assertFails(setDoc(doc(sofia(), idOf("emi")), mark("emi", "sofia", "manual")));
+    });
+    it("lectura: la persona, su supervisor y el admin; no otro empleado ni otro supervisor", async () => {
+      await assertSucceeds(setDoc(doc(emi(), idOf("emi")), mark("emi", "emi", "self")));
+      await assertSucceeds(getDoc(doc(emi(), idOf("emi"))));
+      await assertSucceeds(getDoc(doc(sofia(), idOf("emi"))));
+      await assertSucceeds(getDoc(doc(ana(), idOf("emi"))));
+      await assertFails(getDoc(doc(asRole("eze", "employee"), idOf("emi"))));
+      await assertFails(getDoc(doc(asRole("sofia2", "supervisor"), idOf("emi"))));
+    });
+    it("las consultas tienen que ir acotadas: por persona, por equipo (con 'in') o el admin", async () => {
+      const month = nowBA().date.slice(0, 7);
+      await assertSucceeds(getDocs(query(collection(emi(), "attendance"), where("userId", "==", "emi"), where("month", "==", month))));
+      await assertFails(getDocs(query(collection(emi(), "attendance"), where("month", "==", month))));
+      await assertSucceeds(getDocs(query(collection(sofia(), "attendance"), where("userId", "in", ["emi", "eze"]), where("month", "==", month))));
+      await assertFails(getDocs(query(collection(sofia(), "attendance"), where("month", "==", month))));
+      await assertSucceeds(getDocs(query(collection(ana(), "attendance"), where("month", "==", month))));
+    });
+  });
+});

@@ -6,8 +6,12 @@ import { LoginScreen } from "@/features/login/LoginScreen";
 import { CompanyProvider, useCompany } from "@/company/CompanyContext";
 import ConfiguratorConsole from "@/features/configurator/ConfiguratorConsole";
 import { useForcedDark } from "@/ui/colorMode";
+import LeavesOnlyApprovals from "@/features/approvals/LeavesOnlyApprovals";
 import AssignmentsView from "@/features/assignments/AssignmentsView";
 import ProjectionView from "@/features/projection/ProjectionView";
+import HomeAttendance from "@/features/home/HomeAttendance";
+import MyAttendanceView from "@/features/attendance/MyAttendanceView";
+import TeamAttendanceView from "@/features/attendance/TeamAttendanceView";
 import DocumentsView from "@/features/documents/DocumentsView";
 import TeamPayView from "@/features/teampay/TeamPayView";
 import ApprovalsLive from "@/features/approvals/ApprovalsLive";
@@ -42,12 +46,18 @@ import { ToastProvider } from "@/ui/Toast";
 /** Con cuenta real, el inicio y las aprobaciones leen Firestore; en la demo se ven las pantallas de ejemplo. */
 function HomeRoute({ role }: { role: Role }) {
   const { isReal } = useSession();
-  if (isReal) return <HomeLive />;
+  const { features, workModeKnown } = useCompany();
+  // Sin saber el modo todavía no se arma el inicio (para no mostrar un instante el del otro modo).
+  if (isReal && !workModeKnown) return null;
+  if (isReal) return features.workMode === "attendance" ? <HomeAttendance /> : <HomeLive />;
   return role === "admin" ? <HomeAdmin /> : role === "supervisor" ? <HomeSupervisor /> : <HomeEmployee />;
 }
 
 function ApprovalsRoute() {
   const { isReal } = useSession();
+  const { features } = useCompany();
+  // Por asistencia no hay horas para aprobar: solo licencias.
+  if (isReal && features.workMode === "attendance") return <LeavesOnlyApprovals />;
   return isReal ? <ApprovalsLive /> : <Approvals />;
 }
 
@@ -92,6 +102,8 @@ const PAGES: Partial<Record<NavId, () => ReactElement>> = {
   projection: () => <ProjectionView />,
   teamPay: () => <TeamPayView />,
   documents: () => <DocumentsView />,
+  myAttendance: () => <MyAttendanceView />,
+  teamAttendance: () => <TeamAttendanceView />,
   directory: () => <DirectoryRoute />,
   reports: () => <ReportsRoute />,
   performance: () => <PerformanceView />,

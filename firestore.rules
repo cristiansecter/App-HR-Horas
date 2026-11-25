@@ -37,7 +37,7 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/settings/features).data.get('modules', {}).get(name, false) == true;
     }
     function validFeatures(d) {
-      return d.keys().hasOnly(['modules', 'payModel', 'supervisorsSeePay', 'updatedAt', 'updatedBy'])
+      return d.keys().hasOnly(['modules', 'payModel', 'supervisorsSeePay', 'workMode', 'updatedAt', 'updatedBy'])
         && d.modules is map
         && d.modules.keys().hasOnly(['compensation', 'performance', 'payroll', 'projectBilling', 'allocation'])
         && d.modules.get('compensation', false) is bool
@@ -46,6 +46,11 @@ service cloud.firestore {
         && d.modules.get('projectBilling', false) is bool
         && d.modules.get('allocation', false) is bool
         && d.payModel in ['salary', 'hourly']
+        && d.get('workMode', 'projects') in ['projects', 'attendance']
+        // Por asistencia no hay proyectos: sus módulos van apagados y el sueldo es mensual.
+        && (d.get('workMode', 'projects') == 'projects'
+            || (d.modules.get('performance', false) == false && d.modules.get('projectBilling', false) == false
+                && d.modules.get('allocation', false) == false && d.payModel == 'salary'))
         && d.get('supervisorsSeePay', false) is bool
         // El permiso de sueldos para supervisores necesita el módulo de sueldos.
         && (d.get('supervisorsSeePay', false) == false || d.modules.get('compensation', false) == true)
@@ -53,6 +58,12 @@ service cloud.firestore {
         && (d.modules.get('performance', false) == false || d.modules.get('compensation', false) == true)
         && (d.modules.get('payroll', false) == false || d.modules.get('compensation', false) == true)
         && (d.modules.get('projectBilling', false) == false || d.modules.get('performance', false) == true);
+    }
+    // Modo de trabajo de la instancia (settings/features): 'projects' (por defecto) o 'attendance'.
+    function workModeIs(mode) {
+      return exists(/databases/$(database)/documents/settings/features)
+        ? get(/databases/$(database)/documents/settings/features).data.get('workMode', 'projects') == mode
+        : mode == 'projects';
     }
     // Permiso que da el Configurador: los supervisores ven (solo lectura) el sueldo de su equipo.
     function supervisorsSeePay() {
@@ -302,7 +313,7 @@ service cloud.firestore {
 
       // Cada persona carga lo suyo. Además, su supervisor (o el administrador) puede cargárselo (por ejemplo si no puede
       // hacerlo ella): queda enviado a aprobación y con 'createdBy' = quien lo cargó.
-      allow create: if hasRole()
+      allow create: if hasRole() && workModeIs('projects')
         && request.resource.data.keys().hasOnly(['userId', 'projectId', 'date', 'dateMs', 'startTime', 'endTime',
                                                  'isOnCall', 'ticketRef', 'notes', 'status', 'createdBy', 'createdAt', 'updatedAt'])
         && request.resource.data.startTime is string && request.resource.data.endTime is string
@@ -360,6 +371,54 @@ service cloud.firestore {
         && onlyChanges(['status', 'approvedBy', 'decidedAt', 'reviewerNote']);
 
       allow delete: if hasRole() && resource.data.userId == me() && resource.data.status == 'pending';
+    }
+
+    // ------------------------------------------------------------ asistencia (modo "por asistencia")
+    // Una marca de presencia por persona y día: `attendance/{uid}_{AAAA-MM-DD}`. Las ausencias NO se guardan acá: salen de
+    // las licencias (la injustificada la registra quien supervisa). La tardanza tampoco se guarda: se calcula al mirar,
+    // con la hora de llegada y la jornada vigente de la persona.
+    // - La persona marca su propia llegada una sola vez, solo hoy y con la hora real del servidor (±5 min): no puede
+    //   inventarse una hora ni cambiarla después.
+    // - Su supervisor (o el administrador) marca o corrige la de su equipo, de cualquier día hasta hoy.
+    // 'source' dice de dónde vino: 'self' (la persona), 'manual' (un superior) o 'import' (sistema externo de fichaje, que
+    // escribe con la cuenta de servicio).
+    function serverMsOfDayBA() {
+      return (request.time.toMillis() - 10800000) % 86400000;
+    }
+    match /attendance/{id} {
+      allow read: if hasRole() && (resource.data.userId == me() || isApproverOf(resource.data.userId));
+      allow create: if hasRole() && workModeIs('attendance')
+        && request.resource.data.keys().hasOnly(['userId', 'date', 'month', 'dateMs', 'arrivalMinutes', 'source', 'markedBy', 'note', 'createdAt', 'updatedAt'])
+        && request.resource.data.userId is string
+        && request.resource.data.date is string
+        && request.resource.data.date.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
+        && id == request.resource.data.userId + '_' + request.resource.data.date
+        && request.resource.data.month == request.resource.data.date.split('-')[0] + '-' + request.resource.data.date.split('-')[1]
+        && request.resource.data.arrivalMinutes is int && request.resource.data.arrivalMinutes >= 0 && request.resource.data.arrivalMinutes <= 1439
+        && request.resource.data.markedBy == me()
+        && request.resource.data.get('note', '') is string && request.resource.data.get('note', '').size() <= 200
+        && (
+          // La persona marca su llegada de hoy.
+          (request.resource.data.userId == me() && role() != 'admin'
+            && request.resource.data.source == 'self'
+            && request.resource.data.dateMs is int
+            && request.resource.data.dateMs >= request.time.toMillis() - 13 * 60 * 60 * 1000
+            && request.resource.data.dateMs <= request.time.toMillis() + 13 * 60 * 60 * 1000
+            && math.abs(request.resource.data.arrivalMinutes * 60000 - serverMsOfDayBA()) <= 300000)
+          ||
+          // Su supervisor o el administrador la cargan por ella (sin fechas futuras).
+          (request.resource.data.userId != me() && isApproverOf(request.resource.data.userId)
+            && request.resource.data.source == 'manual'
+            && notFuture(request.resource.data.dateMs))
+        );
+      // Solo quien supervisa corrige (hora o nota); la persona no cambia lo que marcó.
+      allow update: if hasRole() && workModeIs('attendance')
+        && resource.data.userId != me() && isApproverOf(resource.data.userId)
+        && request.resource.data.markedBy == me() && request.resource.data.source == 'manual'
+        && onlyChanges(['arrivalMinutes', 'note', 'markedBy', 'source', 'updatedAt'])
+        && request.resource.data.arrivalMinutes is int && request.resource.data.arrivalMinutes >= 0 && request.resource.data.arrivalMinutes <= 1439
+        && request.resource.data.get('note', '') is string && request.resource.data.get('note', '').size() <= 200;
+      allow delete: if hasRole() && resource.data.userId != me() && isApproverOf(resource.data.userId);
     }
 
     // ------------------------------------------------------------ documentos (certificados y recibos)

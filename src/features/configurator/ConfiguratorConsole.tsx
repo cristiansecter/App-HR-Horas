@@ -7,10 +7,15 @@ import {
   MODULE_INFO,
   PAY_MODEL_HINTS,
   PAY_MODEL_LABELS,
+  PROJECT_MODULES,
+  setWorkMode,
   toggleModule,
+  WORK_MODE_HINTS,
+  WORK_MODE_LABELS,
   type Features,
   type ModuleId,
   type PayModel,
+  type WorkMode,
 } from "@/domain/features";
 import type { ConfiguratorSession } from "@/services/auth";
 import { withCode } from "@/services/errors";
@@ -115,14 +120,36 @@ export default function ConfiguratorConsole({ configurator }: { configurator: Co
 
         {draft ? (
           <>
+            <section className={card} aria-label="Modo de trabajo">
+              <h2 className="text-sm font-bold tracking-wide text-horus-cyan uppercase">Modo de trabajo</h2>
+              <p className="mt-1 text-xs text-navy-300">Cómo trabaja esta empresa. Es una decisión de cómo se instala el producto: el administrador de la empresa no la ve ni la cambia.</p>
+              <div role="radiogroup" aria-label="Modo de trabajo" className="mt-4 grid gap-3 sm:grid-cols-2">
+                {(Object.keys(WORK_MODE_LABELS) as WorkMode[]).map((mode) => {
+                  const selected = draft.workMode === mode;
+                  return (
+                    <button key={mode} type="button" role="radio" aria-checked={selected} onClick={() => setDraft(setWorkMode(draft, mode))} className={`rounded-xl border p-4 text-left transition ${selected ? "border-horus-cyan bg-horus-cyan/10" : "border-navy-600 bg-navy-850/70 hover:border-navy-400"}`}>
+                      <span className="flex items-center gap-2 text-sm font-bold text-white">
+                        <span className={`flex size-4 items-center justify-center rounded-full border ${selected ? "border-horus-cyan" : "border-navy-400"}`}>{selected ? <span className="size-2 rounded-full bg-horus-cyan" /> : null}</span>
+                        {WORK_MODE_LABELS[mode]}
+                      </span>
+                      <span className="mt-1.5 block text-xs leading-relaxed text-navy-300">{WORK_MODE_HINTS[mode]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {draft.workMode === "attendance" ? <p className="mt-3 text-xs text-amber-200/90">Por asistencia se apagan los módulos de proyectos (Rendimiento, Facturación, Dedicación) y desaparecen cargar horas, proyectos y asignaciones. Si ya hay horas cargadas, quedan guardadas pero sin pantalla. Mejor definirlo al instalar, antes de que la gente empiece a usar la app.</p> : null}
+            </section>
+
             <section className={card} aria-label="Modelo de pago">
               <h2 className="text-sm font-bold tracking-wide text-horus-cyan uppercase">Modelo de pago</h2>
               <p className="mt-1 text-xs text-navy-300">Cómo paga esta pyme a su gente. Define cómo se cargan los sueldos, cómo se calcula el costo por hora y cómo se arma la liquidación.</p>
               <div role="radiogroup" aria-label="Modelo de pago" className="mt-4 grid gap-3 sm:grid-cols-2">
                 {(Object.keys(PAY_MODEL_LABELS) as PayModel[]).map((model) => {
                   const selected = draft.payModel === model;
+                  // Por asistencia el sueldo es siempre mensual: el pago por hora no aplica.
+                  const locked = draft.workMode === "attendance" && model === "hourly";
                   return (
-                    <button key={model} type="button" role="radio" aria-checked={selected} onClick={() => setDraft({ ...draft, payModel: model })} className={`rounded-xl border p-4 text-left transition ${selected ? "border-horus-cyan bg-horus-cyan/10" : "border-navy-600 bg-navy-850/70 hover:border-navy-400"}`}>
+                    <button key={model} type="button" role="radio" aria-checked={selected} disabled={locked} onClick={() => setDraft({ ...draft, payModel: model })} className={`rounded-xl border p-4 text-left transition ${locked ? "cursor-not-allowed opacity-40" : ""} ${selected ? "border-horus-cyan bg-horus-cyan/10" : "border-navy-600 bg-navy-850/70 hover:border-navy-400"}`}>
                       <span className="flex items-center gap-2 text-sm font-bold text-white">
                         <span className={`flex size-4 items-center justify-center rounded-full border ${selected ? "border-horus-cyan" : "border-navy-400"}`}>{selected ? <span className="size-2 rounded-full bg-horus-cyan" /> : null}</span>
                         {PAY_MODEL_LABELS[model]}
@@ -137,14 +164,14 @@ export default function ConfiguratorConsole({ configurator }: { configurator: Co
 
             <section className={card} aria-label="Módulos activables">
               <h2 className="text-sm font-bold tracking-wide text-horus-cyan uppercase">Módulos activables</h2>
-              <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Atajos">
+              {draft.workMode === "projects" ? <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Atajos">
                 <span className="text-xs text-navy-300">Atajos:</span>
                 <button type="button" onClick={() => setDraft(applyPreset(draft, "consultancy"))} className="rounded-lg border border-navy-500 px-3 py-1.5 text-xs font-semibold text-navy-100 hover:border-horus-cyan hover:text-white">Consultoría (factura por proyecto)</button>
                 <button type="button" onClick={() => setDraft(applyPreset(draft, "production"))} className="rounded-lg border border-navy-500 px-3 py-1.5 text-xs font-semibold text-navy-100 hover:border-horus-cyan hover:text-white">Fábrica o producción por jornada</button>
-              </div>
+              </div> : null}
               <p className="mt-1 text-xs text-navy-300">Se activan cuando el cliente los contrata. Un módulo apagado no tiene pantallas y sus datos quedan bloqueados en la base.</p>
               <ul className="mt-4 divide-y divide-navy-700/60">
-                {MODULE_IDS.map((id) => {
+                {MODULE_IDS.filter((id) => draft.workMode === "projects" || !PROJECT_MODULES.includes(id)).map((id) => {
                   const info = MODULE_INFO[id];
                   const on = draft.modules[id];
                   return (

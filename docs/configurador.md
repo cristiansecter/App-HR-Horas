@@ -148,6 +148,9 @@ Los activa el Configurador (consola, pestaña **Configurador**). Todo lo que gua
 |---|---|---|
 | Sueldo o valor hora de cada persona, con historial de vigencias, y convenio / obra social / hijos | `employee_pay/{uid}` | Sueldos en el legajo |
 | Permiso de los supervisores para ver sueldos de su equipo | `settings/features.supervisorsSeePay` | Sueldos en el legajo |
+| Modo de trabajo (por proyectos o por asistencia) | `settings/features.workMode` | — (Configurador) |
+| Marca de presencia de cada persona y día | `attendance/{persona}_{AAAA-MM-DD}` | Modo por asistencia |
+| Tolerancia de llegada en minutos | `settings/main.lateToleranceMin` | Modo por asistencia |
 | Cómo se factura cada proyecto: por hora (tarifa general + tarifas por persona), precio cerrado (valor total + horas estimadas) o interno | `project_rates/{código}` | Facturación por proyecto |
 | Cargas patronales y horas del mes | `settings/costing` | Rendimiento |
 | Porcentaje de dedicación de cada asignación y horas proyectadas por proyecto, persona y mes | `assignments/*.allocationPct`, `projections/{proyecto}_{persona}_{mes}` | Dedicación y proyección |
@@ -188,6 +191,30 @@ Además de que cada persona cargue lo suyo, **el supervisor (a su equipo) y el a
 - **Horas:** en "Cargar horas" aparece "Cargar para". Las horas quedan a nombre de la persona y anotadas como cargadas por quien las cargó. "Cargar y enviar" las deja pendientes en Aprobaciones; "Cargar y aprobar" las carga y las aprueba en un paso. El proyecto tiene que estar asignado a la persona (si la empresa exige asignación). Quien carga por otro puede usar días anteriores sin el límite de la ventana, pero no fechas futuras.
 - **Licencias:** en Aprobaciones, "Registrar licencia de una persona" (vacaciones, enfermedad, estudio, asunto personal o ausencia injustificada). Queda aprobada desde el registro, aparece en el calendario del equipo y la persona la ve marcada como registrada por un superior. No deja registrar dos veces el mismo período.
 - Lo hace cumplir Firestore (reglas `time_entries` y `leave_requests`), no solo la pantalla: un supervisor no puede cargar por alguien de otro equipo, ni usar un proyecto no asignado a la persona, ni dejar el registro como aprobado de entrada.
+
+## Modo de trabajo: por proyectos o por asistencia
+
+En la consola del Configurador, sección **Modo de trabajo** (el administrador de la empresa no la ve ni la cambia). Conviene definirlo **al instalar**, antes de que la gente empiece a usar la app.
+
+- **Por proyectos** (por defecto): todo como siempre. Horas en proyectos, aprobaciones, horas extra y, si se activan, Rendimiento, Facturación y Dedicación.
+- **Por asistencia (jornada)**: para empresas donde importa la presencia y el presentismo, no las horas por proyecto.
+  - Se apagan solos los módulos de proyectos (no se pueden prender) y el sueldo es siempre mensual. Siguen disponibles *Sueldos en el legajo* y *Seguimiento de liquidaciones*.
+  - Desaparecen Mi semana, Mis horas, Cargar horas, Proyectos, Asignar proyectos y Reportes de horas. Aprobaciones queda solo con licencias.
+  - Aparecen **Mi asistencia** (todos, salvo el administrador) y **Asistencia del equipo** (supervisor: su equipo; administrador: toda la empresa).
+  - Si ya había horas cargadas, quedan guardadas pero sin pantalla. Volver a "por proyectos" no vuelve a prender los módulos que se apagaron.
+- Lo hace cumplir Firestore: en modo asistencia no se pueden crear registros de horas, y en modo proyectos no se pueden crear marcas de asistencia.
+
+### Cómo funciona la asistencia
+- **Marcar presente:** cada persona marca su llegada una sola vez por día, desde Inicio o Mi asistencia. La hora es la **del servidor** (las reglas verifican que coincida con la del reloj, ±5 minutos): no se puede inventar ni cambiar después. Solo se marca hoy.
+- **Quien supervisa** corrige: marca presente a quien no pudo marcar (cualquier día pasado, con la hora que corresponda y una nota), corrige o quita una marca, y registra ausencias con el botón **Ausente**.
+- **Las ausencias no se duplican:** salen de las licencias. Las licencias aprobadas (vacaciones, enfermedad, etc.) cubren el día solas; la ausencia injustificada la registra el supervisor o el administrador (es una licencia de tipo "injustificada").
+- **Estados de un día:** presente, tarde, licencia, ausente sin justificar, **sin registro** (día laborable pasado sin marca ni licencia: alguien tiene que resolverlo), sin marcar todavía (hoy), feriado y no laborable. Los feriados y los días sin jornada no cuentan.
+- **Llegadas tarde:** se calculan al mirar, con la hora de llegada contra el inicio de la jornada de la persona (la propia o la de la empresa) más una **tolerancia** (10 minutos por defecto; el administrador la cambia en *Configuración → Jornada y asistencia*, de 0 a 120). Si se cambia la tolerancia, el historial se recalcula.
+- **Resumen del mes** (Asistencia del equipo): por persona, días laborables, presentes, tardanzas con minutos, licencias, injustificadas, sin registro y "sin tardanzas ni faltas". Se exporta a **Excel o CSV** para el contador, con el detalle día por día.
+- **No calcula el sueldo ni el presentismo en pesos:** solo registra y reporta. Qué se descuenta o si se pierde el adicional lo decide el contador (coherente con "anotación y seguimiento, no liquidación legal").
+
+### Fichaje externo (preparado, no conectado)
+Cada marca guarda de dónde vino (`source`): `self` (la persona), `manual` (un superior) o `import` (un sistema externo de fichaje). Hoy solo se usan las dos primeras. Conectar un sistema de fichaje (reloj biométrico, otra app) requiere un punto de entrada propio, o sea Cloud Functions y el plan Blaze; cuando llegue ese momento las marcas importadas ya tienen dónde ir sin cambiar las pantallas. Una alternativa antes de Blaze es una importación manual desde un archivo, que se puede sumar si hace falta.
 
 ## Documentos: certificados y recibos
 

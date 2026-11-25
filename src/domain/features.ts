@@ -8,6 +8,22 @@ export type ModuleId = "compensation" | "performance" | "payroll" | "projectBill
 /** Cómo paga la pyme: sueldo mensual por jornada completa, o por hora trabajada. */
 export type PayModel = "salary" | "hourly";
 
+/**
+ * Cómo trabaja la empresa:
+ * - "projects": las horas se cargan en proyectos (consultoras y similares). Es lo de siempre.
+ * - "attendance": no hay proyectos ni horas; se lleva presencia por jornada (presente, ausente, llegadas tarde) y el sueldo es mensual.
+ */
+export type WorkMode = "projects" | "attendance";
+
+export const WORK_MODE_LABELS: Record<WorkMode, string> = { projects: "Por proyectos", attendance: "Por asistencia (jornada)" };
+export const WORK_MODE_HINTS: Record<WorkMode, string> = {
+  projects: "Las personas cargan horas en proyectos, con aprobaciones, horas extra y, si se activan los módulos, costos, facturación y proyección. Para consultoras y empresas que trabajan por proyectos.",
+  attendance: "No hay proyectos ni carga de horas: cada persona marca su presencia cada día y se anotan ausencias, licencias y llegadas tarde. El sueldo es mensual. Para empresas donde importa la asistencia y el presentismo, no las horas por proyecto.",
+};
+
+/** Módulos que solo tienen sentido trabajando por proyectos: en el modo asistencia quedan apagados y no se pueden prender. */
+export const PROJECT_MODULES: readonly ModuleId[] = ["performance", "projectBilling", "allocation"];
+
 export interface Features {
   modules: Record<ModuleId, boolean>;
   payModel: PayModel;
@@ -16,6 +32,8 @@ export interface Features {
    * Por defecto apagado: sin esto, solo el administrador ve sueldos. Necesita el módulo "Sueldos en el legajo".
    */
   supervisorsSeePay: boolean;
+  /** Por proyectos (por defecto) o por asistencia. Lo define el Configurador. */
+  workMode: WorkMode;
 }
 
 export const MODULE_IDS: readonly ModuleId[] = ["compensation", "performance", "payroll", "projectBilling", "allocation"];
@@ -57,6 +75,8 @@ export const MODULE_INFO: Record<ModuleId, ModuleInfo> = {
 
 /** Atajos de la consola: "consultoría" prende lo que usa una empresa que factura por proyecto; "producción" lo apaga. */
 export const applyPreset = (features: Features, preset: "consultancy" | "production"): Features => {
+  // Sin proyectos no hay nada que facturar ni proyectar: el atajo de consultoría no aplica.
+  if (features.workMode === "attendance" && preset === "consultancy") return features;
   if (preset === "consultancy") {
     let f = features;
     for (const id of ["projectBilling", "allocation"] as const) f = toggleModule(f, id, true);
@@ -81,19 +101,24 @@ export const DEFAULT_FEATURES: Features = {
   modules: { compensation: false, performance: false, payroll: false, projectBilling: false, allocation: false },
   payModel: "salary",
   supervisorsSeePay: false,
+  workMode: "projects",
 };
 
 /** Lee lo guardado (que puede faltar o venir incompleto) y devuelve siempre un objeto completo y coherente. */
 export const normalizeFeatures = (raw: unknown): Features => {
-  const data = (raw ?? {}) as { modules?: Partial<Record<ModuleId, unknown>>; payModel?: unknown; supervisorsSeePay?: unknown };
+  const data = (raw ?? {}) as { modules?: Partial<Record<ModuleId, unknown>>; payModel?: unknown; supervisorsSeePay?: unknown; workMode?: unknown };
   const modules = { ...DEFAULT_FEATURES.modules };
   for (const id of MODULE_IDS) modules[id] = data.modules?.[id] === true;
   // Un módulo sin sus requisitos no se considera activo, aunque figure prendido en la base.
   for (const id of MODULE_IDS) {
     if (modules[id] && MODULE_INFO[id].requires.some((r) => !modules[r])) modules[id] = false;
   }
+  const workMode: WorkMode = data.workMode === "attendance" ? "attendance" : "projects";
+  // Por asistencia no hay proyectos: sus módulos no cuentan y el sueldo es siempre mensual, aunque la base diga otra cosa.
+  if (workMode === "attendance") for (const id of PROJECT_MODULES) modules[id] = false;
+  const payModel: PayModel = workMode === "attendance" ? "salary" : data.payModel === "hourly" ? "hourly" : "salary";
   // El permiso de los supervisores no vale sin el módulo de sueldos, aunque figure prendido en la base.
-  return { modules, payModel: data.payModel === "hourly" ? "hourly" : "salary", supervisorsSeePay: data.supervisorsSeePay === true && modules.compensation };
+  return { modules, payModel, supervisorsSeePay: data.supervisorsSeePay === true && modules.compensation, workMode };
 };
 
 /** Problemas de dependencias de una configuración (para mostrar antes de guardar). */
@@ -104,6 +129,12 @@ export const featureProblems = (features: Features): string[] => [
       : [],
   ),
   ...(features.supervisorsSeePay && !features.modules.compensation ? ["El permiso de sueldos para supervisores necesita “Sueldos en el legajo”."] : []),
+  ...(features.workMode === "attendance"
+    ? [
+        ...PROJECT_MODULES.filter((id) => features.modules[id]).map((id) => `“${MODULE_INFO[id].label}” no se puede usar en el modo por asistencia (no hay proyectos).`),
+        ...(features.payModel === "hourly" ? ["En el modo por asistencia el sueldo es mensual, no por hora."] : []),
+      ]
+    : []),
 ];
 
 /**
@@ -111,6 +142,8 @@ export const featureProblems = (features: Features): string[] => [
  * al apagar uno se apagan los que dependen de él.
  */
 export const toggleModule = (features: Features, id: ModuleId, on: boolean): Features => {
+  // Por asistencia no se pueden prender los módulos de proyectos.
+  if (on && features.workMode === "attendance" && PROJECT_MODULES.includes(id)) return features;
   const modules = { ...features.modules };
   // Prender arrastra los requisitos (y los requisitos de los requisitos); apagar apaga todo lo que dependa, directa o indirectamente.
   const turnOn = (m: ModuleId) => {
@@ -125,4 +158,12 @@ export const toggleModule = (features: Features, id: ModuleId, on: boolean): Fea
   else turnOff(id);
   // Sin el módulo de sueldos no hay sueldos que mostrar: el permiso de los supervisores se apaga con él.
   return { ...features, modules, supervisorsSeePay: features.supervisorsSeePay && modules.compensation };
+};
+
+/** Cambia el modo de trabajo. Pasar a asistencia apaga los módulos de proyectos y deja el sueldo mensual; volver a proyectos no los vuelve a prender. */
+export const setWorkMode = (features: Features, mode: WorkMode): Features => {
+  if (mode === "projects") return { ...features, workMode: "projects" };
+  const modules = { ...features.modules };
+  for (const id of PROJECT_MODULES) modules[id] = false;
+  return { ...features, workMode: "attendance", modules, payModel: "salary" };
 };

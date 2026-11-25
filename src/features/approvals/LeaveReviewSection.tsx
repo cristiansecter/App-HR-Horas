@@ -156,25 +156,28 @@ export default function LeaveReviewSection() {
 const REGISTERABLE: readonly LeaveType[] = ["vacation", "sick", "study", "personal", "unjustified"];
 
 /** Quien supervisa (o el administrador) registra una licencia por alguien de su equipo, ya aprobada. */
-function RegisterLeaveDialog({
+export function RegisterLeaveDialog({
   people,
   holidays,
   defaultSchedule,
+  initial,
   onClose,
   onDone,
 }: {
   people: { uid: string; fullName: string; workSchedule?: import("@/domain/overtime").WorkSchedule }[];
   holidays: ReturnType<typeof useCompany>["holidays"];
   defaultSchedule: import("@/domain/overtime").WorkSchedule;
+  /** Valores con los que abre (por ejemplo desde Asistencia: la persona, el día y "injustificada"). */
+  initial?: { uid?: string; date?: string; type?: LeaveType };
   onClose: () => void;
   onDone: (name: string) => void;
 }) {
   const reviewer = useUser();
   const today = dateInBuenosAires(new Date());
-  const [uid, setUid] = useState(people[0]?.uid ?? "");
-  const [type, setType] = useState<LeaveType>("vacation");
-  const [from, setFrom] = useState(today);
-  const [to, setTo] = useState(today);
+  const [uid, setUid] = useState(initial?.uid ?? people[0]?.uid ?? "");
+  const [type, setType] = useState<LeaveType>(initial?.type ?? "vacation");
+  const [from, setFrom] = useState(initial?.date ?? today);
+  const [to, setTo] = useState(initial?.date ?? today);
   const [reason, setReason] = useState("");
   const [certificate, setCertificate] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);

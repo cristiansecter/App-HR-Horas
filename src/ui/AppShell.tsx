@@ -22,10 +22,11 @@ const pageLabel = (pathname: string): string => {
 export function AppShell() {
   const { pathname } = useLocation();
   const { openDrawer } = useLoadHours();
-  const { companyName } = useCompany();
+  const { companyName, features } = useCompany();
   const [menuOpen, setMenuOpen] = useState(false);
   // Todos pueden abrir el cajón: el empleado carga lo suyo; el supervisor lo suyo y lo de su equipo; el administrador lo de cualquiera.
-  const canLoadHours = true;
+  // Por asistencia no hay carga de horas.
+  const canLoadHours = features.workMode === "projects";
 
   const loadButton = (
     <button
