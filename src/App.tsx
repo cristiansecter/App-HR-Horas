@@ -23,6 +23,7 @@ import ReportsLive from "@/features/reports/ReportsLive";
 import Reports from "@/features/screens/Reports";
 import SettingsLive from "@/features/settings/SettingsLive";
 import Settings from "@/features/screens/Settings";
+import WeekGridLive from "@/features/week/WeekGridLive";
 import WeekGrid from "@/features/screens/WeekGrid";
 import type { Role } from "@/domain/types";
 import { SessionProvider, useSession } from "@/session/SessionContext";
@@ -41,9 +42,6 @@ function ApprovalsRoute() {
   return isReal ? <ApprovalsLive /> : <Approvals />;
 }
 
-/** Pantallas que ya leen y escriben en Firestore. Las demás todavía muestran datos de ejemplo. */
-const LIVE_IDS: ReadonlySet<string> = new Set(["home", "hours", "approvals", "projects", "reports", "leave", "team", "directory", "file", "settings"]);
-
 function DirectoryRoute() {
   const { isReal } = useSession();
   return isReal ? <DirectoryLive /> : <Directory />;
@@ -59,6 +57,11 @@ function SettingsRoute() {
   return isReal ? <SettingsLive /> : <Settings />;
 }
 
+function WeekRoute() {
+  const { isReal } = useSession();
+  return isReal ? <WeekGridLive /> : <WeekGrid />;
+}
+
 function LeaveRoute() {
   const { isReal } = useSession();
   return isReal ? <MyLeaveLive /> : <MyLeave />;
@@ -69,29 +72,8 @@ function ReportsRoute() {
   return isReal ? <ReportsLive /> : <Reports />;
 }
 
-function SampleDataNotice() {
-  return (
-    <div role="note" className="mx-space-lg mt-space-lg flex items-start gap-3 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 font-body-sm text-body-sm text-amber-200">
-      <span className="material-symbols-outlined text-[20px]">info</span>
-      <span>Esta pantalla todavía muestra datos de ejemplo: no son los de tu empresa y no se guardan. Se conecta en uno de los próximos pasos.</span>
-    </div>
-  );
-}
-
-/** Aviso de datos de ejemplo cuando una cuenta real entra a una pantalla que todavía no está conectada. */
-function WithNotice({ id, children }: { id: string; children: ReactElement }) {
-  const { isReal } = useSession();
-  if (!isReal || LIVE_IDS.has(id)) return children;
-  return (
-    <>
-      <SampleDataNotice />
-      {children}
-    </>
-  );
-}
-
 const PAGES: Partial<Record<NavId, () => ReactElement>> = {
-  week: () => <WeekGrid />,
+  week: () => <WeekRoute />,
   hours: () => <MyHours />,
   team: () => <TeamCalendar />,
   projects: () => <Projects />,
@@ -103,10 +85,10 @@ const PAGES: Partial<Record<NavId, () => ReactElement>> = {
 };
 
 /** Si el rol no puede ver la ruta, vuelve al inicio. Las reglas de Firestore son la barrera real. */
-function Guard({ id, path, render }: { id: string; path: string; render: (role: Role) => ReactElement }) {
+function Guard({ path, render }: { path: string; render: (role: Role) => ReactElement }) {
   const { user } = useSession();
   if (!user || !canAccess(user.role, path)) return <Navigate to="/" replace />;
-  return <WithNotice id={id}>{render(user.role)}</WithNotice>;
+  return render(user.role);
 }
 
 function AuthGate() {
@@ -129,10 +111,10 @@ function AuthGate() {
             <Route
               key={item.id}
               path={item.path}
-              element={<Guard id={item.id} path={item.path} render={(role) => (item.id === "home" ? <HomeRoute role={role} /> : (PAGES[item.id]?.() ?? <Navigate to="/" replace />))} />}
+              element={<Guard path={item.path} render={(role) => (item.id === "home" ? <HomeRoute role={role} /> : (PAGES[item.id]?.() ?? <Navigate to="/" replace />))} />}
             />
           ))}
-          <Route path="/directorio/ficha" element={<Guard id="file" path="/directorio/ficha" render={() => <EmployeeFileRoute />} />} />
+          <Route path="/directorio/ficha" element={<Guard path="/directorio/ficha" render={() => <EmployeeFileRoute />} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

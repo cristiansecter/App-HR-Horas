@@ -10,6 +10,8 @@ import type { TimeEntry } from "@/domain/model";
 interface LoadHoursValue {
   /** Abre el cajón para cargar horas nuevas. Acepta (e ignora) un evento de clic. */
   openDrawer: (...ignored: unknown[]) => void;
+  /** Abre el cajón para cargar horas nuevas en una fecha puntual (AAAA-MM-DD). */
+  openDrawerOn: (date: string) => void;
   /** Abre el cajón para corregir un registro propio (borrador u observado). */
   editEntry: (entry: TimeEntry) => void;
   closeDrawer: () => void;
@@ -26,20 +28,28 @@ export const useLoadHours = (): LoadHoursValue => {
 export function LoadHoursProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<TimeEntry | null>(null);
+  const [initialDate, setInitialDate] = useState<string | null>(null);
   const openDrawer = useCallback(() => {
     setEditing(null);
+    setInitialDate(null);
+    setOpen(true);
+  }, []);
+  const openDrawerOn = useCallback((date: string) => {
+    setEditing(null);
+    setInitialDate(date);
     setOpen(true);
   }, []);
   const editEntry = useCallback((entry: TimeEntry) => {
     setEditing(entry);
+    setInitialDate(null);
     setOpen(true);
   }, []);
   const closeDrawer = useCallback(() => setOpen(false), []);
-  const value = useMemo(() => ({ openDrawer, editEntry, closeDrawer }), [openDrawer, editEntry, closeDrawer]);
+  const value = useMemo(() => ({ openDrawer, openDrawerOn, editEntry, closeDrawer }), [openDrawer, openDrawerOn, editEntry, closeDrawer]);
   return (
     <LoadHoursContext.Provider value={value}>
       {children}
-      {open ? <LoadHoursDrawer key={editing?.id ?? "new"} entry={editing} onClose={closeDrawer} /> : null}
+      {open ? <LoadHoursDrawer key={editing?.id ?? `new-${initialDate ?? ""}`} entry={editing} initialDate={initialDate} onClose={closeDrawer} /> : null}
     </LoadHoursContext.Provider>
   );
 }
@@ -72,7 +82,7 @@ const toMinutes = (hhmm: string): number => Number(hhmm.slice(0, 2)) * 60 + Numb
 const inputClass =
   "w-full rounded-lg border border-white/10 bg-surface-container-lowest px-3 py-2.5 font-body-md text-body-md text-on-surface focus:border-primary-container focus:ring-2 focus:ring-primary-container/20 focus:outline-hidden";
 
-function LoadHoursDrawer({ entry, onClose }: { entry: TimeEntry | null; onClose: () => void }) {
+function LoadHoursDrawer({ entry, initialDate, onClose }: { entry: TimeEntry | null; initialDate: string | null; onClose: () => void }) {
   const user = useUser();
   const { isReal } = useSession();
   const company = useCompany();
@@ -81,7 +91,7 @@ function LoadHoursDrawer({ entry, onClose }: { entry: TimeEntry | null; onClose:
   const categoryLabel = (id: string): string => (id === "normal" ? "Normales" : (company.overtime.tiers.find((t) => t.id === id)?.label ?? id));
   const today = dateInBuenosAires(new Date());
   const earliest = addDays(today, -company.editWindowDays);
-  const [date, setDate] = useState(entry?.date ?? today);
+  const [date, setDate] = useState(entry?.date ?? initialDate ?? today);
   const [projectChoice, setProject] = useState<string | null>(entry?.projectId ?? null);
   // Por defecto, el tercer proyecto en la demo (queda a la vista) y el primero en una instancia real.
   const project = projectChoice ?? projects[isReal ? 0 : 2]?.code ?? projects[0]?.code ?? "";

@@ -83,9 +83,9 @@ npm run set-role -- --email persona@empresa.com --role supervisor --key ruta/cla
 | Directorio y ficha del empleado: puesto, área, legajo, supervisor, estado, CUIL/DNI/teléfono/modalidad (solo admin) y jornada propia | Real. Las altas siguen por script hasta tener el plan Blaze. El CUIL se valida (11 dígitos; si el dígito verificador no coincide es solo un aviso) |
 | Configuración: nombre, logo y colores; jornada general; tramos y franjas de horas extra (validadas: cada tipo de día cubierto las 24 h); guardia; ventana de edición; calendario de feriados | Real. Los cambios rigen hacia adelante: lo ya aprobado conserva sus horas |
 | Reportes: planilla del mes con horas aprobadas, avisos de lo que falta y descarga en Excel/CSV | Real: el resumen y el detalle suman lo mismo; lo no aprobado no entra y se avisa.  |
-| Reglas de seguridad de Firestore | Reales y probadas (69 pruebas de reglas y 114 de lógica) |
+| Reglas de seguridad de Firestore | Reales y probadas (69 pruebas de reglas y 119 de lógica) |
 | Alta de usuarios, cambio de rol, configuración inicial y feriados | Real, por script |
-| Mi semana (la grilla semanal de carga) | Datos de ejemplo (con una cuenta real se muestra un aviso arriba) |
+| Mi semana: grilla de lunes a domingo con feriados y licencias, carga por día, corrección y envío de borradores | Real | Datos de ejemplo (con una cuenta real se muestra un aviso arriba) |
 
 Quién aprueba qué: el supervisor aprueba a quienes lo tienen como `supervisorId`; el administrador aprueba a todos, incluidos los supervisores y sus propias horas.
 
