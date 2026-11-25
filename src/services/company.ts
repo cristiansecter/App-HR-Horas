@@ -1,4 +1,5 @@
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
+import { normalizeFeatures, type Features } from "@/domain/features";
 import type { HolidayRecord, Project, UserProfile, UserSummary } from "@/domain/model";
 import { defaultOvertimeConfig, defaultWorkSchedule, type OvertimeConfig, type WorkSchedule } from "@/domain/overtime";
 import { getFirebase } from "./firebase";
@@ -10,6 +11,7 @@ export interface CompanyData {
   overtime: OvertimeConfig;
   defaultSchedule: WorkSchedule;
   editWindowDays: number;
+  features: Features;
   companyName?: string;
   logoUrl?: string;
   primaryColor?: string;
@@ -30,8 +32,9 @@ interface SettingsDoc {
 
 export async function loadCompany(): Promise<CompanyData> {
   const { db } = getFirebase();
-  const [settingsSnap, holidaysSnap, projectsSnap] = await Promise.all([
+  const [settingsSnap, featuresSnap, holidaysSnap, projectsSnap] = await Promise.all([
     getDoc(doc(db, "settings", "main")),
+    getDoc(doc(db, "settings", "features")),
     getDocs(collection(db, "holidays")),
     getDocs(collection(db, "projects")),
   ]);
@@ -50,6 +53,7 @@ export async function loadCompany(): Promise<CompanyData> {
     overtime: settings.overtime ?? defaultOvertimeConfig(),
     defaultSchedule: settings.defaultSchedule ?? defaultWorkSchedule(),
     editWindowDays: settings.editWindowDays ?? 7,
+    features: normalizeFeatures(featuresSnap.exists() ? featuresSnap.data() : undefined),
     companyName: settings.companyName,
     logoUrl: settings.logoUrl,
     primaryColor: settings.primaryColor,

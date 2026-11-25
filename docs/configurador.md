@@ -106,3 +106,22 @@ Poner a alguien como **inactivo** en su ficha le corta el acceso de inmediato: l
 - `src/config/tenant.config.ts` es la marca con la que **abre** la app (pantalla de entrada): nombre, logo y colores del cliente. Se cambia en código y se publica.
 - En **Configuración → Empresa** el administrador puede cambiar nombre, logo (una dirección https) y colores una vez dentro. Eso se guarda en `settings/main` y pisa a la marca del código para todo el equipo.
 - Los tramos de hora extra no se pueden borrar desde la pantalla, porque las horas ya aprobadas guardan el identificador del tramo (por ejemplo `ot50`). Si algún día falta un tramo usado, la planilla lo avisa.
+
+## Consola del Configurador, módulos y modelo de pago
+
+El Configurador entra por la pestaña **Configurador** de la pantalla de entrada (en el build de demo es la tercera pestaña; en un build normal es el enlace "Acceso del Configurador" debajo del formulario). Más adelante se puede separar en otro enlace o esconder: hoy es solo una pestaña.
+
+Qué hace la consola:
+
+- **Módulos activables**: Sueldos en el legajo, Rendimiento y Liquidación de sueldos. Rendimiento y Liquidación necesitan Sueldos en el legajo (al prender uno se prende la base; al apagar la base se apagan los que dependen).
+- **Modelo de pago** de la pyme: *por jornada* (sueldo mensual) o *por hora*.
+
+Lo que se guarda va en `settings/features`. **Solo lo escribe el Configurador**: las reglas de Firestore lo exigen (claim `configurator`) y el administrador de la pyme tiene prohibido escribirlo, aunque lo intente desde la consola del navegador. Un módulo apagado no tiene pantallas y sus datos quedan bloqueados en la base. El administrador de la pyme no ve esta consola ni la lista de módulos: solo ve las pantallas de los que están activos.
+
+Crear la cuenta del Configurador (una vez por instancia):
+
+```bash
+npm run create-configurator -- --email vos@tuproveedor.com --key ruta/clave.json
+```
+
+La cuenta tiene el claim `configurator` y **ningún rol de la pyme**: entra solo por la pestaña Configurador, no ve datos de la empresa (solo el nombre) y no puede entrar como administrador.

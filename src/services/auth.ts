@@ -8,6 +8,21 @@ import { getFirebase } from "./firebase";
 /** Lo que pasa cuando hay una cuenta de Firebase pero no se puede armar una sesión de Horus. */
 export class SessionError extends Error {}
 
+/** Cuenta del Configurador (proveedor del sistema): tiene el claim `configurator` y ningún rol de la pyme. */
+export interface ConfiguratorSession {
+  uid: string;
+  email: string;
+}
+
+export type SessionKind = "app" | "configurator";
+export type SessionResult = { kind: "app"; user: SessionUser } | { kind: "configurator"; configurator: ConfiguratorSession };
+
+/**
+ * Qué pestaña del login se usó para entrar: así una cuenta de Configurador no entra por "cuenta" ni al revés.
+ * Una sesión que ya estaba abierta al cargar la página no tiene expectativa y entra por lo que sea.
+ */
+let expectedKind: SessionKind | null = null;
+
 const isRole = (value: unknown): value is Role => typeof value === "string" && (ROLES as readonly string[]).includes(value);
 
 /**
@@ -43,15 +58,24 @@ async function toSessionUser(user: User): Promise<SessionUser> {
 }
 
 /** Escucha los cambios de sesión de Firebase. `onChange` recibe la sesión o un error legible. */
-export function subscribeToSession(onChange: (user: SessionUser | null, error?: string) => void): () => void {
+export function subscribeToSession(onChange: (result: SessionResult | null, error?: string) => void): () => void {
   const { auth } = getFirebase();
   return onAuthStateChanged(auth, (user) => {
     if (!user) {
       onChange(null);
       return;
     }
-    toSessionUser(user)
-      .then((session) => onChange(session))
+    const expected = expectedKind;
+    expectedKind = null;
+    (async (): Promise<SessionResult> => {
+      const token = await user.getIdTokenResult();
+      const isConfigurator = token.claims.configurator === true;
+      if (expected === "app" && isConfigurator) throw new SessionError("Esta es una cuenta de Configurador. Entrá desde la pestaña “Configurador”.");
+      if (expected === "configurator" && !isConfigurator) throw new SessionError("Esta cuenta no es de Configurador.");
+      if (isConfigurator) return { kind: "configurator", configurator: { uid: user.uid, email: user.email ?? "" } };
+      return { kind: "app", user: await toSessionUser(user) };
+    })()
+      .then((result) => onChange(result))
       .catch(async (e: unknown) => {
         // Una cuenta sin rol o dada de baja no entra: se cierra la sesión de Firebase y se explica por qué.
         const message = e instanceof SessionError ? e.message : "No se pudo cargar tu sesión. Probá de nuevo en unos minutos.";
@@ -61,11 +85,13 @@ export function subscribeToSession(onChange: (user: SessionUser | null, error?: 
   });
 }
 
-export async function signInWithPassword(email: string, password: string): Promise<void> {
+export async function signInWithPassword(email: string, password: string, as: SessionKind = "app"): Promise<void> {
   const { auth } = getFirebase();
+  expectedKind = as;
   try {
     await signInWithEmailAndPassword(auth, email.trim(), password);
   } catch (e) {
+    expectedKind = null;
     throw new SessionError(translateAuthError(e));
   }
 }

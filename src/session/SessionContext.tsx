@@ -1,10 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { isFirebaseConfigured } from "@/services/firebase";
-import { signInWithPassword, signOutFromFirebase, subscribeToSession } from "@/services/auth";
+import { signInWithPassword, signOutFromFirebase, subscribeToSession, type ConfiguratorSession, type SessionKind } from "@/services/auth";
 import type { SessionUser } from "@/domain/types";
 
 interface SessionValue {
   user: SessionUser | null;
+  /** Sesión del Configurador (proveedor del sistema), si entró por esa pestaña. No es un usuario de la pyme. */
+  configurator: ConfiguratorSession | null;
   /** true mientras Firebase confirma si ya había una sesión abierta. */
   loading: boolean;
   /** Motivo por el que una cuenta real fue rechazada (sin rol, dada de baja...). */
@@ -12,7 +14,7 @@ interface SessionValue {
   /** Entrada de la demo: usuario inventado, en memoria. */
   signIn: (user: SessionUser) => void;
   /** Entrada real con email y contraseña (Firebase Auth). Lanza un error con mensaje legible. */
-  signInWithPassword: (email: string, password: string) => Promise<void>;
+  signInWithPassword: (email: string, password: string, as?: SessionKind) => Promise<void>;
   signOut: () => void;
   /** true si la sesión es de una cuenta real y no de la demo. */
   isReal: boolean;
@@ -27,15 +29,17 @@ const SessionContext = createContext<SessionValue | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [demoUser, setDemoUser] = useState<SessionUser | null>(null);
   const [realUser, setRealUser] = useState<SessionUser | null>(null);
+  const [configurator, setConfigurator] = useState<ConfiguratorSession | null>(null);
   const [loading, setLoading] = useState(isFirebaseConfigured);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isFirebaseConfigured) return;
-    return subscribeToSession((session, error) => {
-      setRealUser(session);
+    return subscribeToSession((result, error) => {
+      setRealUser(result?.kind === "app" ? result.user : null);
+      setConfigurator(result?.kind === "configurator" ? result.configurator : null);
       if (error) setAuthNotice(error);
-      if (session) setAuthNotice(null);
+      if (result) setAuthNotice(null);
       setLoading(false);
     });
   }, []);
@@ -50,6 +54,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SessionValue>(
     () => ({
       user: realUser ?? demoUser,
+      configurator,
       loading,
       authNotice,
       signIn,
@@ -57,7 +62,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signOut,
       isReal: realUser !== null,
     }),
-    [realUser, demoUser, loading, authNotice, signIn, signOut],
+    [realUser, demoUser, configurator, loading, authNotice, signIn, signOut],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

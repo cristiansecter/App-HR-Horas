@@ -34,13 +34,13 @@ function PendingBadge() {
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const user = useUser();
   const { signOut, isReal } = useSession();
-  const { companyName } = useCompany();
+  const { companyName, features } = useCompany();
   const [query, setQuery] = useState("");
 
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return navigationFor(user.role).filter((i) => !q || i.label.toLowerCase().includes(q));
-  }, [user.role, query]);
+    return navigationFor(user.role, features).filter((i) => !q || i.label.toLowerCase().includes(q));
+  }, [user.role, features, query]);
 
   const main = items.filter((i) => i.group === "main");
   const management = items.filter((i) => i.group === "management");

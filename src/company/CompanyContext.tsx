@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { DEFAULT_FEATURES, type Features } from "@/domain/features";
 import { tenantConfig, type TenantColors } from "@/config/tenant.config";
 import { applyTenantTheme, isHexColor } from "@/config/theme";
 import { DEMO_HOLIDAYS, DEMO_OVERTIME_CONFIG, DEMO_PROJECTS, DEMO_SCHEDULE } from "@/demo/demoData";
@@ -15,6 +16,8 @@ interface CompanyValue {
   /** Jornada de la empresa. Si la persona tiene una propia, se usa esa. */
   defaultSchedule: WorkSchedule;
   editWindowDays: number;
+  /** Módulos activos y modelo de pago (los define el Configurador). En la demo, todo apagado. */
+  features: Features;
   companyName: string;
   /** Logo de la empresa (URL https) o null para mostrar el monograma. */
   logoUrl: string | null;
@@ -30,6 +33,7 @@ const DEMO_VALUE: CompanyValue = {
   overtime: DEMO_OVERTIME_CONFIG,
   defaultSchedule: DEMO_SCHEDULE,
   editWindowDays: 7,
+  features: DEFAULT_FEATURES,
   companyName: tenantConfig.companyName,
   logoUrl: tenantConfig.logoUrl,
   colors: tenantConfig.colors,
@@ -80,6 +84,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       overtime: data?.overtime ?? DEMO_OVERTIME_CONFIG,
       defaultSchedule: data?.defaultSchedule ?? DEMO_SCHEDULE,
       editWindowDays: data?.editWindowDays ?? 7,
+      features: data?.features ?? DEFAULT_FEATURES,
       companyName: data?.companyName?.trim() || tenantConfig.companyName,
       logoUrl: data?.logoUrl?.trim() || tenantConfig.logoUrl,
       colors: {

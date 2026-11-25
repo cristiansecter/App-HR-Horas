@@ -1,3 +1,4 @@
+import type { Features, ModuleId } from "@/domain/features";
 import type { Role } from "@/domain/types";
 
 export type NavId =
@@ -22,6 +23,8 @@ export interface NavItem {
   icon: string;
   /** "management" va bajo el título Gestión del menú. */
   group: "main" | "management";
+  /** Si está, la pantalla solo existe cuando ese módulo está activo en la instancia. */
+  module?: ModuleId;
 }
 
 const ALL: readonly Role[] = ["admin", "supervisor", "employee"];
@@ -40,12 +43,15 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: "settings", label: "Configuración", path: "/configuracion", roles: ["admin"], icon: "settings", group: "management" },
 ];
 
-export const navigationFor = (role: Role): NavItem[] => NAV_ITEMS.filter((item) => item.roles.includes(role));
+const moduleActive = (item: NavItem, features?: Features): boolean => !item.module || features?.modules[item.module] === true;
+
+/** Ítems del menú para un rol, sin los de módulos que la instancia no tiene activos. */
+export const navigationFor = (role: Role, features?: Features): NavItem[] => NAV_ITEMS.filter((item) => item.roles.includes(role) && moduleActive(item, features));
 
 /** Rutas que no están en el menú pero cuelgan de una pantalla del menú (por ejemplo, la ficha de un empleado). */
 const SUBPAGES: Record<string, NavId> = { "/directorio/ficha": "directory" };
 
-export const canAccess = (role: Role, path: string): boolean => {
+export const canAccess = (role: Role, path: string, features?: Features): boolean => {
   const subpage = SUBPAGES[path];
-  return NAV_ITEMS.some((item) => (item.path === path || item.id === subpage) && item.roles.includes(role));
+  return NAV_ITEMS.some((item) => (item.path === path || item.id === subpage) && item.roles.includes(role) && moduleActive(item, features));
 };

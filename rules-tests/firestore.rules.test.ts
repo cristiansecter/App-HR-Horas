@@ -67,6 +67,55 @@ describe("acceso sin rol", () => {
   });
 });
 
+describe("módulos activables (solo el Configurador)", () => {
+  const cfg = () => env.authenticatedContext("prov", { configurator: true }).firestore();
+  const features = (over: Record<string, unknown> = {}) => ({ modules: { compensation: true, performance: false, payroll: false }, payModel: "salary", ...over });
+
+  it("el Configurador escribe y lee los módulos", async () => {
+    await assertSucceeds(setDoc(doc(cfg(), "settings/features"), features({ modules: { compensation: true, performance: true, payroll: true }, payModel: "hourly" })));
+    await assertSucceeds(getDoc(doc(cfg(), "settings/features")));
+  });
+  it("el administrador de la pyme NO puede activar módulos ni cambiar el modelo de pago", async () => {
+    const admin = asRole("ana", "admin");
+    await assertFails(setDoc(doc(admin, "settings/features"), features()));
+    await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "settings/features"), features()); });
+    await assertFails(updateDoc(doc(admin, "settings/features"), { payModel: "hourly" }));
+    await assertFails(deleteDoc(doc(admin, "settings/features")));
+  });
+  it("el administrador sí sigue editando el resto de la configuración", async () => {
+    await assertSucceeds(setDoc(doc(asRole("ana", "admin"), "settings/main"), { editWindowDays: 7, companyName: "X" }));
+  });
+  it("todos los roles pueden leer qué módulos hay activos (para mostrar u ocultar pantallas)", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "settings/features"), features()); });
+    for (const [uid, role] of [["ana", "admin"], ["sofia", "supervisor"], ["emi", "employee"]] as const) await assertSucceeds(getDoc(doc(asRole(uid, role), "settings/features")));
+  });
+  it("sin sesión o sin rol no se lee", async () => {
+    await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), "settings/features")));
+    await assertFails(getDoc(doc(asRole("emi"), "settings/features")));
+  });
+  it("un módulo no puede quedar activo sin su base", async () => {
+    await assertFails(setDoc(doc(cfg(), "settings/features"), features({ modules: { compensation: false, performance: true, payroll: false } })));
+    await assertFails(setDoc(doc(cfg(), "settings/features"), features({ modules: { compensation: false, performance: false, payroll: true } })));
+  });
+  it("rechaza formas inválidas: modelo de pago desconocido, módulos de más, campos extra", async () => {
+    await assertFails(setDoc(doc(cfg(), "settings/features"), features({ payModel: "semanal" })));
+    await assertFails(setDoc(doc(cfg(), "settings/features"), features({ modules: { compensation: true, magia: true } })));
+    await assertFails(setDoc(doc(cfg(), "settings/features"), { ...features(), extra: 1 }));
+    await assertFails(setDoc(doc(cfg(), "settings/features"), features({ modules: { compensation: "si" } })));
+  });
+  it("el Configurador no tiene acceso a los datos de la empresa", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), "time_entries/t1"), { userId: "emi" }); });
+    const c = cfg();
+    await assertFails(getDoc(doc(c, "time_entries/t1")));
+    await assertFails(getDoc(doc(c, "users/emi")));
+    await assertFails(getDoc(doc(c, "employee_private/emi")));
+    await assertSucceeds(getDoc(doc(c, "settings/main"))); // solo para ver el nombre de la empresa
+  });
+  it("un usuario con rol no puede darse el claim de Configurador: sin el claim no escribe", async () => {
+    await assertFails(setDoc(doc(asRole("ana", "admin"), "settings/features"), features()));
+  });
+});
+
 describe("baja de una persona", () => {
   it("con el perfil dado de baja pierde el acceso aunque el token siga vigente", async () => {
     await env.withSecurityRulesDisabled(async (ctx) => { await updateDoc(doc(ctx.firestore(), "users/emi"), { active: false }); });

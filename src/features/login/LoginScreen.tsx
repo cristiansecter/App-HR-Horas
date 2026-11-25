@@ -6,7 +6,7 @@ import { DEMO_USERS } from "@/demo/demoUsers";
 import type { Role } from "@/domain/types";
 import { useSession } from "@/session/SessionContext";
 
-type Tab = "demo" | "account";
+type Tab = "demo" | "account" | "configurator";
 
 interface RoleCard {
   role: Role;
@@ -77,7 +77,7 @@ export function LoginScreen() {
     setBusy(true);
     setNotice(null);
     try {
-      await signInWithPassword(String(form.get("email") ?? ""), String(form.get("password") ?? ""));
+      await signInWithPassword(String(form.get("email") ?? ""), String(form.get("password") ?? ""), tab === "configurator" ? "configurator" : "app");
     } catch (err) {
       setNotice(err instanceof Error ? err.message : "No se pudo iniciar sesión. Probá de nuevo.");
     } finally {
@@ -118,13 +118,25 @@ export function LoginScreen() {
                 type="button"
                 role="tab"
                 aria-selected={tab === "account"}
-                onClick={() => setTab("account")}
+                onClick={() => { setTab("account"); setNotice(null); }}
                 className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs transition-all sm:text-sm ${
                   tab === "account" ? "border border-navy-600/60 bg-navy-750 font-semibold text-white shadow-sm" : "font-medium text-navy-300 hover:bg-navy-850/60 hover:text-white"
                 }`}
               >
                 <span className="material-symbols-outlined text-[16px]">person</span>
                 Iniciar sesión con cuenta
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "configurator"}
+                onClick={() => { setTab("configurator"); setNotice(null); }}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs transition-all sm:text-sm ${
+                  tab === "configurator" ? "border border-navy-600/60 bg-navy-750 font-semibold text-white shadow-sm" : "font-medium text-navy-300 hover:bg-navy-850/60 hover:text-white"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">tune</span>
+                Configurador
               </button>
             </div>
           ) : null}
@@ -174,6 +186,12 @@ export function LoginScreen() {
             </div>
           ) : (
             <div role="tabpanel">
+              {tab === "configurator" ? (
+                <div className="mb-4 rounded-xl border border-horus-cyan/20 bg-horus-cyan/5 p-3">
+                  <p className="text-sm font-bold text-white">Acceso del Configurador</p>
+                  <p className="mt-1 text-xs text-navy-300">Solo para el proveedor del sistema: administra los módulos y el modelo de pago de esta instancia.</p>
+                </div>
+              ) : null}
               <form className="space-y-4" onSubmit={submitAccount}>
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-navy-200" htmlFor="corporate-email">Email</label>
@@ -200,6 +218,13 @@ export function LoginScreen() {
                   </button>
                 </div>
               </form>
+              {!isDemoMode ? (
+                <p className="mt-4 text-center text-xs text-navy-400">
+                  <button type="button" onClick={() => { setTab(tab === "configurator" ? "account" : "configurator"); setNotice(null); }} className="underline-offset-2 hover:text-navy-200 hover:underline">
+                    {tab === "configurator" ? "Volver al acceso de personas" : "Acceso del Configurador"}
+                  </button>
+                </p>
+              ) : null}
             </div>
           )}
         </div>

@@ -3,7 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { NAV_ITEMS, canAccess, type NavId } from "@/config/navigation";
 import { LoadHoursProvider } from "@/features/hours/LoadHoursDrawer";
 import { LoginScreen } from "@/features/login/LoginScreen";
-import { CompanyProvider } from "@/company/CompanyContext";
+import { CompanyProvider, useCompany } from "@/company/CompanyContext";
+import ConfiguratorConsole from "@/features/configurator/ConfiguratorConsole";
 import ApprovalsLive from "@/features/approvals/ApprovalsLive";
 import HomeLive from "@/features/home/HomeLive";
 import Approvals from "@/features/screens/Approvals";
@@ -87,12 +88,15 @@ const PAGES: Partial<Record<NavId, () => ReactElement>> = {
 /** Si el rol no puede ver la ruta, vuelve al inicio. Las reglas de Firestore son la barrera real. */
 function Guard({ path, render }: { path: string; render: (role: Role) => ReactElement }) {
   const { user } = useSession();
-  if (!user || !canAccess(user.role, path)) return <Navigate to="/" replace />;
+  const { features, loading } = useCompany();
+  // Mientras se leen los módulos activos no se decide: así un enlace directo a una pantalla de módulo no rebota de más.
+  if (user && loading && !canAccess(user.role, path)) return null;
+  if (!user || !canAccess(user.role, path, features)) return <Navigate to="/" replace />;
   return render(user.role);
 }
 
 function AuthGate() {
-  const { user, loading } = useSession();
+  const { user, configurator, loading } = useSession();
   if (loading) {
     return (
       <div className="bg-horus-mesh flex min-h-screen items-center justify-center text-sm text-navy-300" role="status">
@@ -100,6 +104,7 @@ function AuthGate() {
       </div>
     );
   }
+  if (configurator) return <ConfiguratorConsole configurator={configurator} />;
   if (!user) return <LoginScreen />;
   return (
     <ToastProvider>

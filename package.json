@@ -14,7 +14,8 @@
     "test:rules": "npx --yes firebase-tools@15 emulators:exec --only firestore --project horus-rules-test \"vitest run --config vitest.rules.config.ts\"",
     "provision": "tsx scripts/provision-instance.ts",
     "create-user": "tsx scripts/create-user.ts",
-    "set-role": "tsx scripts/set-role.ts"
+    "set-role": "tsx scripts/set-role.ts",
+    "create-configurator": "tsx scripts/create-configurator.ts"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

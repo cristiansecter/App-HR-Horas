@@ -21,6 +21,28 @@ service cloud.firestore {
     function hasRole() {
       return signedIn() && role() in ['admin', 'supervisor', 'employee'] && isActiveAccount();
     }
+    // El Configurador es el proveedor del sistema, no un rol de la pyme: tiene un claim propio y ningún `role`,
+    // así que no puede leer ni escribir los datos de la empresa. Solo administra los módulos y el modelo de pago.
+    function isConfigurator() {
+      return signedIn() && request.auth.token.get('configurator', false) == true;
+    }
+    // Módulo activo en esta instancia (settings/features). Si el documento no existe, todo está apagado.
+    function moduleOn(name) {
+      return exists(/databases/$(database)/documents/settings/features)
+        && get(/databases/$(database)/documents/settings/features).data.get('modules', {}).get(name, false) == true;
+    }
+    function validFeatures(d) {
+      return d.keys().hasOnly(['modules', 'payModel', 'updatedAt', 'updatedBy'])
+        && d.modules is map
+        && d.modules.keys().hasOnly(['compensation', 'performance', 'payroll'])
+        && d.modules.get('compensation', false) is bool
+        && d.modules.get('performance', false) is bool
+        && d.modules.get('payroll', false) is bool
+        && d.payModel in ['salary', 'hourly']
+        // Un módulo no puede estar activo sin la base de la que depende.
+        && (d.modules.get('performance', false) == false || d.modules.get('compensation', false) == true)
+        && (d.modules.get('payroll', false) == false || d.modules.get('compensation', false) == true);
+    }
     function isAdmin() {
       return hasRole() && role() == 'admin';
     }
@@ -93,9 +115,15 @@ service cloud.firestore {
     }
 
     // ------------------------------------------------------------ configuración de la empresa
+    // `settings/features` (módulos activables y modelo de pago) lo escribe SOLO el Configurador, nunca el administrador
+    // de la pyme. Como las reglas se suman (alcanza con que una permita), el comodín de abajo lo excluye a propósito.
+    match /settings/features {
+      allow read: if hasRole() || isConfigurator();
+      allow write: if isConfigurator() && validFeatures(request.resource.data);
+    }
     match /settings/{doc} {
-      allow read: if hasRole();
-      allow write: if isAdmin();
+      allow read: if hasRole() || isConfigurator();
+      allow write: if isAdmin() && doc != 'features';
     }
     match /holidays/{date} {
       allow read: if hasRole();
