@@ -1257,3 +1257,43 @@ describe("modo de trabajo por asistencia", () => {
     });
   });
 });
+
+describe("vencimientos de cada persona", () => {
+  const exp = (userId: string, over: Record<string, unknown> = {}) => ({ userId, kind: "insurance", title: "", date: "2026-12-15", updatedBy: "ana", updatedAt: serverTimestamp(), ...over });
+  const seed = (id: string, userId: string) => env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), `expirations/${id}`), { userId, kind: "probation", title: "", date: "2026-12-15", updatedBy: "ana" }); });
+  const ana = () => asRole("ana", "admin");
+
+  it("el admin crea, cambia y borra", async () => {
+    await assertSucceeds(setDoc(doc(ana(), "expirations/e1"), exp("emi")));
+    await assertSucceeds(setDoc(doc(ana(), "expirations/e1"), exp("emi", { kind: "other", title: "Carnet", note: "Renovar" })));
+    await assertSucceeds(deleteDoc(doc(ana(), "expirations/e1")));
+  });
+  it("nadie más escribe: ni el supervisor de la persona ni la propia persona", async () => {
+    await assertFails(setDoc(doc(asRole("sofia", "supervisor"), "expirations/e1"), exp("emi", { updatedBy: "sofia" })));
+    await assertFails(setDoc(doc(asRole("emi", "employee"), "expirations/e1"), exp("emi", { updatedBy: "emi" })));
+    await seed("e2", "emi");
+    await assertFails(deleteDoc(doc(asRole("sofia", "supervisor"), "expirations/e2")));
+  });
+  it("lectura: el admin y el supervisor de la persona; no ella ni otro supervisor ni otro empleado", async () => {
+    await seed("e1", "emi");
+    await assertSucceeds(getDoc(doc(ana(), "expirations/e1")));
+    await assertSucceeds(getDoc(doc(asRole("sofia", "supervisor"), "expirations/e1")));
+    await assertFails(getDoc(doc(asRole("emi", "employee"), "expirations/e1")));
+    await assertFails(getDoc(doc(asRole("sofia2", "supervisor"), "expirations/e1")));
+    await assertFails(getDoc(doc(asRole("eze", "employee"), "expirations/e1")));
+  });
+  it("las consultas del supervisor tienen que ir acotadas a su equipo", async () => {
+    await assertSucceeds(getDocs(query(collection(asRole("sofia", "supervisor"), "expirations"), where("userId", "in", ["emi", "eze"]))));
+    await assertFails(getDocs(collection(asRole("sofia", "supervisor"), "expirations")));
+    await assertSucceeds(getDocs(collection(ana(), "expirations")));
+  });
+  it("valida la forma: tipo, fecha, textos, 'updatedBy' propio y campos de más", async () => {
+    await assertFails(setDoc(doc(ana(), "expirations/e1"), exp("emi", { kind: "otra-cosa" })));
+    await assertFails(setDoc(doc(ana(), "expirations/e1"), exp("emi", { date: "2026-13-01" })));
+    await assertFails(setDoc(doc(ana(), "expirations/e1"), exp("emi", { date: "mañana" })));
+    await assertFails(setDoc(doc(ana(), "expirations/e1"), exp("emi", { title: "x".repeat(121) })));
+    await assertFails(setDoc(doc(ana(), "expirations/e1"), exp("emi", { note: "x".repeat(201) })));
+    await assertFails(setDoc(doc(ana(), "expirations/e1"), exp("emi", { updatedBy: "otro" })));
+    await assertFails(setDoc(doc(ana(), "expirations/e1"), exp("emi", { extra: 1 })));
+  });
+});

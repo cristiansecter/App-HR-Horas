@@ -9,6 +9,7 @@ Gestión de horas, licencias y datos del equipo para pymes argentinas, con pre-l
 - **Directorio y fichas** con datos sensibles separados, jornada propia y bajas.
 - **Reportes:** planilla mensual en Excel/CSV lista para el contador.
 - **Configuración:** marca, jornada, reglas de horas extra y feriados.
+- **Avisos**: campanita y Inicio con vacaciones próximas, licencias que terminan, incorporaciones, vencimientos (seguros, períodos de prueba, pasantías), superposición de vacaciones del equipo y saldo de vacaciones.
 - **Dos modos de trabajo** (los define el Configurador): *por proyectos* (horas en proyectos) o *por asistencia* (marcar presente, ausencias, llegadas tarde y resumen mensual para el contador, sin proyectos ni horas).
 - **Módulos activables** (los activa el Configurador, el administrador de la empresa no los ve): *Sueldos en el legajo*, *Rendimiento* (costos por proyecto), *Facturación por proyecto* (por hora, precio cerrado o interno; ingresos y margen) *Dedicación y proyección* (porcentaje por asignación y reparto de horas por proyecto y mes) y *Seguimiento de liquidaciones* (anotación y seguimiento digital, no liquidación legal).
 

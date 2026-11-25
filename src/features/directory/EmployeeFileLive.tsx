@@ -12,6 +12,7 @@ import { withCode } from "@/services/errors";
 import { Chip, Page, PageHeader } from "@/ui/Page";
 import { useToast } from "@/ui/Toast";
 import { useAsync } from "@/ui/useAsync";
+import ExpirationsSection from "./ExpirationsSection";
 import PaySection from "./PaySection";
 import { ScheduleEditor, scheduleProblems } from "./ScheduleEditor";
 
@@ -192,6 +193,8 @@ function FileForm({ user, sensitive, people, back }: { user: UserSummary; sensit
           <button type="submit" disabled={saving} className="rounded-xl bg-primary-container px-6 py-2.5 font-label-lg text-label-lg font-bold text-on-primary hover:brightness-110 disabled:opacity-50">{saving ? "Guardando…" : "Guardar ficha"}</button>
         </div>
       </form>
+
+      <ExpirationsSection uid={user.uid} fullName={user.fullName} />
 
       {company.features.modules.compensation ? <PaySection uid={user.uid} fullName={user.fullName} /> : null}
     </Page>

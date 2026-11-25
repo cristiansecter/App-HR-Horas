@@ -9,6 +9,7 @@ import { useForcedDark } from "@/ui/colorMode";
 import LeavesOnlyApprovals from "@/features/approvals/LeavesOnlyApprovals";
 import AssignmentsView from "@/features/assignments/AssignmentsView";
 import ProjectionView from "@/features/projection/ProjectionView";
+import { AlertsProvider } from "@/features/alerts/AlertsContext";
 import HomeAttendance from "@/features/home/HomeAttendance";
 import MyAttendanceView from "@/features/attendance/MyAttendanceView";
 import TeamAttendanceView from "@/features/attendance/TeamAttendanceView";
@@ -138,6 +139,7 @@ function AuthGate() {
   return (
     <ToastProvider>
     <CompanyProvider>
+    <AlertsProvider>
     <LoadHoursProvider>
       <Routes>
         <Route element={<AppShell />}>
@@ -153,6 +155,7 @@ function AuthGate() {
         </Route>
       </Routes>
     </LoadHoursProvider>
+    </AlertsProvider>
     </CompanyProvider>
     </ToastProvider>
   );

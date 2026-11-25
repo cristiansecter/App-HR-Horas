@@ -26,6 +26,8 @@ export interface WorkRulesEdit {
   projectAccess: "open" | "assigned";
   /** Minutos de tolerancia en la llegada antes de contar una tardanza (modo por asistencia). */
   lateToleranceMin: number;
+  /** % del equipo de vacaciones a la vez a partir del cual se avisa. */
+  vacationOverlapPct: number;
 }
 
 /** Cambia las reglas hacia adelante: lo ya aprobado conserva las horas que se congelaron al aprobar. */
@@ -33,7 +35,7 @@ export async function saveWorkRules(edit: WorkRulesEdit): Promise<void> {
   const { db } = getFirebase();
   await setDoc(
     doc(db, "settings", "main"),
-    { overtime: edit.overtime, defaultSchedule: edit.defaultSchedule, editWindowDays: edit.editWindowDays, projectAccess: edit.projectAccess, lateToleranceMin: edit.lateToleranceMin },
+    { overtime: edit.overtime, defaultSchedule: edit.defaultSchedule, editWindowDays: edit.editWindowDays, projectAccess: edit.projectAccess, lateToleranceMin: edit.lateToleranceMin, vacationOverlapPct: edit.vacationOverlapPct },
     { merge: true },
   );
 }

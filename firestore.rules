@@ -373,6 +373,24 @@ service cloud.firestore {
       allow delete: if hasRole() && resource.data.userId == me() && resource.data.status == 'pending';
     }
 
+    // ------------------------------------------------------------ vencimientos de cada persona
+    // Seguro, fin del período de prueba o de una pasantía, plazo fijo, etc. Los carga solo el administrador y los leen el
+    // administrador y el supervisor de la persona (para que lo tenga presente); la propia persona no.
+    function validExpiration(d) {
+      return d.keys().hasOnly(['userId', 'kind', 'title', 'date', 'note', 'updatedBy', 'updatedAt'])
+        && d.userId is string
+        && d.kind in ['insurance', 'probation', 'internship', 'fixed_term', 'other']
+        && d.title is string && d.title.size() <= 120
+        && d.date is string && d.date.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
+        && d.get('note', '') is string && d.get('note', '').size() <= 200
+        && d.updatedBy == me();
+    }
+    match /expirations/{id} {
+      allow read: if hasRole() && (isAdmin() || supervises(resource.data.userId));
+      allow create, update: if isAdmin() && validExpiration(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
     // ------------------------------------------------------------ asistencia (modo "por asistencia")
     // Una marca de presencia por persona y día: `attendance/{uid}_{AAAA-MM-DD}`. Las ausencias NO se guardan acá: salen de
     // las licencias (la injustificada la registra quien supervisa). La tardanza tampoco se guarda: se calcula al mirar,

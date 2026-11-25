@@ -11,6 +11,7 @@ import type { TimeEntry } from "@/domain/model";
 import { ENTRY_STATUS_LABELS } from "@/domain/model";
 import { classifyEntry } from "@/domain/overtime";
 import { useUser } from "@/session/SessionContext";
+import { AlertsCard } from "@/features/alerts/AlertsCard";
 import { Chip, Page, PageHeader } from "@/ui/Page";
 import { useAsync } from "@/ui/useAsync";
 
@@ -95,6 +96,8 @@ export default function HomeLive() {
       {[company.error, mine.error, isApprover ? pending.error : null].filter(Boolean).map((msg) => (
         <p key={msg} role="alert" className="rounded-lg bg-error/10 px-3 py-2 font-body-sm text-body-sm text-error">{msg}</p>
       ))}
+
+      <AlertsCard />
 
       <div className="grid grid-cols-2 gap-gutter lg:grid-cols-4">
         <Card label="Aprobadas" value={fmt(stats.approved)} tone="text-primary" hint="Horas confirmadas este mes" />

@@ -150,6 +150,8 @@ Los activa el Configurador (consola, pestaña **Configurador**). Todo lo que gua
 | Permiso de los supervisores para ver sueldos de su equipo | `settings/features.supervisorsSeePay` | Sueldos en el legajo |
 | Modo de trabajo (por proyectos o por asistencia) | `settings/features.workMode` | — (Configurador) |
 | Marca de presencia de cada persona y día | `attendance/{persona}_{AAAA-MM-DD}` | Modo por asistencia |
+| Vencimientos (seguro, prueba, pasantía...) | `expirations/{id}` | — |
+| % de superposición de vacaciones que avisa | `settings/main.vacationOverlapPct` | — |
 | Tolerancia de llegada en minutos | `settings/main.lateToleranceMin` | Modo por asistencia |
 | Cómo se factura cada proyecto: por hora (tarifa general + tarifas por persona), precio cerrado (valor total + horas estimadas) o interno | `project_rates/{código}` | Facturación por proyecto |
 | Cargas patronales y horas del mes | `settings/costing` | Rendimiento |
@@ -183,6 +185,23 @@ Cada detalle guarda una copia de los datos de la persona (nombre, CUIL, legajo, 
 ### Recibo en PDF
 
 El detalle se imprime con el botón "Imprimir / guardar como PDF" del navegador (se oculta todo lo demás y sale en blanco y negro). No hay un generador de PDF propio: es una decisión para no mantener otro motor de documentos.
+
+## Avisos y vencimientos
+
+La **campanita** del encabezado (con la cantidad de avisos, y en rojo si hay urgentes) y una tarjeta **Avisos** en el Inicio muestran lo que conviene saber antes de que pase. Se calculan al abrir la app a partir de los datos: no se guardan y desaparecen solos cuando la fecha pasa. Por mail no avisa (eso necesita Blaze).
+
+| Aviso | Cuándo | Quién lo ve |
+|---|---|---|
+| Vacaciones que empiezan | aprobadas, en los próximos 30 días (atención si es en una semana) | la persona, su supervisor, el administrador |
+| Licencia que termina | en curso, termina en 7 días o menos: avisa cuándo se reincorpora | ídem |
+| Próxima incorporación | fecha de ingreso (ficha) dentro de los próximos 30 días | supervisor y administrador |
+| Vencimiento | seguro, período de prueba, pasantía, plazo fijo u otro, dentro de 30 días (urgente si falta una semana o ya venció) | supervisor de la persona y administrador |
+| Superposición de vacaciones | muchas personas del mismo equipo de vacaciones a la vez en los próximos 60 días (cuentan también las pedidas sin aprobar) | supervisor y administrador |
+| Vacaciones sin pedir | desde noviembre, quienes tienen 7 días o más sin pedir | supervisor y administrador |
+
+- **Vencimientos:** el administrador los carga en la **ficha** de cada persona (sección Vencimientos): tipo, fecha y una nota. Los lee también el supervisor de la persona, pero no ella. Se editan y se borran cuando se resuelven.
+- **Superposición:** el porcentaje del equipo que dispara el aviso (40 % por defecto) se cambia en *Configuración → Jornada* (sección Avisos). Solo se calcula en equipos de 3 personas o más, y hace falta que sean al menos 2.
+- **Saldo de vacaciones:** en *Mis licencias* cada persona ve cuántos días le corresponden, cuántos tomó y cuántos le quedan. Es una **estimación** según la Ley de Contrato de Trabajo (14, 21, 28 o 35 días corridos según la antigüedad al 31/12; proporcional el año de ingreso) y necesita la fecha de ingreso de la ficha. Muchos convenios dan más días: el contador confirma.
 
 ## Cargar horas y licencias por otra persona
 

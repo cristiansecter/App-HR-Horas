@@ -5,6 +5,8 @@ import { countLeaveDays, InvalidLeaveError, formatLeaveDays, rangesOverlap } fro
 import { LEAVE_STATUS_LABELS, LEAVE_TYPE_LABELS, REQUESTABLE_LEAVE_TYPES, type LeaveRequest, type LeaveType } from "@/domain/model";
 import { withCode } from "@/services/errors";
 import { cancelLeave, createLeaveRequest, LEAVES_CHANGED, listMyLeaves } from "@/services/leaves";
+import { vacationBalance } from "@/domain/vacations";
+import { listUsers } from "@/services/company";
 import { attachCertificate } from "@/services/openDocument";
 import { FileError, prepareFile, type PreparedFile } from "@/services/files";
 import { useUser } from "@/session/SessionContext";
@@ -23,6 +25,8 @@ export default function MyLeaveLive() {
   const { notify } = useToast();
   const { data, loading, error } = useAsync(() => listMyLeaves(user.uid), [user.uid], [LEAVES_CHANGED]);
   const schedule = user.workSchedule ?? company.defaultSchedule;
+  // Saldo de vacaciones (estimado): hace falta la fecha de ingreso de la ficha.
+  const me = useAsync(async () => (await listUsers()).find((u) => u.uid === user.uid) ?? null, [user.uid]);
 
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<LeaveType>("vacation");
@@ -100,6 +104,7 @@ export default function MyLeaveLive() {
 
   const list = data ?? [];
   const approvedVacation = list.filter((l) => l.status === "approved" && l.type === "vacation").reduce((s, l) => s + l.daysCount, 0);
+  const balance = me.data?.hireDate ? vacationBalance(me.data.hireDate, Number(dateInBuenosAires(new Date()).slice(0, 4)), list) : null;
 
   return (
     <Page>
@@ -131,6 +136,17 @@ export default function MyLeaveLive() {
           </div>
         ))}
       </div>
+
+      {balance ? (
+        <section aria-label="Saldo de vacaciones" className="rounded-xl bg-surface-container-low p-space-lg shadow-md">
+          <h2 className="font-headline-sm text-headline-sm font-semibold text-on-surface">Tus vacaciones {balance.year}</h2>
+          <p className="mt-1 font-body-md text-body-md text-on-surface">
+            Te corresponden <strong className="tabular-nums">{balance.entitled}</strong> días corridos (estimado){balance.prorated ? ", proporcional a lo que trabajaste este año" : ""}. Tomaste o tenés aprobados <strong className="tabular-nums">{balance.taken}</strong>
+            {balance.pending > 0 ? <>, pediste <strong className="tabular-nums">{balance.pending}</strong> más que esperan aprobación</> : null} y te quedan <strong className="tabular-nums">{balance.remaining}</strong>.
+          </p>
+          <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">Es una estimación según la ley y tu fecha de ingreso; tu convenio puede darte más días. Confirmalo con la empresa.</p>
+        </section>
+      ) : null}
 
       <div className="rounded-xl bg-surface-container-low p-space-md shadow-sm">
         <div className="overflow-x-auto">

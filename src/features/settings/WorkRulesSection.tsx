@@ -40,6 +40,7 @@ export default function WorkRulesSection() {
   // Por asistencia no hay horas extra ni proyectos: solo se configura la jornada y la tolerancia de llegada.
   const attendance = company.features.workMode === "attendance";
   const [tolerance, setTolerance] = useState(String(company.lateToleranceMin));
+  const [overlapPct, setOverlapPct] = useState(String(company.vacationOverlapPct));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,8 +58,10 @@ export default function WorkRulesSection() {
     if (!Number.isInteger(days) || days < 1 || days > 60) out.push("La ventana de edición va de 1 a 60 días.");
     out.push(...scheduleProblems(schedule));
     if (attendance && !isValidTolerance(Number(tolerance))) out.push("La tolerancia de llegada va de 0 a 120 minutos.");
+    const pct = Number(overlapPct);
+    if (!Number.isInteger(pct) || pct < 10 || pct > 100) out.push("El aviso de superposición de vacaciones va de 10 a 100 %.");
     return out;
-  }, [tiers, rules, onCall, windowDays, schedule, attendance, tolerance]);
+  }, [tiers, rules, onCall, windowDays, schedule, attendance, tolerance, overlapPct]);
 
   const setTier = (id: string, patch: Partial<Tier>) => setTiers((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   const setRule = (index: number, patch: Partial<OvertimeRule>) => setRules((rs) => rs.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -94,6 +97,7 @@ export default function WorkRulesSection() {
         editWindowDays: Number(windowDays),
         projectAccess: assignedOnly ? "assigned" : "open",
         lateToleranceMin: attendance ? Number(tolerance) : company.lateToleranceMin,
+        vacationOverlapPct: Number(overlapPct),
       });
       company.reload();
       notify("Guardaste las reglas. Se aplican a lo que se apruebe de ahora en más.");
@@ -115,6 +119,16 @@ export default function WorkRulesSection() {
         <h2 className={h2}>Jornada general de la empresa</h2>
         <p className={hint}>La usan todas las personas que no tienen una jornada propia en su ficha.</p>
         <ScheduleEditor value={schedule} onChange={setSchedule} />
+      </section>
+
+      <section className={card}>
+        <h2 className={h2}>Avisos</h2>
+        <p className={hint}>El sistema avisa vacaciones próximas, licencias que terminan, incorporaciones y vencimientos. Además avisa cuando muchas personas del mismo equipo coinciden de vacaciones.</p>
+        <label className="block font-label-lg text-label-lg text-on-surface">
+          Avisar superposición de vacaciones desde (% del equipo)
+          <input type="number" min={10} max={100} aria-label="Porcentaje de superposición de vacaciones" value={overlapPct} onChange={(e) => setOverlapPct(e.target.value)} className={`mt-1.5 max-w-40 ${field}`} />
+          <span className="mt-1 block font-body-sm text-body-sm font-normal text-on-surface-variant">Por ejemplo, con 40 % en un equipo de 5 se avisa cuando 2 están de vacaciones a la vez. Solo se calcula en equipos de 3 personas o más.</span>
+        </label>
       </section>
 
       {attendance ? (

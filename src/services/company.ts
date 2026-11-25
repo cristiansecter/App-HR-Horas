@@ -1,4 +1,5 @@
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
+import { DEFAULT_OVERLAP_PCT } from "@/domain/alerts";
 import { DEFAULT_LATE_TOLERANCE_MIN, isValidTolerance } from "@/domain/attendance";
 import { normalizeFeatures, type Features } from "@/domain/features";
 import type { HolidayRecord, Project, UserProfile, UserSummary } from "@/domain/model";
@@ -16,6 +17,8 @@ export interface CompanyData {
   projectAccess: "open" | "assigned";
   /** Minutos de tolerancia en la hora de llegada antes de contar una tardanza (modo por asistencia). */
   lateToleranceMin: number;
+  /** % del equipo de vacaciones a la vez a partir del cual se avisa la superposición. */
+  vacationOverlapPct: number;
   features: Features;
   companyName?: string;
   logoUrl?: string;
@@ -35,6 +38,7 @@ interface SettingsDoc {
   editWindowDays?: number;
   projectAccess?: "open" | "assigned";
   lateToleranceMin?: number;
+  vacationOverlapPct?: number;
 }
 
 export async function loadCompany(): Promise<CompanyData> {
@@ -61,6 +65,7 @@ export async function loadCompany(): Promise<CompanyData> {
     defaultSchedule: settings.defaultSchedule ?? defaultWorkSchedule(),
     editWindowDays: settings.editWindowDays ?? 7,
     projectAccess: settings.projectAccess === "open" ? "open" : "assigned",
+    vacationOverlapPct: Number.isInteger(settings.vacationOverlapPct) && (settings.vacationOverlapPct as number) >= 10 && (settings.vacationOverlapPct as number) <= 100 ? (settings.vacationOverlapPct as number) : DEFAULT_OVERLAP_PCT,
     lateToleranceMin: isValidTolerance(settings.lateToleranceMin as number) ? (settings.lateToleranceMin as number) : DEFAULT_LATE_TOLERANCE_MIN,
     features: normalizeFeatures(featuresSnap.exists() ? featuresSnap.data() : undefined),
     companyName: settings.companyName,
