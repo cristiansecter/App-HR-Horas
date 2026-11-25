@@ -3,7 +3,7 @@
  * Los define únicamente el Configurador (el administrador de la pyme no los ve ni los cambia).
  */
 
-export type ModuleId = "compensation" | "performance" | "payroll";
+export type ModuleId = "compensation" | "performance" | "payroll" | "projectBilling" | "allocation";
 
 /** Cómo paga la pyme: sueldo mensual por jornada completa, o por hora trabajada. */
 export type PayModel = "salary" | "hourly";
@@ -13,7 +13,7 @@ export interface Features {
   payModel: PayModel;
 }
 
-export const MODULE_IDS: readonly ModuleId[] = ["compensation", "performance", "payroll"];
+export const MODULE_IDS: readonly ModuleId[] = ["compensation", "performance", "payroll", "projectBilling", "allocation"];
 
 export interface ModuleInfo {
   label: string;
@@ -33,11 +33,33 @@ export const MODULE_INFO: Record<ModuleId, ModuleInfo> = {
     description: "Vista de costos contra facturación por proyecto y por mes: tarifa de cobro por hora de cada proyecto, costo de cada persona y margen.",
     requires: ["compensation"],
   },
+  projectBilling: {
+    label: "Facturación por proyecto",
+    description: "En Rendimiento, cada proyecto elige cómo se factura: por hora (con tarifa general y una distinta por persona), a precio cerrado (valor total y horas estimadas, repartido mes a mes según las horas trabajadas) o interno. Calcula ingreso y margen. Apagada, Rendimiento muestra solo costos. Para consultoras y empresas que facturan por proyecto.",
+    requires: ["performance"],
+  },
+  allocation: {
+    label: "Asignación por porcentaje y proyección",
+    description: "Cada asignación de una persona a un proyecto puede ser parcial (porcentaje) o full time, y el administrador y los supervisores reparten las horas de cada proyecto entre su gente en la vista Proyección, comparadas con lo realmente trabajado. Pensada para consultoras.",
+    requires: [],
+  },
   payroll: {
     label: "Seguimiento de liquidaciones",
     description: "Anotación y seguimiento digital de las liquidaciones del mes, con las novedades cargadas desde las horas aprobadas, detalle para imprimir, parámetros editables, cierre de período y vista propia para cada persona. No es una herramienta de liquidación legal ni reemplaza el trabajo del contador.",
     requires: ["compensation"],
   },
+};
+
+/** Atajos de la consola: "consultoría" prende lo que usa una empresa que factura por proyecto; "producción" lo apaga. */
+export const applyPreset = (features: Features, preset: "consultancy" | "production"): Features => {
+  if (preset === "consultancy") {
+    let f = features;
+    for (const id of ["projectBilling", "allocation"] as const) f = toggleModule(f, id, true);
+    return f;
+  }
+  let f = features;
+  for (const id of ["projectBilling", "allocation"] as const) f = toggleModule(f, id, false);
+  return f;
 };
 
 export const PAY_MODEL_LABELS: Record<PayModel, string> = {
@@ -51,7 +73,7 @@ export const PAY_MODEL_HINTS: Record<PayModel, string> = {
 };
 
 export const DEFAULT_FEATURES: Features = {
-  modules: { compensation: false, performance: false, payroll: false },
+  modules: { compensation: false, performance: false, payroll: false, projectBilling: false, allocation: false },
   payModel: "salary",
 };
 
@@ -80,8 +102,17 @@ export const featureProblems = (features: Features): string[] =>
  * al apagar uno se apagan los que dependen de él.
  */
 export const toggleModule = (features: Features, id: ModuleId, on: boolean): Features => {
-  const modules = { ...features.modules, [id]: on };
-  if (on) for (const r of MODULE_INFO[id].requires) modules[r] = true;
-  else for (const other of MODULE_IDS) if (MODULE_INFO[other].requires.includes(id)) modules[other] = false;
+  const modules = { ...features.modules };
+  // Prender arrastra los requisitos (y los requisitos de los requisitos); apagar apaga todo lo que dependa, directa o indirectamente.
+  const turnOn = (m: ModuleId) => {
+    modules[m] = true;
+    for (const r of MODULE_INFO[m].requires) turnOn(r);
+  };
+  const turnOff = (m: ModuleId) => {
+    modules[m] = false;
+    for (const other of MODULE_IDS) if (MODULE_INFO[other].requires.includes(m) && modules[other]) turnOff(other);
+  };
+  if (on) turnOn(id);
+  else turnOff(id);
   return { ...features, modules };
 };

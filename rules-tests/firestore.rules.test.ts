@@ -183,6 +183,13 @@ describe("módulos activables (solo el Configurador)", () => {
     await assertFails(setDoc(doc(cfg(), "settings/features"), features({ modules: { compensation: false, performance: true, payroll: false } })));
     await assertFails(setDoc(doc(cfg(), "settings/features"), features({ modules: { compensation: false, performance: false, payroll: true } })));
   });
+  it("la facturación por proyecto exige Rendimiento; la asignación por porcentaje no depende de nada", async () => {
+    await assertFails(setDoc(doc(cfg(), "settings/features"), features({ modules: { compensation: true, performance: false, projectBilling: true } })));
+    await assertSucceeds(setDoc(doc(cfg(), "settings/features"), features({ modules: { compensation: true, performance: true, projectBilling: true, allocation: true } })));
+    await assertSucceeds(setDoc(doc(cfg(), "settings/features"), features({ modules: { compensation: false, allocation: true } })));
+    await assertFails(setDoc(doc(cfg(), "settings/features"), features({ modules: { compensation: true, allocation: "si" } })));
+    await assertFails(setDoc(doc(asRole("ana", "admin"), "settings/features"), features({ modules: { compensation: true, allocation: true } })));
+  });
   it("rechaza formas inválidas: modelo de pago desconocido, módulos de más, campos extra", async () => {
     await assertFails(setDoc(doc(cfg(), "settings/features"), features({ payModel: "semanal" })));
     await assertFails(setDoc(doc(cfg(), "settings/features"), features({ modules: { compensation: true, magia: true } })));

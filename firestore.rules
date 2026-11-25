@@ -39,14 +39,17 @@ service cloud.firestore {
     function validFeatures(d) {
       return d.keys().hasOnly(['modules', 'payModel', 'updatedAt', 'updatedBy'])
         && d.modules is map
-        && d.modules.keys().hasOnly(['compensation', 'performance', 'payroll'])
+        && d.modules.keys().hasOnly(['compensation', 'performance', 'payroll', 'projectBilling', 'allocation'])
         && d.modules.get('compensation', false) is bool
         && d.modules.get('performance', false) is bool
         && d.modules.get('payroll', false) is bool
+        && d.modules.get('projectBilling', false) is bool
+        && d.modules.get('allocation', false) is bool
         && d.payModel in ['salary', 'hourly']
         // Un módulo no puede estar activo sin la base de la que depende.
         && (d.modules.get('performance', false) == false || d.modules.get('compensation', false) == true)
-        && (d.modules.get('payroll', false) == false || d.modules.get('compensation', false) == true);
+        && (d.modules.get('payroll', false) == false || d.modules.get('compensation', false) == true)
+        && (d.modules.get('projectBilling', false) == false || d.modules.get('performance', false) == true);
     }
     function isAdmin() {
       return hasRole() && role() == 'admin';

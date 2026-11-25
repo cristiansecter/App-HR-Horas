@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { horusBrand } from "@/config/horus.brand";
 import {
+  applyPreset,
   featureProblems,
   MODULE_IDS,
   MODULE_INFO,
@@ -136,6 +137,11 @@ export default function ConfiguratorConsole({ configurator }: { configurator: Co
 
             <section className={card} aria-label="Módulos activables">
               <h2 className="text-sm font-bold tracking-wide text-horus-cyan uppercase">Módulos activables</h2>
+              <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Atajos">
+                <span className="text-xs text-navy-300">Atajos:</span>
+                <button type="button" onClick={() => setDraft(applyPreset(draft, "consultancy"))} className="rounded-lg border border-navy-500 px-3 py-1.5 text-xs font-semibold text-navy-100 hover:border-horus-cyan hover:text-white">Consultoría (factura por proyecto)</button>
+                <button type="button" onClick={() => setDraft(applyPreset(draft, "production"))} className="rounded-lg border border-navy-500 px-3 py-1.5 text-xs font-semibold text-navy-100 hover:border-horus-cyan hover:text-white">Fábrica o producción por jornada</button>
+              </div>
               <p className="mt-1 text-xs text-navy-300">Se activan cuando el cliente los contrata. Un módulo apagado no tiene pantallas y sus datos quedan bloqueados en la base.</p>
               <ul className="mt-4 divide-y divide-navy-700/60">
                 {MODULE_IDS.map((id) => {

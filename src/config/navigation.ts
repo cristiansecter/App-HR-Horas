@@ -10,6 +10,7 @@ export type NavId =
   | "approvals"
   | "directory"
   | "assignments"
+  | "projection"
   | "projects"
   | "reports"
   | "performance"
@@ -42,6 +43,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: "team", label: "Calendario del equipo", path: "/equipo", roles: ALL, icon: "calendar_month", group: "main" },
   { id: "approvals", label: "Aprobaciones", path: "/aprobaciones", roles: ["supervisor", "admin"], icon: "fact_check", group: "management" },
   { id: "assignments", label: "Asignar proyectos", path: "/asignaciones", roles: ["supervisor", "admin"], icon: "assignment_ind", group: "management" },
+  { id: "projection", label: "Proyección", path: "/proyeccion", roles: ["supervisor", "admin"], icon: "timeline", group: "management", module: "allocation" },
   { id: "directory", label: "Directorio", path: "/directorio", roles: ["admin"], icon: "groups", group: "management" },
   { id: "projects", label: "Proyectos", path: "/proyectos", roles: ["admin"], icon: "work", group: "management" },
   { id: "reports", label: "Reportes", path: "/reportes", roles: ["admin"], icon: "analytics", group: "management" },
