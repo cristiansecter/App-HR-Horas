@@ -66,3 +66,19 @@ describe("planilla para el contador", () => {
     expect(new TextDecoder().decode(csv as ArrayBuffer)).toContain("Romero, Camila");
   });
 });
+
+describe("CSV: fórmulas neutralizadas", () => {
+  it("un nombre o una observación que empieza con = + - @ no llega como fórmula", async () => {
+    const { neutralizeFormulasForCsv } = await import("./buildPayrollWorkbook");
+    const wb = buildPayrollWorkbook({
+      companyName: "Empresa", periodLabel: "p", generatedOn: "g", tiers: [],
+      summary: [{ employeeNumber: "1", fullName: "=HYPERLINK(\"http://x\")", cuil: "", area: "+cmd", daysWorked: 1, normalHours: 8, tierHours: {}, onCallHours: 0, holidayHours: 0, leaveDays: { vacation: 0, sick: 0, study: 0, personal: 0, unjustified: 0 }, notes: "@algo" }],
+      detail: [], absences: [],
+    });
+    const csv = Buffer.from(await neutralizeFormulasForCsv(wb).csv.writeBuffer({ sheetName: "Resumen" })).toString();
+    expect(csv).toContain("'=HYPERLINK");
+    expect(csv).toContain("'+cmd");
+    expect(csv).toContain("'@algo");
+    expect(csv).not.toMatch(/(^|,)=HYPERLINK/m);
+  });
+});

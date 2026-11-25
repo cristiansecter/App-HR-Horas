@@ -86,9 +86,9 @@ Todas las pantallas leen y escriben en Firestore con una cuenta real. Solo la en
 | Configuración: nombre, logo y colores; jornada general; tramos y franjas de horas extra (validadas: cada tipo de día cubierto las 24 h); guardia; ventana de edición; calendario de feriados | Real. Los cambios rigen hacia adelante: lo ya aprobado conserva sus horas |
 | Sueldos en el legajo (módulo activable) | Real: sueldo mensual o valor hora según el modelo de pago, con historial de vigencias (quién y cuándo). Solo lo lee el administrador y solo con el módulo activo; ni el supervisor, ni la propia persona, ni el Configurador lo ven |
 | Rendimiento (módulo activable): costos contra facturación por proyecto, por persona y por mes | Real: tarifa de cobro por hora y marca "facturable" en cada proyecto (los internos tienen costo sin ingreso); costo con el sueldo vigente en la fecha de cada registro, el recargo de las horas extra y un % de cargas configurable. Solo administrador y con el módulo activo |
-| Liquidación de sueldos (módulo activable): liquidación asistida del mes, recibo para imprimir o guardar como PDF, parámetros y conceptos editables, exportación CSV y cierre de período | Real: las novedades (horas normales y extra por tramo, inasistencias injustificadas, vacaciones) salen solas de las horas y licencias aprobadas; el resto se carga a mano. Solo administrador y con el módulo activo |
+| Seguimiento de liquidaciones (módulo activable): anotación del mes, detalle para imprimir o guardar como PDF, publicación para que cada persona vea el suyo, parámetros y conceptos editables, exportación CSV y cierre de período | Real: las novedades (horas normales y extra por tramo, inasistencias injustificadas, vacaciones) salen solas de las horas y licencias aprobadas; el resto se carga a mano. Solo administrador y con el módulo activo |
 | Reportes: planilla del mes con horas aprobadas, avisos de lo que falta y descarga en Excel/CSV | Real: el resumen y el detalle suman lo mismo; lo no aprobado no entra y se avisa.  |
-| Reglas de seguridad de Firestore | Reales y probadas (94 pruebas de reglas y 179 de lógica) |
+| Reglas de seguridad de Firestore | Reales y probadas (99 pruebas de reglas y 184 de lógica) |
 | Alta de usuarios, cambio de rol, configuración inicial y feriados | Real, por script |
 | Mi semana: grilla de lunes a domingo con feriados y licencias, carga por día, corrección y envío de borradores | Real |
 
@@ -112,24 +112,18 @@ Poner a alguien como **inactivo** en su ficha le corta el acceso de inmediato: l
 
 ## Consola del Configurador, módulos y modelo de pago
 
-El Configurador entra por la pestaña **Configurador** de la pantalla de entrada (en el build de demo es la tercera pestaña; en un build normal es el enlace "Acceso del Configurador" debajo del formulario). Más adelante se puede separar en otro enlace o esconder: hoy es solo una pestaña.
+El Configurador entra por la pestaña **Configurador** de la pantalla de entrada (en el build de demo es la tercera pestaña; en un build normal es el enlace "Acceso del Configurador" debajo del formulario) y **solo con su cuenta de Google**: no hay usuario ni contraseña para esta consola. El único correo autorizado está en `src/config/configurator.ts` y en `isConfigurator()` de `firestore.rules`; las reglas exigen ese correo exacto, verificado, en una sesión iniciada con Google.
 
 Qué hace la consola:
 
-- **Módulos activables**: Sueldos en el legajo, Rendimiento y Liquidación de sueldos. Rendimiento y Liquidación necesitan Sueldos en el legajo (al prender uno se prende la base; al apagar la base se apagan los que dependen).
+- **Módulos activables**: Sueldos en el legajo, Rendimiento y Seguimiento de liquidaciones. Rendimiento y Seguimiento necesitan Sueldos en el legajo (al prender uno se prende la base; al apagar la base se apagan los que dependen).
 - **Modelo de pago** de la pyme: *por jornada* (sueldo mensual) o *por hora*.
 
-Lo que se guarda va en `settings/features`. **Solo lo escribe el Configurador**: las reglas de Firestore lo exigen (claim `configurator`) y el administrador de la pyme tiene prohibido escribirlo, aunque lo intente desde la consola del navegador. Un módulo apagado no tiene pantallas y sus datos quedan bloqueados en la base. El administrador de la pyme no ve esta consola ni la lista de módulos: solo ve las pantallas de los que están activos.
+Lo que se guarda va en `settings/features`. **Solo lo escribe el Configurador**: el administrador de la pyme tiene prohibido escribirlo, aunque lo intente desde la consola del navegador. Un módulo apagado no tiene pantallas y sus datos quedan bloqueados en la base. El administrador de la pyme no ve esta consola ni la lista de módulos: solo ve las pantallas de los que están activos.
 
-Crear la cuenta del Configurador (una vez por instancia):
+**No uses el correo del Configurador como usuario de una empresa.** Al entrar con Google, Firebase puede vincular las dos cuentas y descartar la contraseña de la cuenta común. Los scripts de alta lo rechazan.
 
-```bash
-npm run create-configurator -- --email vos@tuproveedor.com --key ruta/clave.json
-```
-
-La cuenta tiene el claim `configurator` y **ningún rol de la pyme**: entra solo por la pestaña Configurador, no ve datos de la empresa (solo el nombre) y no puede entrar como administrador.
-
-## Módulos: Sueldos, Rendimiento y Liquidación
+## Módulos: Sueldos, Rendimiento y Seguimiento de liquidaciones
 
 Los activa el Configurador (consola, pestaña **Configurador**). Todo lo que guardan está bloqueado por las reglas de Firestore mientras el módulo esté apagado, y lo lee **solo el administrador**: nunca el supervisor, ni la propia persona, ni el Configurador.
 
@@ -138,25 +132,32 @@ Los activa el Configurador (consola, pestaña **Configurador**). Todo lo que gua
 | Sueldo o valor hora de cada persona, con historial de vigencias, y convenio / obra social / hijos | `employee_pay/{uid}` | Sueldos en el legajo |
 | Tarifa de cobro por hora y marca "facturable" de cada proyecto | `project_rates/{código}` | Rendimiento |
 | Cargas patronales y horas del mes | `settings/costing` | Rendimiento |
-| Parámetros y conceptos de la liquidación | `settings/payroll` | Liquidación |
-| Un recibo por persona y mes | `payslips/{uid}_{AAAA-MM}` | Liquidación |
-| Período cerrado | `payroll_periods/{AAAA-MM}` | Liquidación |
+| Parámetros y conceptos del seguimiento | `settings/payroll` | Seguimiento de liquidaciones |
+| Un detalle por persona y mes (con datos congelados y estado de publicación) | `payslips/{uid}_{AAAA-MM}` | Seguimiento de liquidaciones |
+| Período cerrado | `payroll_periods/{AAAA-MM}` | Seguimiento de liquidaciones |
 
 **Modelo de pago.** *Por jornada*: el legajo guarda un sueldo mensual; el costo por hora es sueldo ÷ horas del mes. *Por hora*: el legajo guarda un valor hora y el sueldo del mes sale de multiplicarlo por las horas normales aprobadas. Las horas extra se valorizan con el recargo de cada tramo en ambos modelos.
 
 **Cierre de período.** Con el mes cerrado, las reglas rechazan crear, cambiar o borrar recibos de ese mes. El administrador puede reabrirlo (queda registrado quién y cuándo).
 
-### Lo que la liquidación NO es
+### Cómo se presenta: anotación y seguimiento, no liquidación legal
 
-Es una liquidación **asistida**, no una liquidación legal. El motor viene de LiquiSu y se corrigió el SAC (50 % de la mejor remuneración del semestre, proporcional a los meses) y el divisor de las inasistencias (parámetro). Pero:
+El módulo se ofrece como una **forma de anotación y seguimiento digital**: para que la empresa lleve y vea en la plataforma los números de cada mes. **No es una herramienta de liquidación legal y no reemplaza el trabajo del contador.** Cada detalle impreso lo aclara al pie y la pantalla lo dice en el encabezado.
+
+Alcance y límites:
 
 - **Ganancias es simplificado**: alícuota única sobre el excedente del mínimo no imponible, no la escala progresiva anual.
-- Cada convenio puede pedir reglas propias (base del valor hora, adicionales, topes): los divisores y las opciones son parámetros, pero hay que validarlos con el contador.
-- Las contribuciones patronales son un porcentaje informativo: no van en el recibo.
+- Cada convenio puede pedir reglas propias (base del valor hora, adicionales, topes): los divisores y las opciones son parámetros editables, pero conviene validarlos con el contador de cada cliente.
+- El SAC usa el 50 % de la mejor remuneración del semestre, proporcional a los meses; el divisor de las inasistencias es un parámetro.
+- Las contribuciones patronales son un porcentaje informativo: no van en el detalle de la persona.
 - Se usa el sueldo vigente al **final** del mes; un aumento a mitad de mes no se prorratea.
 
-Cada recibo lo dice al pie. Antes de ofrecerlo a un cliente conviene que un contador valide los parámetros por defecto con su convenio.
+### Mis liquidaciones (cada persona ve la suya)
+
+El administrador **publica** las liquidaciones de un mes cuando están revisadas y la propia persona ve solo la suya en *Mis liquidaciones*. Las reglas impiden pedir las no publicadas o las de otras personas. Si un detalle se vuelve a guardar con cambios, queda sin publicar hasta que se publique otra vez. Publicar o retirar la publicación se puede hacer con el período cerrado.
+
+Cada detalle guarda una copia de los datos de la persona (nombre, CUIL, legajo, puesto, ingreso, convenio): si después cambia su ficha, el detalle de ese mes no cambia.
 
 ### Recibo en PDF
 
-El recibo se imprime con el botón "Imprimir / guardar como PDF" del navegador (se oculta todo lo demás y sale en blanco y negro). No hay un generador de PDF propio: es una decisión para no mantener otro motor de documentos.
+El detalle se imprime con el botón "Imprimir / guardar como PDF" del navegador (se oculta todo lo demás y sale en blanco y negro). No hay un generador de PDF propio: es una decisión para no mantener otro motor de documentos.

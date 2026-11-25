@@ -1,31 +1,44 @@
 # Horus
 
-Gestión de horas, licencias y pre-liquidación para pymes. Marca blanca: cada cliente tiene su propia instancia.
+Gestión de horas, licencias y datos del equipo para pymes argentinas, con pre-liquidación para el contador. Marca blanca: **cada cliente tiene su propio proyecto de Firebase y su propio sitio**.
+
+## Qué incluye
+
+- **Horas:** carga manual (fecha, desde, hasta), clasificación automática en normales y extra según la jornada y las reglas de la empresa, aprobación por supervisor o administrador, y semana en grilla.
+- **Licencias y ausencias:** pedidos, aprobación, ausencias injustificadas y calendario del equipo (sin mostrar el motivo a quien no corresponde).
+- **Directorio y fichas** con datos sensibles separados, jornada propia y bajas.
+- **Reportes:** planilla mensual en Excel/CSV lista para el contador.
+- **Configuración:** marca, jornada, reglas de horas extra y feriados.
+- **Módulos activables** (los activa el Configurador, el administrador de la empresa no los ve): *Sueldos en el legajo*, *Rendimiento* (costos contra facturación) y *Seguimiento de liquidaciones* (anotación y seguimiento digital, no liquidación legal).
 
 ## Desarrollo
 
 ```bash
 npm install
-npm run dev          # http://localhost:3000, con la entrada por rol de la demo si se corre con --mode demo
-npm test             # tests de la lógica (horas extra, feriados, planilla)
-npm run lint         # chequeo de tipos
-npm run test:rules   # reglas de Firestore contra el emulador (no toca datos reales)
+npm run dev            # http://localhost:3000 (con --mode demo muestra la entrada por rol)
+npm test               # lógica: horas extra, feriados, licencias, planilla, liquidación...
+npm run test:rules     # reglas de Firestore contra el emulador (no toca datos reales)
+npm run lint           # chequeo de tipos
 npm run build
 ```
 
-- La marca del cliente (nombre, logo y colores) se cambia en `src/config/tenant.config.ts`.
-- Las pantallas y rutas permitidas por rol están en `src/config/navigation.ts`.
-- La lógica de negocio (horas extra, feriados, planilla de Excel) está en `src/domain/`, sin dependencias de pantalla ni de Firebase.
+- `src/domain/`: lógica de negocio pura (horas extra, feriados, licencias, planilla, costos, liquidación), sin pantalla ni Firebase.
+- `src/services/`: **único lugar que habla con Firebase.**
+- `src/features/`: pantallas por tema. `src/config/`: marca, navegación y constantes de seguridad.
+- `firestore.rules` + `rules-tests/`: las reglas y sus pruebas. Las reglas son la barrera real de permisos.
+- `scripts/`: alta de la instancia, de usuarios y cambios de rol (Admin SDK, con clave local).
+
+## Documentación
+
+- [`docs/instalar-cliente.md`](docs/instalar-cliente.md): instalar una instancia nueva, paso a paso.
+- [`docs/configurador.md`](docs/configurador.md): operación del día a día, módulos, modelo de pago y límites de cada pieza.
+- [`docs/seguridad.md`](docs/seguridad.md): revisión de seguridad, hallazgos y pendientes de endurecimiento.
 
 ## Instancia de demostración
 
-`npm run build:demo` genera el build con `VITE_DEMO_MODE=true` (archivo `.env.demo`): muestra la entrada por rol y usa datos de ejemplo que no se conservan. Un build sin esa variable no incluye la entrada de demostración.
-
-Para publicarla (Hosting y reglas de Firestore, proyecto `demo` de `.firebaserc`):
+`npm run build:demo` genera el build con `VITE_DEMO_MODE=true`: muestra la entrada por rol con datos de ejemplo que no se conservan, la entrada con cuenta real y la del Configurador. Para publicarla (Hosting, reglas e índices, proyecto `demo` de `.firebaserc`):
 
 ```bash
 npx firebase-tools login
 npm run deploy:demo
 ```
-
-La entrada con cuenta (email y contraseña) funciona con Firebase de verdad. Alta de usuarios, roles, reglas y puesta en marcha de una instancia: ver [`docs/configurador.md`](docs/configurador.md).

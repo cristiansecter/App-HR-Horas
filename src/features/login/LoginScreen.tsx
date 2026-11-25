@@ -62,7 +62,8 @@ const ROLE_CARDS: RoleCard[] = [
 /** La app siempre abre con la marca Horus. */
 export function LoginScreen() {
   const { signIn, signInWithPassword, signInConfigurator, authNotice } = useSession();
-  const [tab, setTab] = useState<Tab>(isDemoMode ? "demo" : "account");
+  // Si volvemos acá por un aviso (sesión cerrada por inactividad, cuenta sin acceso...), se muestra la pestaña donde se lee.
+  const [tab, setTab] = useState<Tab>(isDemoMode && !authNotice ? "demo" : "account");
   const [showPassword, setShowPassword] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

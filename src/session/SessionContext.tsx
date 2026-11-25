@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { IDLE_SIGN_OUT_MINUTES } from "@/config/security";
 import { isFirebaseConfigured } from "@/services/firebase";
 import { signInConfiguratorWithGoogle, signInWithPassword, signOutFromFirebase, subscribeToSession, type ConfiguratorSession, type SessionKind } from "@/services/auth";
 import type { SessionUser } from "@/domain/types";
+import { useIdleSignOut } from "./useIdleSignOut";
 
 interface SessionValue {
   user: SessionUser | null;
@@ -52,6 +54,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setAuthNotice(null);
     if (isFirebaseConfigured) void signOutFromFirebase().catch(() => undefined);
   }, []);
+
+  // Una sesión real (de una persona o del Configurador) se cierra sola tras un rato sin actividad. La demo no.
+  const signOutForInactivity = useCallback(() => {
+    setAuthNotice(`Cerramos tu sesión por inactividad (${IDLE_SIGN_OUT_MINUTES} minutos). Volvé a entrar para seguir.`);
+    void signOutFromFirebase().catch(() => undefined);
+  }, []);
+  useIdleSignOut(isFirebaseConfigured && (realUser !== null || configurator !== null), IDLE_SIGN_OUT_MINUTES, signOutForInactivity);
 
   const value = useMemo<SessionValue>(
     () => ({

@@ -170,3 +170,18 @@ export const buildPayrollWorkbook = (input: PayrollInput): ExcelJS.Workbook => {
 
   return wb;
 };
+
+/**
+ * Un texto que empieza con = + - @ lo toma Excel como fórmula al abrir un CSV (y puede ejecutar algo). Antes de exportar
+ * a CSV se le antepone un apóstrofo a esos textos. En el .xlsx no hace falta: los textos se guardan como texto.
+ */
+export const neutralizeFormulasForCsv = (wb: ExcelJS.Workbook): ExcelJS.Workbook => {
+  wb.eachSheet((sheet) =>
+    sheet.eachRow((row) =>
+      row.eachCell((cell) => {
+        if (typeof cell.value === "string" && /^[=+\-@\t\r]/.test(cell.value)) cell.value = `'${cell.value}`;
+      }),
+    ),
+  );
+  return wb;
+};

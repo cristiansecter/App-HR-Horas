@@ -3,7 +3,7 @@ import type { PayModel } from "../features";
 
 /**
  * Motor de cálculo de la liquidación (lado del empleado). Función pura: no toca la base ni la pantalla.
- * Portado de LiquiSu y corregido en tres puntos: el SAC usa el 50% de la mejor remuneración del semestre, el
+ * Motor de cálculo con tres correcciones respecto de una versión anterior: el SAC usa el 50% de la mejor remuneración del semestre, el
  * divisor de las inasistencias es un parámetro, y se agregan el modelo de pago por hora y las contribuciones patronales.
  *
  * ⚠ Es una herramienta de ANOTACIÓN Y SEGUIMIENTO, no de liquidación legal: el Impuesto a las Ganancias es una versión simplificada (alícuota única,
