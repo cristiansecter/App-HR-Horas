@@ -119,6 +119,8 @@ El Configurador entra por la pestaña **Configurador** de la pantalla de entrada
 Qué hace la consola:
 
 - **Módulos activables**: Sueldos en el legajo, Rendimiento, Seguimiento de liquidaciones, Facturación por proyecto y Dedicación y proyección. Rendimiento y Seguimiento necesitan Sueldos en el legajo; Facturación por proyecto necesita Rendimiento; Dedicación y proyección no necesita ninguno. Al prender uno se prende su base y al apagar la base se apagan los que dependen. Los atajos "Consultoría" y "Fábrica o producción por jornada" prenden o apagan el conjunto típico de cada rubro.
+- **Permisos**: *Los supervisores ven los sueldos de su equipo* (apagado por defecto; necesita Sueldos en el legajo, y se apaga solo si se apaga ese módulo). Con el permiso, cada supervisor tiene una pantalla de solo lectura "Sueldos del equipo" con el sueldo vigente y el historial de las personas que tiene a cargo. No ve a otros equipos, ni su propio sueldo, ni costos, ni liquidaciones, ni el Directorio. Las reglas de Firestore lo hacen cumplir (`settings/features.supervisorsSeePay`).
+- **Corregir sueldos**: en la ficha, cada vigencia tiene lápiz (corrige fecha y monto) y tachito (la borra, con confirmación). Solo el administrador; la carga original se conserva y queda anotado quién corrigió y cuándo. Rendimiento recalcula los costos con el valor corregido; los recibos ya publicados no cambian.
 - **Modelo de pago** de la pyme: *por jornada* (sueldo mensual) o *por hora*.
 
 Lo que se guarda va en `settings/features`. **Solo lo escribe el Configurador**: el administrador de la pyme tiene prohibido escribirlo, aunque lo intente desde la consola del navegador. Un módulo apagado no tiene pantallas y sus datos quedan bloqueados en la base. El administrador de la pyme no ve esta consola ni la lista de módulos: solo ve las pantallas de los que están activos.
@@ -145,6 +147,7 @@ Los activa el Configurador (consola, pestaña **Configurador**). Todo lo que gua
 | Dato | Dónde | Módulo |
 |---|---|---|
 | Sueldo o valor hora de cada persona, con historial de vigencias, y convenio / obra social / hijos | `employee_pay/{uid}` | Sueldos en el legajo |
+| Permiso de los supervisores para ver sueldos de su equipo | `settings/features.supervisorsSeePay` | Sueldos en el legajo |
 | Cómo se factura cada proyecto: por hora (tarifa general + tarifas por persona), precio cerrado (valor total + horas estimadas) o interno | `project_rates/{código}` | Facturación por proyecto |
 | Cargas patronales y horas del mes | `settings/costing` | Rendimiento |
 | Porcentaje de dedicación de cada asignación y horas proyectadas por proyecto, persona y mes | `assignments/*.allocationPct`, `projections/{proyecto}_{persona}_{mes}` | Dedicación y proyección |

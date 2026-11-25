@@ -164,6 +164,22 @@ export default function ConfiguratorConsole({ configurator }: { configurator: Co
               </ul>
             </section>
 
+            <section className={card} aria-label="Permisos">
+              <h2 className="text-sm font-bold tracking-wide text-horus-cyan uppercase">Permisos</h2>
+              <p className="mt-1 text-xs text-navy-300">Por defecto solo el administrador ve los sueldos. Acá se puede ampliar ese acceso.</p>
+              <div className="mt-4 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white">Los supervisores ven los sueldos de su equipo</p>
+                  <p className="mt-1 text-xs leading-relaxed text-navy-300">Solo lectura: cada supervisor ve el sueldo (o valor hora) y el historial de las personas que tiene a cargo, en una pantalla “Sueldos del equipo”. No los edita, no ve los de otros equipos ni los propios, y no ve costos ni liquidaciones.</p>
+                  <p className="mt-1.5 text-[11px] font-medium text-navy-400">Necesita: {MODULE_INFO.compensation.label}</p>
+                </div>
+                <label className={`flex shrink-0 items-center gap-2 text-xs font-semibold text-navy-200 ${draft.modules.compensation ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
+                  {draft.supervisorsSeePay ? "Activo" : "Apagado"}
+                  <input type="checkbox" role="switch" aria-label="Supervisores ven sueldos del equipo" disabled={!draft.modules.compensation} checked={draft.supervisorsSeePay} onChange={(e) => setDraft({ ...draft, supervisorsSeePay: e.target.checked })} className="size-5 accent-[var(--hz-primary)]" />
+                </label>
+              </div>
+            </section>
+
             {problems.length > 0 ? <ul role="alert" className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{problems.map((p) => <li key={p}>{p}</li>)}</ul> : null}
             {message ? <p role={message.ok ? "status" : "alert"} className={`rounded-xl border px-4 py-3 text-sm ${message.ok ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200" : "border-rose-400/30 bg-rose-500/10 text-rose-200"}`}>{message.text}</p> : null}
 

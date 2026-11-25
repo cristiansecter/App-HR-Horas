@@ -11,6 +11,11 @@ export type PayModel = "salary" | "hourly";
 export interface Features {
   modules: Record<ModuleId, boolean>;
   payModel: PayModel;
+  /**
+   * Permiso: los supervisores ven (solo lectura) el sueldo de las personas de su equipo.
+   * Por defecto apagado: sin esto, solo el administrador ve sueldos. Necesita el módulo "Sueldos en el legajo".
+   */
+  supervisorsSeePay: boolean;
 }
 
 export const MODULE_IDS: readonly ModuleId[] = ["compensation", "performance", "payroll", "projectBilling", "allocation"];
@@ -75,27 +80,31 @@ export const PAY_MODEL_HINTS: Record<PayModel, string> = {
 export const DEFAULT_FEATURES: Features = {
   modules: { compensation: false, performance: false, payroll: false, projectBilling: false, allocation: false },
   payModel: "salary",
+  supervisorsSeePay: false,
 };
 
 /** Lee lo guardado (que puede faltar o venir incompleto) y devuelve siempre un objeto completo y coherente. */
 export const normalizeFeatures = (raw: unknown): Features => {
-  const data = (raw ?? {}) as { modules?: Partial<Record<ModuleId, unknown>>; payModel?: unknown };
+  const data = (raw ?? {}) as { modules?: Partial<Record<ModuleId, unknown>>; payModel?: unknown; supervisorsSeePay?: unknown };
   const modules = { ...DEFAULT_FEATURES.modules };
   for (const id of MODULE_IDS) modules[id] = data.modules?.[id] === true;
   // Un módulo sin sus requisitos no se considera activo, aunque figure prendido en la base.
   for (const id of MODULE_IDS) {
     if (modules[id] && MODULE_INFO[id].requires.some((r) => !modules[r])) modules[id] = false;
   }
-  return { modules, payModel: data.payModel === "hourly" ? "hourly" : "salary" };
+  // El permiso de los supervisores no vale sin el módulo de sueldos, aunque figure prendido en la base.
+  return { modules, payModel: data.payModel === "hourly" ? "hourly" : "salary", supervisorsSeePay: data.supervisorsSeePay === true && modules.compensation };
 };
 
 /** Problemas de dependencias de una configuración (para mostrar antes de guardar). */
-export const featureProblems = (features: Features): string[] =>
-  MODULE_IDS.flatMap((id) =>
+export const featureProblems = (features: Features): string[] => [
+  ...MODULE_IDS.flatMap((id) =>
     features.modules[id]
       ? MODULE_INFO[id].requires.filter((r) => !features.modules[r]).map((r) => `“${MODULE_INFO[id].label}” necesita “${MODULE_INFO[r].label}”.`)
       : [],
-  );
+  ),
+  ...(features.supervisorsSeePay && !features.modules.compensation ? ["El permiso de sueldos para supervisores necesita “Sueldos en el legajo”."] : []),
+];
 
 /**
  * Prende o apaga un módulo. Al prender uno se prenden también sus requisitos;
@@ -114,5 +123,6 @@ export const toggleModule = (features: Features, id: ModuleId, on: boolean): Fea
   };
   if (on) turnOn(id);
   else turnOff(id);
-  return { ...features, modules };
+  // Sin el módulo de sueldos no hay sueldos que mostrar: el permiso de los supervisores se apaga con él.
+  return { ...features, modules, supervisorsSeePay: features.supervisorsSeePay && modules.compensation };
 };

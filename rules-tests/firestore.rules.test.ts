@@ -255,7 +255,7 @@ describe("sueldos en el legajo (módulo Sueldos)", () => {
     await assertSucceeds(getDoc(doc(admin, "employee_pay/emi")));
     await assertSucceeds(setDoc(doc(admin, "employee_pay/emi"), pay()));
   });
-  it("supervisor, empleado (aunque sea el dueño del dato) y Configurador no lo ven nunca", async () => {
+  it("por defecto (sin el permiso del Configurador) supervisor, empleado (aunque sea el dueño del dato) y Configurador no lo ven", async () => {
     await turnOn(true); await seedPay();
     await assertFails(getDoc(doc(asRole("sofia", "supervisor"), "employee_pay/emi")));
     await assertFails(getDoc(doc(asRole("emi", "employee"), "employee_pay/emi")));
@@ -270,6 +270,62 @@ describe("sueldos en el legajo (módulo Sueldos)", () => {
     await assertFails(setDoc(doc(admin, "employee_pay/emi"), pay("emi", { hijos: 99 })));
     await assertFails(setDoc(doc(admin, "employee_pay/emi"), pay("emi", { rates: "mucho" })));
     await assertFails(setDoc(doc(admin, "employee_pay/emi"), pay("emi", { sueldoOculto: 1 })));
+  });
+});
+
+describe("permiso: los supervisores ven los sueldos de su equipo (solo lectura)", () => {
+  const setup = (compensation: boolean, seePay: unknown) => env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, "settings/features"), { modules: { compensation, performance: false, payroll: false }, payModel: "salary", ...(seePay === undefined ? {} : { supervisorsSeePay: seePay }) });
+    for (const uid of ["emi", "olga", "sofia"]) await setDoc(doc(db, `employee_pay/${uid}`), { userId: uid, rates: [{ from: "2026-01-01", amount: 800000, setBy: "a@x", setAt: "2026-01-01T00:00:00Z" }], convenio: true, obraSocial: "", hijos: 0 });
+  });
+  const sup = () => asRole("sofia", "supervisor");
+
+  it("con el permiso activo el supervisor lee el sueldo de su equipo", async () => {
+    await setup(true, true);
+    await assertSucceeds(getDoc(doc(sup(), "employee_pay/emi")));
+    await assertSucceeds(getDocs(query(collection(sup(), "employee_pay"), where("userId", "in", ["emi", "eze"]))));
+  });
+  it("pero no el de otro equipo, ni el propio, ni puede pedir toda la colección", async () => {
+    await setup(true, true);
+    await assertFails(getDoc(doc(sup(), "employee_pay/olga")));
+    await assertFails(getDoc(doc(sup(), "employee_pay/sofia")));
+    await assertFails(getDocs(collection(sup(), "employee_pay")));
+  });
+  it("es solo lectura: no escribe ni borra", async () => {
+    await setup(true, true);
+    const data = { userId: "emi", rates: [], convenio: true, obraSocial: "", hijos: 0, updatedAt: serverTimestamp(), updatedBy: "s@x" };
+    await assertFails(setDoc(doc(sup(), "employee_pay/emi"), data));
+    await assertFails(updateDoc(doc(sup(), "employee_pay/emi"), { hijos: 2 }));
+    await assertFails(deleteDoc(doc(sup(), "employee_pay/emi")));
+  });
+  it("sin el permiso (apagado o ausente) no lee nada", async () => {
+    await setup(true, false);
+    await assertFails(getDoc(doc(sup(), "employee_pay/emi")));
+    await setup(true, undefined);
+    await assertFails(getDoc(doc(sup(), "employee_pay/emi")));
+  });
+  it("con el módulo de sueldos apagado el permiso no sirve", async () => {
+    await setup(false, true);
+    await assertFails(getDoc(doc(sup(), "employee_pay/emi")));
+  });
+  it("el empleado (ni el suyo ni el de otro) sigue sin verlo, aunque el permiso esté activo", async () => {
+    await setup(true, true);
+    await assertFails(getDoc(doc(asRole("emi", "employee"), "employee_pay/emi")));
+    await assertFails(getDoc(doc(asRole("eze", "employee"), "employee_pay/emi")));
+  });
+  it("el admin sigue leyendo y escribiendo como siempre", async () => {
+    await setup(true, true);
+    await assertSucceeds(getDoc(doc(asRole("ana", "admin"), "employee_pay/olga")));
+    await assertSucceeds(updateDoc(doc(asRole("ana", "admin"), "employee_pay/emi"), { hijos: 2 }));
+  });
+  it("solo el Configurador prende el permiso, y exige el módulo de sueldos y un booleano", async () => {
+    const f = (modules: Record<string, boolean>, seePay: unknown) => ({ modules, payModel: "salary", supervisorsSeePay: seePay, updatedAt: serverTimestamp(), updatedBy: CONFIGURATOR });
+    await assertSucceeds(setDoc(doc(configuratorDb(), "settings/features"), f({ compensation: true }, true)));
+    await assertSucceeds(setDoc(doc(configuratorDb(), "settings/features"), f({ compensation: false }, false)));
+    await assertFails(setDoc(doc(configuratorDb(), "settings/features"), f({ compensation: false }, true)));
+    await assertFails(setDoc(doc(configuratorDb(), "settings/features"), f({ compensation: true }, "si")));
+    await assertFails(setDoc(doc(asRole("ana", "admin"), "settings/features"), f({ compensation: true }, true)));
   });
 });
 

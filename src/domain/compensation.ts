@@ -12,6 +12,9 @@ export interface RateEntry {
   /** Quién la cargó (email) y cuándo (ISO): queda como constancia del cambio. */
   setBy: string;
   setAt: string;
+  /** Si se corrigió después: quién y cuándo. La constancia de carga original (`setBy`/`setAt`) no se pisa. */
+  editedBy?: string;
+  editedAt?: string;
 }
 
 /** Datos del legajo que necesita la liquidación (solo se piden si el módulo está activo). */
@@ -47,6 +50,21 @@ export const currentEntry = (rates: readonly RateEntry[], today: string): RateEn
 /** Agrega una vigencia. Si ya había una con la misma fecha, la reemplaza (corrección). Devuelve la lista ordenada. */
 export const addRate = (rates: readonly RateEntry[], entry: RateEntry): RateEntry[] =>
   [...rates.filter((r) => r.from !== entry.from), entry].sort(byFrom);
+
+/**
+ * Corrige una vigencia existente (fecha y/o monto), identificada por su fecha actual. Conserva quién y cuándo la cargó
+ * y deja constancia de la corrección. Si la fecha nueva coincide con otra vigencia, no se hace nada (devuelve `null`).
+ */
+export const replaceRate = (rates: readonly RateEntry[], originalFrom: string, change: { from: string; amount: number }, editedBy: string, editedAt: string): RateEntry[] | null => {
+  const original = rates.find((r) => r.from === originalFrom);
+  if (!original) return null;
+  if (change.from !== originalFrom && rates.some((r) => r.from === change.from)) return null;
+  const updated: RateEntry = { ...original, from: change.from, amount: change.amount, editedBy, editedAt };
+  return [...rates.filter((r) => r.from !== originalFrom), updated].sort(byFrom);
+};
+
+/** Quita una vigencia, identificada por su fecha. Lo demás del historial queda igual. */
+export const removeRate = (rates: readonly RateEntry[], from: string): RateEntry[] => rates.filter((r) => r.from !== from);
 
 export const MAX_RATE = 1_000_000_000;
 

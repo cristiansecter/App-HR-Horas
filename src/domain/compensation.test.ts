@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addRate, costPerHour, currentEntry, rateAt, rateProblems, type RateEntry } from "./compensation";
+import { addRate, costPerHour, currentEntry, rateAt, rateProblems, removeRate, replaceRate, type RateEntry } from "./compensation";
 
 const e = (from: string, amount: number): RateEntry => ({ from, amount, setBy: "a@x.example", setAt: "2026-01-01T00:00:00Z" });
 
@@ -67,5 +67,41 @@ describe("costPerHour", () => {
   });
   it("sin horas del mes no divide por cero", () => {
     expect(costPerHour("salary", 800000, 0)).toBe(0);
+  });
+});
+
+describe("replaceRate (corregir una vigencia)", () => {
+  const rates = [e("2026-01-01", 1000), e("2026-07-01", 1200)];
+  it("cambia el monto y deja constancia de quién y cuándo, sin pisar la carga original", () => {
+    const out = replaceRate(rates, "2026-07-01", { from: "2026-07-01", amount: 1300 }, "ana@x.example", "2026-11-25T10:00:00Z")!;
+    expect(out[1]).toEqual({ from: "2026-07-01", amount: 1300, setBy: "a@x.example", setAt: "2026-01-01T00:00:00Z", editedBy: "ana@x.example", editedAt: "2026-11-25T10:00:00Z" });
+    expect(out[0]).toEqual(rates[0]);
+  });
+  it("cambiar la fecha reordena el historial (una fecha cargada mal)", () => {
+    const out = replaceRate(rates, "2026-07-01", { from: "2025-12-01", amount: 1200 }, "ana@x.example", "t")!;
+    expect(out.map((r) => r.from)).toEqual(["2025-12-01", "2026-01-01"]);
+    expect(rateAt(out, "2026-01-15")).toBe(1000);
+  });
+  it("si la fecha nueva ya tiene otra vigencia, no hace nada", () => {
+    expect(replaceRate(rates, "2026-07-01", { from: "2026-01-01", amount: 5 }, "a", "t")).toBeNull();
+  });
+  it("si la vigencia ya no existe, no hace nada", () => {
+    expect(replaceRate(rates, "2026-09-09", { from: "2026-09-09", amount: 5 }, "a", "t")).toBeNull();
+  });
+  it("no modifica la lista original", () => {
+    replaceRate(rates, "2026-07-01", { from: "2026-07-01", amount: 1 }, "a", "t");
+    expect(rates[1]!.amount).toBe(1200);
+  });
+});
+
+describe("removeRate", () => {
+  it("quita solo la vigencia de esa fecha", () => {
+    const rates = [e("2026-01-01", 1000), e("2026-07-01", 1200)];
+    expect(removeRate(rates, "2026-07-01")).toEqual([rates[0]]);
+    expect(rateAt(removeRate(rates, "2026-07-01"), "2026-12-01")).toBe(1000);
+  });
+  it("una fecha inexistente deja todo igual", () => {
+    const rates = [e("2026-01-01", 1000)];
+    expect(removeRate(rates, "2030-01-01")).toEqual(rates);
   });
 });

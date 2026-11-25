@@ -48,7 +48,7 @@ describe("toggleModule", () => {
 
 describe("featureProblems", () => {
   it("detecta dependencias rotas", () => {
-    expect(featureProblems({ modules: { compensation: false, performance: true, payroll: false, projectBilling: false, allocation: false }, payModel: "salary" })).toHaveLength(1);
+    expect(featureProblems({ modules: { compensation: false, performance: true, payroll: false, projectBilling: false, allocation: false }, payModel: "salary", supervisorsSeePay: false })).toHaveLength(1);
     expect(featureProblems(DEFAULT_FEATURES)).toEqual([]);
   });
 });
@@ -62,5 +62,26 @@ describe("applyPreset", () => {
     const base = applyPreset(toggleModule(DEFAULT_FEATURES, "payroll", true), "consultancy");
     const f = applyPreset(base, "production");
     expect(f.modules).toEqual({ compensation: true, performance: true, payroll: true, projectBilling: false, allocation: false });
+  });
+});
+
+describe("permiso: supervisores ven sueldos del equipo", () => {
+  it("por defecto está apagado", () => {
+    expect(DEFAULT_FEATURES.supervisorsSeePay).toBe(false);
+    expect(normalizeFeatures({ modules: { compensation: true } }).supervisorsSeePay).toBe(false);
+  });
+  it("se lee prendido solo con true y solo si Sueldos en el legajo está activo", () => {
+    expect(normalizeFeatures({ modules: { compensation: true }, supervisorsSeePay: true }).supervisorsSeePay).toBe(true);
+    expect(normalizeFeatures({ modules: { compensation: false }, supervisorsSeePay: true }).supervisorsSeePay).toBe(false);
+    expect(normalizeFeatures({ modules: { compensation: true }, supervisorsSeePay: "si" }).supervisorsSeePay).toBe(false);
+  });
+  it("apagar Sueldos en el legajo apaga también el permiso", () => {
+    const on = { ...toggleModule(DEFAULT_FEATURES, "compensation", true), supervisorsSeePay: true };
+    expect(toggleModule(on, "compensation", false).supervisorsSeePay).toBe(false);
+    expect(toggleModule(on, "performance", true).supervisorsSeePay).toBe(true);
+  });
+  it("avisa si el permiso está prendido sin el módulo", () => {
+    expect(featureProblems({ ...DEFAULT_FEATURES, supervisorsSeePay: true })).toHaveLength(1);
+    expect(featureProblems({ ...toggleModule(DEFAULT_FEATURES, "compensation", true), supervisorsSeePay: true })).toEqual([]);
   });
 });

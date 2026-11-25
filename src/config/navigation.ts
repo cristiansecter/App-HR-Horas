@@ -11,6 +11,7 @@ export type NavId =
   | "directory"
   | "assignments"
   | "projection"
+  | "teamPay"
   | "projects"
   | "reports"
   | "performance"
@@ -30,6 +31,8 @@ export interface NavItem {
   group: "main" | "management";
   /** Si está, la pantalla solo existe cuando ese módulo está activo en la instancia. */
   module?: ModuleId;
+  /** Si está, además hace falta ese permiso que da el Configurador. */
+  permission?: "supervisorsSeePay";
 }
 
 const ALL: readonly Role[] = ["admin", "supervisor", "employee"];
@@ -44,6 +47,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: "approvals", label: "Aprobaciones", path: "/aprobaciones", roles: ["supervisor", "admin"], icon: "fact_check", group: "management" },
   { id: "assignments", label: "Asignar proyectos", path: "/asignaciones", roles: ["supervisor", "admin"], icon: "assignment_ind", group: "management" },
   { id: "projection", label: "Proyección", path: "/proyeccion", roles: ["supervisor", "admin"], icon: "timeline", group: "management", module: "allocation" },
+  { id: "teamPay", label: "Sueldos del equipo", path: "/sueldos-equipo", roles: ["supervisor"], icon: "payments", group: "management", module: "compensation", permission: "supervisorsSeePay" },
   { id: "directory", label: "Directorio", path: "/directorio", roles: ["admin"], icon: "groups", group: "management" },
   { id: "projects", label: "Proyectos", path: "/proyectos", roles: ["admin"], icon: "work", group: "management" },
   { id: "reports", label: "Reportes", path: "/reportes", roles: ["admin"], icon: "analytics", group: "management" },
@@ -53,7 +57,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: "settings", label: "Configuración", path: "/configuracion", roles: ["admin"], icon: "settings", group: "management" },
 ];
 
-const moduleActive = (item: NavItem, features?: Features): boolean => !item.module || features?.modules[item.module] === true;
+const moduleActive = (item: NavItem, features?: Features): boolean =>
+  (!item.module || features?.modules[item.module] === true) && (!item.permission || features?.[item.permission] === true);
 
 /** Ítems del menú para un rol, sin los de módulos que la instancia no tiene activos. */
 export const navigationFor = (role: Role, features?: Features): NavItem[] => NAV_ITEMS.filter((item) => item.roles.includes(role) && moduleActive(item, features));

@@ -28,6 +28,7 @@ export async function saveFeatures(features: Features, configuratorEmail: string
   await setDoc(doc(db, "settings", "features"), {
     modules: features.modules,
     payModel: features.payModel,
+    supervisorsSeePay: features.supervisorsSeePay,
     updatedAt: serverTimestamp(),
     updatedBy: configuratorEmail,
   });
