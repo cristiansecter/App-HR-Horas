@@ -4,6 +4,7 @@ import { navigationFor } from "@/config/navigation";
 import { horusBrand } from "@/config/horus.brand";
 import { tenantConfig } from "@/config/tenant.config";
 import { usePending } from "@/features/approvals/usePending";
+import { usePendingLeaves } from "@/features/approvals/usePendingLeaves";
 import { DEMO_PENDING_APPROVALS, DEMO_SUPERVISOR_OF } from "@/demo/demoUsers";
 import { ROLE_LABELS } from "@/domain/types";
 import { useSession, useUser } from "@/session/SessionContext";
@@ -24,8 +25,9 @@ function BadgePill({ count }: { count: number }) {
 /** Cantidad real de registros esperando aprobación. */
 function PendingBadge() {
   const user = useUser();
-  const { data } = usePending(user);
-  return <BadgePill count={data?.entries.length ?? 0} />;
+  const hours = usePending(user);
+  const leaves = usePendingLeaves(user);
+  return <BadgePill count={(hours.data?.entries.length ?? 0) + (leaves.data?.leaves.length ?? 0)} />;
 }
 
 /** Contenido del menú lateral. Se usa fijo en escritorio y dentro del panel en celular. */

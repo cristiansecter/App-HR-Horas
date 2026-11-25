@@ -135,7 +135,7 @@ service cloud.firestore {
                                                  'createdAt'])
         && (
           (request.resource.data.userId == me()
-            && request.resource.data.type in ['vacation', 'sick', 'study', 'personal', 'other']
+            && request.resource.data.type in ['vacation', 'sick', 'study', 'personal']
             && request.resource.data.status == 'pending')
           ||
           (isApproverOf(request.resource.data.userId) && request.resource.data.userId != me()

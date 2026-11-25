@@ -13,6 +13,7 @@ import HomeAdmin from "@/features/screens/HomeAdmin";
 import HomeEmployee from "@/features/screens/HomeEmployee";
 import HomeSupervisor from "@/features/screens/HomeSupervisor";
 import MyHours from "@/features/screens/MyHours";
+import MyLeaveLive from "@/features/leave/MyLeaveLive";
 import MyLeave from "@/features/screens/MyLeave";
 import Projects from "@/features/screens/Projects";
 import TeamCalendar from "@/features/screens/TeamCalendar";
@@ -38,7 +39,12 @@ function ApprovalsRoute() {
 }
 
 /** Pantallas que ya leen y escriben en Firestore. Las demás todavía muestran datos de ejemplo. */
-const LIVE_IDS: ReadonlySet<string> = new Set(["home", "hours", "approvals", "projects", "reports"]);
+const LIVE_IDS: ReadonlySet<string> = new Set(["home", "hours", "approvals", "projects", "reports", "leave", "team"]);
+
+function LeaveRoute() {
+  const { isReal } = useSession();
+  return isReal ? <MyLeaveLive /> : <MyLeave />;
+}
 
 function ReportsRoute() {
   const { isReal } = useSession();
@@ -71,7 +77,7 @@ const PAGES: Partial<Record<NavId, () => ReactElement>> = {
   hours: () => <MyHours />,
   team: () => <TeamCalendar />,
   projects: () => <Projects />,
-  leave: () => <MyLeave />,
+  leave: () => <LeaveRoute />,
   approvals: () => <ApprovalsRoute />,
   directory: () => <Directory />,
   reports: () => <ReportsRoute />,

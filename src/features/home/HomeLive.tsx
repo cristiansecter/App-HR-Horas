@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useCompany } from "@/company/CompanyContext";
 import { usePending } from "@/features/approvals/usePending";
+import { usePendingLeaves } from "@/features/approvals/usePendingLeaves";
 import { useLoadHours } from "@/features/hours/LoadHoursDrawer";
 import { dateInBuenosAires } from "@/domain/dates";
 import { ENTRIES_CHANGED, listApprovedBetween, listMyTimeEntries } from "@/services/timeEntries";
@@ -43,6 +44,7 @@ export default function HomeLive() {
 
   const mine = useAsync(() => listMyTimeEntries(user.uid), [user.uid], [ENTRIES_CHANGED]);
   const pending = usePending(user);
+  const pendingLeaves = usePendingLeaves(user);
   const company_ = useAsync(
     async () => (user.role === "admin" ? { users: await listUsers(), approved: await listApprovedBetween(`${monthPrefix}-01`, `${monthPrefix}-31`) } : null),
     [user.role, monthPrefix],
@@ -119,7 +121,11 @@ export default function HomeLive() {
               ))}
             </ul>
           )}
-          <p className="mt-space-md font-label-md text-label-md text-on-surface-variant">{pendingList.length === 1 ? "1 registro pendiente" : `${pendingList.length} registros pendientes`}</p>
+          <p className="mt-space-md font-label-md text-label-md text-on-surface-variant">
+            {pendingList.length === 1 ? "1 registro de horas pendiente" : `${pendingList.length} registros de horas pendientes`}
+            {" · "}
+            {(pendingLeaves.data?.leaves.length ?? 0) === 1 ? "1 licencia pendiente" : `${pendingLeaves.data?.leaves.length ?? 0} licencias pendientes`}
+          </p>
         </section>
       ) : null}
 

@@ -42,13 +42,16 @@ export default function ReportsLive() {
             holidays: company.holidays,
             tiers: company.overtime.tiers,
             projectNames: new Map(company.projects.map((p) => [p.code, p.name])),
+            leaves: raw.leaves,
+            range,
+            scheduleFor: (uid) => raw.users.find((u) => u.uid === uid)?.workSchedule ?? company.defaultSchedule,
           })
         : null,
-    [raw, company.holidays, company.overtime.tiers, company.projects],
+    [raw, range, company.holidays, company.overtime.tiers, company.projects, company.defaultSchedule],
   );
 
   const monthTitle = `${MONTHS[Number(month.slice(5, 7)) - 1]} de ${month.slice(0, 4)}`;
-  const hasData = (payroll?.detail.length ?? 0) > 0;
+  const hasData = (payroll?.summary.length ?? 0) > 0;
 
   const exportAs = async (kind: "xlsx" | "csv") => {
     if (!payroll) return;
@@ -127,7 +130,7 @@ export default function ReportsLive() {
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="bg-surface-container-lowest/80 font-label-xs-mono text-label-xs-mono tracking-wider text-on-surface-variant uppercase">
-                {["Persona", "Días", "Normales", ...company.overtime.tiers.map((t) => t.label), "Guardia", "Feriado", "Observaciones"].map((h) => (
+                {["Persona", "Días", "Normales", ...company.overtime.tiers.map((t) => t.label), "Guardia", "Feriado", "Licencias", "Observaciones"].map((h) => (
                   <th key={h} className="px-space-md py-3.5 font-semibold">{h}</th>
                 ))}
               </tr>
@@ -143,13 +146,14 @@ export default function ReportsLive() {
                   ))}
                   <td className="px-space-md py-3 tabular-nums">{fmt(r.onCallHours)}</td>
                   <td className="px-space-md py-3 tabular-nums">{fmt(r.holidayHours)}</td>
+                  <td className="px-space-md py-3 tabular-nums">{Object.values(r.leaveDays).reduce((a, b) => a + b, 0)}</td>
                   <td className="px-space-md py-3 font-body-sm text-body-sm text-on-surface-variant">{r.notes}</td>
                 </tr>
               ))}
               {!payroll || payroll.summary.length === 0 ? (
                 <tr>
-                  <td colSpan={6 + company.overtime.tiers.length} className="px-space-md py-10 text-center text-on-surface-variant">
-                    {loading && !raw ? "Cargando el período…" : `No hay horas aprobadas en ${monthTitle}.`}
+                  <td colSpan={7 + company.overtime.tiers.length} className="px-space-md py-10 text-center text-on-surface-variant">
+                    {loading && !raw ? "Cargando el período…" : `No hay horas ni licencias aprobadas en ${monthTitle}.`}
                   </td>
                 </tr>
               ) : null}
@@ -157,7 +161,7 @@ export default function ReportsLive() {
           </table>
         </div>
         <p className="mt-space-md font-body-sm text-body-sm text-on-surface-variant">
-          Licencias y ausencias todavía no se incluyen: se suman cuando se conecte ese módulo. “Días” y “Feriado” se calculan con la fecha de inicio de cada registro.
+          Las licencias aprobadas se cuentan por tipo: vacaciones en días corridos y el resto en días hábiles de la jornada. “Días” y “Feriado” se calculan con la fecha de inicio de cada registro.
         </p>
       </div>
     </Page>

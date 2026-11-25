@@ -1,7 +1,8 @@
-import type { TimeEntry, UserSummary } from "../model";
+import { leaveDaysInRange } from "../leave/days";
+import type { LeaveRequest, TimeEntry, UserSummary } from "../model";
 import { dayTypeOf } from "../overtime/dayType";
-import type { Holiday, Tier } from "../overtime/types";
-import type { AbsenceRow, DetailRow, SummaryRow, LeaveKind } from "./buildPayrollWorkbook";
+import type { Holiday, Tier, WorkSchedule } from "../overtime/types";
+import type { AbsenceRow, DetailRow, LeaveKind, SummaryRow } from "./buildPayrollWorkbook";
 
 export interface PayrollSources {
   /** Registros aprobados del período (con `hours` y `breakdown` congelados). */
@@ -14,6 +15,12 @@ export interface PayrollSources {
   holidays: ReadonlyMap<string, Holiday>;
   tiers: readonly Tier[];
   projectNames: ReadonlyMap<string, string>;
+  /** Licencias aprobadas que tocan el período. */
+  leaves: readonly LeaveRequest[];
+  /** Primer y último día del período, AAAA-MM-DD. */
+  range: { from: string; to: string };
+  /** Jornada de cada persona (la propia o la de la empresa): define qué días hábiles cuentan en una licencia. */
+  scheduleFor: (uid: string) => WorkSchedule;
 }
 
 export interface PayrollData {
@@ -49,9 +56,19 @@ export function buildPayrollData(src: PayrollSources): PayrollData {
   const openByUser = new Map<string, TimeEntry[]>();
   for (const e of src.open) openByUser.set(e.userId, [...(openByUser.get(e.userId) ?? []), e]);
 
+  const leavesByUser = new Map<string, LeaveRequest[]>();
+  for (const l of src.leaves) leavesByUser.set(l.userId, [...(leavesByUser.get(l.userId) ?? []), l]);
+
   const people = new Map(src.users.map((u) => [u.uid, u]));
   const nameOf = (uid: string) => people.get(uid)?.fullName ?? "Persona dada de baja";
-  const ids = [...new Set([...byUser.keys(), ...openByUser.keys()])].sort((a, b) => nameOf(a).localeCompare(nameOf(b), "es"));
+  const ids = [...new Set([...byUser.keys(), ...openByUser.keys(), ...leavesByUser.keys()])].sort((a, b) => nameOf(a).localeCompare(nameOf(b), "es"));
+
+  const daysInPeriod = (l: LeaveRequest) => leaveDaysInRange(l.type, l.startDate, l.endDate, src.range.from, src.range.to, src.scheduleFor(l.userId), src.holidays);
+  const leaveDaysOf = (uid: string): Record<LeaveKind, number> => {
+    const days = { ...NO_LEAVES };
+    for (const l of leavesByUser.get(uid) ?? []) days[l.type] += daysInPeriod(l);
+    return days;
+  };
 
   const summary: SummaryRow[] = ids.map((uid) => {
     const entries = byUser.get(uid) ?? [];
@@ -73,7 +90,7 @@ export function buildPayrollData(src: PayrollSources): PayrollData {
       tierHours: Object.fromEntries(src.tiers.map((t) => [t.id, round2(breakdown[t.id] ?? 0)])),
       onCallHours: round2(entries.filter((e) => e.isOnCall).reduce((s, e) => s + (e.hours ?? 0), 0)),
       holidayHours: round2(entries.filter((e) => dayTypeOf(e.date, src.holidays) === "holiday").reduce((s, e) => s + (e.hours ?? 0), 0)),
-      leaveDays: { ...NO_LEAVES },
+      leaveDays: leaveDaysOf(uid),
       notes: notes.join(". "),
     };
   });
@@ -117,7 +134,20 @@ export function buildPayrollData(src: PayrollSources): PayrollData {
   const noCuil = summary.filter((r) => !r.cuil && r.fullName !== "Persona dada de baja").length;
   if (noCuil) warnings.push(`${noCuil} persona${noCuil === 1 ? "" : "s"} sin CUIL cargado.`);
 
-  return { summary, detail, absences: [], warnings, totals };
+  const absences: AbsenceRow[] = [...src.leaves]
+    .sort((a, b) => nameOf(a.userId).localeCompare(nameOf(b.userId), "es") || a.startDate.localeCompare(b.startDate))
+    .map((l) => ({
+      employee: nameOf(l.userId),
+      type: l.type,
+      from: l.startDate,
+      to: l.endDate,
+      totalDays: l.daysCount,
+      daysInPeriod: daysInPeriod(l),
+      status: "Aprobada",
+      registeredBy: l.createdBy === l.userId ? `${nameOf(l.userId)} (solicitud)` : nameOf(l.createdBy),
+    }));
+
+  return { summary, detail, absences, warnings, totals };
 }
 
 /** Primer y último día (AAAA-MM-DD) de un mes "AAAA-MM". */

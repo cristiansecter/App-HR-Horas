@@ -6,6 +6,7 @@ import { approveEntry, observeEntry } from "@/services/timeEntries";
 import { useUser } from "@/session/SessionContext";
 import { Chip, Page, PageHeader } from "@/ui/Page";
 import { useToast } from "@/ui/Toast";
+import LeaveReviewSection from "./LeaveReviewSection";
 import { usePending } from "./usePending";
 
 const fmt = (n: number) => n.toLocaleString("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
@@ -104,7 +105,7 @@ export default function ApprovalsLive() {
       <PageHeader
         eyebrow={reviewer.role === "admin" ? "Administrador" : "Supervisor"}
         title="Gestión de aprobaciones"
-        subtitle="Revisá los registros enviados. Al aprobar, las horas se calculan y quedan congeladas."
+        subtitle="Revisá los registros de horas y las licencias de tu equipo. Al aprobar horas, se calculan y quedan congeladas."
         actions={
           <button
             type="button"
@@ -192,6 +193,8 @@ export default function ApprovalsLive() {
           </table>
         </div>
       </div>
+
+      <LeaveReviewSection />
 
       {observing ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">

@@ -11,7 +11,7 @@ export const ENTRY_STATUS_LABELS: Record<EntryStatus, string> = {
   observed: "Observado",
 };
 
-export type LeaveType = "vacation" | "sick" | "study" | "personal" | "unjustified" | "other";
+export type LeaveType = "vacation" | "sick" | "study" | "personal" | "unjustified";
 export type LeaveStatus = "pending" | "approved" | "rejected";
 
 /** `users/{uid}`: perfil visible para todo el equipo. Lo sensible vive en `employee_private`. */
@@ -64,4 +64,50 @@ export interface Project {
 
 export interface UserSummary extends UserProfile {
   uid: string;
+}
+
+export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
+  vacation: "Vacaciones",
+  sick: "Enfermedad",
+  study: "Día de estudio",
+  personal: "Trámite personal",
+  unjustified: "Injustificada",
+};
+
+export const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
+  pending: "Pendiente",
+  approved: "Aprobada",
+  rejected: "Rechazada",
+};
+
+/** Tipos que la persona puede solicitar. La injustificada la registra quien supervisa. */
+export const REQUESTABLE_LEAVE_TYPES: readonly LeaveType[] = ["vacation", "sick", "study", "personal"];
+
+/** `leave_requests/{id}`. */
+export interface LeaveRequestDoc {
+  userId: string;
+  type: LeaveType;
+  /** AAAA-MM-DD, ambos incluidos. */
+  startDate: string;
+  endDate: string;
+  /** Días según el tipo: corridos para vacaciones, hábiles de la jornada para el resto. */
+  daysCount: number;
+  reason: string;
+  status: LeaveStatus;
+  createdBy: string;
+  approvedBy?: string;
+  reviewerNote?: string;
+}
+
+export interface LeaveRequest extends LeaveRequestDoc {
+  id: string;
+}
+
+/** `team_absences/{id de la licencia}`: solo "ausente", sin el tipo (es un dato de salud). */
+export interface TeamAbsence {
+  id: string;
+  userId: string;
+  startDate: string;
+  endDate: string;
+  leaveId: string;
 }

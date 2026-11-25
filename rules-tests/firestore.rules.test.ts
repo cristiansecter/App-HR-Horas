@@ -335,6 +335,44 @@ describe("licencias", () => {
   });
 });
 
+describe("licencias: las escrituras en lote que hace la app", () => {
+  const seedLeave = (id: string, userId: string) =>
+    env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), `leave_requests/${id}`), { userId, type: "vacation", startDate: "2026-12-14", endDate: "2026-12-18", daysCount: 5, status: "pending", createdBy: userId });
+    });
+  const approveBatch = (db: ReturnType<typeof asRole>, id: string, userId: string, by: string) => {
+    const b = db.batch();
+    b.update(db.doc(`leave_requests/${id}`), { status: "approved", approvedBy: by, decidedAt: serverTimestamp() });
+    b.set(db.doc(`team_absences/${id}`), { userId, startDate: "2026-12-14", endDate: "2026-12-18", leaveId: id });
+    return b.commit();
+  };
+
+  it("el supervisor aprueba y publica la ausencia en un solo paso", async () => {
+    await seedLeave("l1", "emi");
+    await assertSucceeds(approveBatch(asRole("sofia", "supervisor"), "l1", "emi", "sofia"));
+    await assertSucceeds(getDoc(doc(asRole("eze", "employee"), "team_absences/l1")));
+  });
+  it("un supervisor no aprueba ni publica la ausencia de otro equipo", async () => {
+    await seedLeave("l-olga", "olga");
+    await assertFails(approveBatch(asRole("sofia", "supervisor"), "l-olga", "olga", "sofia"));
+  });
+  it("el empleado no publica ausencias en el calendario", async () => {
+    await assertFails(setDoc(doc(asRole("emi", "employee"), "team_absences/x"), { userId: "emi", startDate: "2026-12-14", endDate: "2026-12-14", leaveId: "x" }));
+  });
+  it("el supervisor registra una injustificada de su equipo y la publica en un solo paso", async () => {
+    const db = asRole("sofia", "supervisor");
+    const b = db.batch();
+    b.set(db.doc("leave_requests/u1"), { userId: "emi", type: "unjustified", startDate: "2026-11-24", endDate: "2026-11-24", daysCount: 1, reason: "", status: "approved", createdBy: "sofia", approvedBy: "sofia", decidedAt: serverTimestamp(), createdAt: serverTimestamp() });
+    b.set(db.doc("team_absences/u1"), { userId: "emi", startDate: "2026-11-24", endDate: "2026-11-24", leaveId: "u1" });
+    await assertSucceeds(b.commit());
+  });
+  it("el empleado solicita sin los campos de decisión y no puede pedir 'other'", async () => {
+    const db = asRole("emi", "employee");
+    await assertSucceeds(setDoc(doc(db, "leave_requests/r1"), { userId: "emi", type: "sick", startDate: "2026-11-24", endDate: "2026-11-25", daysCount: 2, reason: "Gripe", status: "pending", createdBy: "emi", createdAt: serverTimestamp() }));
+    await assertFails(setDoc(doc(db, "leave_requests/r2"), { userId: "emi", type: "other", startDate: "2026-11-24", endDate: "2026-11-25", daysCount: 2, reason: "", status: "pending", createdBy: "emi", createdAt: serverTimestamp() }));
+  });
+});
+
 describe("calendario de ausencias del equipo", () => {
   it("todos lo ven, pero solo quien aprueba lo escribe y sin el tipo de licencia", async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {

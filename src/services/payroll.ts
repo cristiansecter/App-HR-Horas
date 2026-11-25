@@ -1,7 +1,8 @@
 import { collection, getDocs, query, where } from "firebase/firestore";
-import type { TimeEntry, TimeEntryDoc, UserSummary } from "@/domain/model";
+import type { LeaveRequest, TimeEntry, TimeEntryDoc, UserSummary } from "@/domain/model";
 import { listUsers } from "./company";
 import { getFirebase } from "./firebase";
+import { listApprovedLeavesOverlapping } from "./leaves";
 import { listApprovedBetween } from "./timeEntries";
 
 export interface PayrollRawData {
@@ -9,6 +10,7 @@ export interface PayrollRawData {
   open: TimeEntry[];
   users: UserSummary[];
   cuilByUid: Map<string, string>;
+  leaves: LeaveRequest[];
 }
 
 /**
@@ -17,11 +19,12 @@ export interface PayrollRawData {
  */
 export async function loadPayrollRaw(from: string, to: string): Promise<PayrollRawData> {
   const { db } = getFirebase();
-  const [approved, openSnap, users, privateSnap] = await Promise.all([
+  const [approved, openSnap, users, privateSnap, leaves] = await Promise.all([
     listApprovedBetween(from, to),
     getDocs(query(collection(db, "time_entries"), where("status", "in", ["submitted", "observed"]), where("date", ">=", from), where("date", "<=", to))),
     listUsers(),
     getDocs(collection(db, "employee_private")),
+    listApprovedLeavesOverlapping(from, to),
   ]);
   const cuilByUid = new Map<string, string>();
   privateSnap.forEach((d) => {
@@ -33,5 +36,6 @@ export async function loadPayrollRaw(from: string, to: string): Promise<PayrollR
     open: openSnap.docs.map((d) => ({ id: d.id, ...(d.data() as TimeEntryDoc) })),
     users,
     cuilByUid,
+    leaves,
   };
 }

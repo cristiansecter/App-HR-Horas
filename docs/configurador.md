@@ -78,10 +78,12 @@ npm run set-role -- --email persona@empresa.com --role supervisor --key ruta/cla
 | Aprobaciones (aprobar, aprobar varios, observar con nota) | Real: al aprobar se calculan y congelan `hours` y `breakdown` con la jornada de la persona, los feriados y las reglas de la empresa |
 | Inicio (resumen del mes, pendientes, totales del equipo) | Real |
 | Proyectos (alta, activar/desactivar, horas aprobadas) | Real |
-| Reportes: planilla del mes con horas aprobadas, avisos de lo que falta y descarga en Excel/CSV | Real: el resumen y el detalle suman lo mismo; lo no aprobado no entra y se avisa. Licencias y ausencias todavía no se incluyen |
-| Reglas de seguridad de Firestore | Reales y probadas (57 pruebas de reglas y 85 de lógica) |
+| Licencias: solicitar, retirar, aprobar o rechazar con motivo, registrar ausencias injustificadas | Real: las vacaciones se cuentan en días corridos y el resto en días hábiles de la jornada de la persona, sin feriados. Al aprobar, la ausencia pasa sola al calendario y a la planilla |
+| Calendario del equipo | Real: todos ven quién está ausente; el tipo de licencia lo ven solo supervisor y administrador |
+| Reportes: planilla del mes con horas aprobadas, avisos de lo que falta y descarga en Excel/CSV | Real: el resumen y el detalle suman lo mismo; lo no aprobado no entra y se avisa.  |
+| Reglas de seguridad de Firestore | Reales y probadas (62 pruebas de reglas y 99 de lógica) |
 | Alta de usuarios, cambio de rol, configuración inicial y feriados | Real, por script |
-| Mi semana, Mis licencias, Calendario del equipo, Directorio, Configuración | Datos de ejemplo (con una cuenta real se muestra un aviso arriba) |
+| Mi semana, Directorio, Configuración | Datos de ejemplo (con una cuenta real se muestra un aviso arriba) |
 
 Quién aprueba qué: el supervisor aprueba a quienes lo tienen como `supervisorId`; el administrador aprueba a todos, incluidos los supervisores y sus propias horas.
 
